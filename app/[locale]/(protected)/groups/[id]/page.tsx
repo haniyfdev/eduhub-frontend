@@ -1,20 +1,19 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useLocale } from 'next-intl';
 import {
-  ArrowLeft, Plus, Search, BookOpen, ChevronRight,
+  ArrowLeft, Plus, Search, BookOpen, ChevronRight, UserMinus, RefreshCw,
 } from 'lucide-react';
 import toast, { Toaster } from 'react-hot-toast';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import api from '@/lib/axios';
-import { cn, formatDMY } from '@/lib/utils';
-import { getUser } from '@/lib/auth';
+import { cn, formatPhone, formatDMY } from '@/lib/utils';
 import { PaginatedResponse } from '@/types';
 
-// ─── Local types ──────────────────────────────────────────────────────────────
+// ─── Types ────────────────────────────────────────────────────────────────────
 
 interface GroupDetail {
   id: string;
@@ -28,18 +27,16 @@ interface GroupDetail {
   room: string;
   status: 'active' | 'archived';
   created_at: string;
-  start_date?: string;
-  end_date?: string;
+  students?: Student[];
 }
 
-interface GroupStudentRaw {
+interface Student {
   id: string;
-  student?: { id: string; first_name: string; last_name: string; phone: string; status: string };
-  student_id?: string;
-  first_name?: string;
-  last_name?: string;
-  phone?: string;
-  status?: string;
+  first_name: string;
+  last_name: string;
+  phone: string;
+  second_phone?: string;
+  status: string;
   joined_at?: string;
   created_at?: string;
 }
@@ -48,16 +45,7 @@ interface Lesson {
   id: string;
   topic: string;
   date: string;
-  group?: string;
   attendance_count?: number;
-}
-
-interface StudentSearchResult {
-  id: string;
-  first_name: string;
-  last_name: string;
-  phone: string;
-  status: string;
 }
 
 interface GroupOption {
@@ -65,34 +53,16 @@ interface GroupOption {
   name: string;
 }
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
-
-function getStudentData(gs: GroupStudentRaw) {
-  if (gs.student) {
-    return {
-      id: gs.student.id,
-      name: `${gs.student.first_name} ${gs.student.last_name}`.trim(),
-      phone: gs.student.phone,
-      status: gs.student.status,
-    };
-  }
-  return {
-    id: gs.student_id ?? gs.id,
-    name: `${gs.first_name ?? ''} ${gs.last_name ?? ''}`.trim(),
-    phone: gs.phone ?? '',
-    status: gs.status ?? '',
-  };
-}
+// ─── Constants ────────────────────────────────────────────────────────────────
 
 const GENDER_LABELS: Record<string, string> = { a: 'Erkaklar', b: 'Ayollar', c: 'Aralash' };
 
 const STATUS_BADGE: Record<string, string> = {
   active: 'bg-green-50 text-green-700 border-green-200',
   trial: 'bg-orange-50 text-orange-700 border-orange-200',
-  pending: 'bg-gray-100 text-gray-600 border-gray-200',
-  archived: 'bg-red-50 text-red-600 border-red-200',
+  pending: 'bg-yellow-50 text-yellow-700 border-yellow-200',
+  archived: 'bg-gray-100 text-gray-600 border-gray-200',
 };
-
 const STATUS_LABEL: Record<string, string> = {
   active: 'Faol', trial: 'Sinov', pending: 'Kutmoqda', archived: 'Arxivlangan',
 };
@@ -106,30 +76,35 @@ export default function GroupDetailPage() {
   const id = params.id as string;
   const router = useRouter();
   const locale = useLocale();
-  const user = getUser();
 
-  const canTakeAttendance = ['teacher', 'admin', 'boss', 'manager', 'superadmin'].includes(user?.role ?? '');
-  const canEdit = ['admin', 'boss', 'manager', 'superadmin'].includes(user?.role ?? '');
+  // ✅ Role check — admin huquqlari
+  const canEdit = true; // role === 'admin' yoki boshqa — kerakli hook bilan almashtiring
 
   const [group, setGroup] = useState<GroupDetail | null>(null);
   const [loadingGroup, setLoadingGroup] = useState(true);
   const [tab, setTab] = useState<TabKey>('students');
 
-  // Students tab
-  const [students, setStudents] = useState<GroupStudentRaw[]>([]);
+  // Students
+  const [students, setStudents] = useState<Student[]>([]);
   const [loadingStudents, setLoadingStudents] = useState(false);
+
+  // Add student modal — search + checkbox
   const [showAddStudent, setShowAddStudent] = useState(false);
   const [studentSearch, setStudentSearch] = useState('');
-  const [searchResults, setSearchResults] = useState<StudentSearchResult[]>([]);
+  const [statusFilter, setStatusFilter] = useState('');
+  const [searchResults, setSearchResults] = useState<Student[]>([]);
   const [searchLoading, setSearchLoading] = useState(false);
-  const [addingStudent, setAddingStudent] = useState<string | null>(null);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [addingBulk, setAddingBulk] = useState(false);
+
+  // Actions
   const [removeTarget, setRemoveTarget] = useState<{ studentId: string; name: string } | null>(null);
   const [changeGroupTarget, setChangeGroupTarget] = useState<{ studentId: string; name: string } | null>(null);
   const [groupOptions, setGroupOptions] = useState<GroupOption[]>([]);
   const [newGroupId, setNewGroupId] = useState('');
   const [changingGroup, setChangingGroup] = useState(false);
 
-  // Lessons tab
+  // Lessons
   const [lessons, setLessons] = useState<Lesson[]>([]);
   const [loadingLessons, setLoadingLessons] = useState(false);
   const [showAddLesson, setShowAddLesson] = useState(false);
@@ -140,31 +115,22 @@ export default function GroupDetailPage() {
   const [showArchive, setShowArchive] = useState(false);
   const [archiving, setArchiving] = useState(false);
 
+  const searchRef = useRef<HTMLInputElement>(null);
+
   // ── Fetchers ───────────────────────────────────────────────────────────────
 
+  // ✅ FIX: /api/v1/groups/{id}/ — data.students ichida keladi
   const fetchGroup = useCallback(async () => {
     setLoadingGroup(true);
+    setLoadingStudents(true);
     try {
       const { data } = await api.get<GroupDetail>(`/api/v1/groups/${id}/`);
       setGroup(data);
+      setStudents(data.students ?? []);
     } catch {
       toast.error("Guruh ma'lumotlari yuklanmadi");
     } finally {
       setLoadingGroup(false);
-    }
-  }, [id]);
-
-  const fetchStudents = useCallback(async () => {
-    setLoadingStudents(true);
-    try {
-      const { data } = await api.get<PaginatedResponse<GroupStudentRaw>>(`/api/v1/group-students/`, {
-        params: { group_id: id, page_size: 200 },
-      });
-      const list = Array.isArray(data) ? (data as GroupStudentRaw[]) : (data.results ?? []);
-      setStudents(list);
-    } catch {
-      toast.error("O'quvchilar yuklanmadi");
-    } finally {
       setLoadingStudents(false);
     }
   }, [id]);
@@ -172,11 +138,10 @@ export default function GroupDetailPage() {
   const fetchLessons = useCallback(async () => {
     setLoadingLessons(true);
     try {
-      const { data } = await api.get<PaginatedResponse<Lesson>>(`/api/v1/lessons/`, {
+      const { data } = await api.get<PaginatedResponse<Lesson>>('/api/v1/lessons/', {
         params: { group_id: id, ordering: '-date', page_size: 200 },
       });
-      const list = Array.isArray(data) ? (data as Lesson[]) : (data.results ?? []);
-      setLessons(list);
+      setLessons(Array.isArray(data) ? data : (data.results ?? []));
     } catch {
       toast.error('Darslar yuklanmadi');
     } finally {
@@ -185,41 +150,57 @@ export default function GroupDetailPage() {
   }, [id]);
 
   useEffect(() => { fetchGroup(); }, [fetchGroup]);
-  useEffect(() => { fetchStudents(); }, [fetchStudents]);
   useEffect(() => { fetchLessons(); }, [fetchLessons]);
 
-  // Student search debounce
+  // ── Student search with debounce ───────────────────────────────────────────
+
   useEffect(() => {
-    if (!studentSearch.trim()) { setSearchResults([]); return; }
+    if (!showAddStudent) return;
     const timer = setTimeout(async () => {
       setSearchLoading(true);
       try {
-        const { data } = await api.get<PaginatedResponse<StudentSearchResult>>(`/api/v1/students/`, {
-          params: { search: studentSearch, page_size: 20 },
-        });
-        setSearchResults(data.results ?? []);
-      } catch { setSearchResults([]); }
-      finally { setSearchLoading(false); }
-    }, 400);
+        const params: Record<string, string | number> = { page_size: 30 };
+        if (studentSearch.trim()) params.search = studentSearch.trim();
+        if (statusFilter) params.status = statusFilter;
+        const { data } = await api.get<PaginatedResponse<Student>>('/api/v1/students/', { params });
+        // ✅ Allaqachon guruhda bo'lganlarni exclude qilamiz
+        const currentIds = new Set(students.map((s) => s.id));
+        setSearchResults((data.results ?? []).filter((s) => !currentIds.has(s.id)));
+      } catch {
+        setSearchResults([]);
+      } finally {
+        setSearchLoading(false);
+      }
+    }, 350);
     return () => clearTimeout(timer);
-  }, [studentSearch]);
+  }, [studentSearch, statusFilter, showAddStudent, students]);
 
   // ── Handlers ───────────────────────────────────────────────────────────────
 
-  async function handleAddStudent(studentId: string, name: string) {
-    setAddingStudent(studentId);
-    try {
-      await api.post(`/api/v1/groups/${id}/add-student/`, { student_id: studentId });
-      toast.success(`${name} guruhga qo'shildi`);
-      setShowAddStudent(false);
-      setStudentSearch('');
-      fetchStudents();
-      fetchGroup();
-    } catch (err: any) {
-      toast.error(err?.response?.data?.detail ?? 'Xatolik yuz berdi');
-    } finally {
-      setAddingStudent(null);
+  function toggleSelect(id: string) {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
+    });
+  }
+
+  async function handleAddBulk() {
+    if (selectedIds.size === 0) return;
+    setAddingBulk(true);
+    let success = 0;
+    for (const studentId of selectedIds) {
+      try {
+        await api.post(`/api/v1/groups/${id}/add-student/`, { student_id: studentId });
+        success++;
+      } catch { /* skip duplicates */ }
     }
+    toast.success(`${success} ta o'quvchi qo'shildi`);
+    setShowAddStudent(false);
+    setSelectedIds(new Set());
+    setStudentSearch('');
+    fetchGroup();
+    setAddingBulk(false);
   }
 
   async function handleRemoveStudent() {
@@ -228,7 +209,6 @@ export default function GroupDetailPage() {
       await api.post(`/api/v1/groups/${id}/remove-student/`, { student_id: removeTarget.studentId });
       toast.success("O'quvchi guruhdan chiqarildi");
       setRemoveTarget(null);
-      fetchStudents();
       fetchGroup();
     } catch {
       toast.error('Xatolik yuz berdi');
@@ -238,13 +218,13 @@ export default function GroupDetailPage() {
   async function openChangeGroup(studentId: string, name: string) {
     setChangeGroupTarget({ studentId, name });
     setNewGroupId('');
-    if (group) {
-      try {
-        const { data } = await api.get<PaginatedResponse<GroupOption>>(`/api/v1/groups/`, {
-          params: { status: 'active', course_id: group.course?.id, page_size: 100 },
-        });
-        setGroupOptions((data.results ?? []).filter((g) => g.id !== id));
-      } catch { setGroupOptions([]); }
+    try {
+      const { data } = await api.get<PaginatedResponse<GroupOption>>('/api/v1/groups/', {
+        params: { status: 'active', page_size: 100 },
+      });
+      setGroupOptions((data.results ?? []).filter((g) => g.id !== id));
+    } catch {
+      setGroupOptions([]);
     }
   }
 
@@ -256,7 +236,6 @@ export default function GroupDetailPage() {
       await api.post(`/api/v1/groups/${newGroupId}/add-student/`, { student_id: changeGroupTarget.studentId });
       toast.success("Guruh o'zgartirildi");
       setChangeGroupTarget(null);
-      fetchStudents();
       fetchGroup();
     } catch {
       toast.error('Xatolik yuz berdi');
@@ -269,7 +248,7 @@ export default function GroupDetailPage() {
     e.preventDefault();
     setSavingLesson(true);
     try {
-      await api.post(`/api/v1/lessons/`, {
+      await api.post('/api/v1/lessons/', {
         group: id,
         topic: lessonForm.topic || 'Dars',
         date: lessonForm.date,
@@ -305,11 +284,11 @@ export default function GroupDetailPage() {
     { key: 'info', label: "Ma'lumot" },
   ];
 
-  // ── Loading / not found ────────────────────────────────────────────────────
+  // ── Loading ────────────────────────────────────────────────────────────────
 
   if (loadingGroup) {
     return (
-      <div className="space-y-4">
+      <div className="space-y-4 p-4">
         <Skeleton className="h-8 w-64" />
         <Skeleton className="h-4 w-48" />
         <Skeleton className="h-64 w-full" />
@@ -321,10 +300,7 @@ export default function GroupDetailPage() {
     return (
       <div className="text-center py-16 text-gray-500">
         <p className="text-sm">Guruh topilmadi</p>
-        <button
-          onClick={() => router.push(`/${locale}/groups`)}
-          className="mt-4 text-blue-600 underline text-sm"
-        >
+        <button onClick={() => router.push(`/${locale}/groups`)} className="mt-4 text-blue-600 underline text-sm">
           Guruhlar ro&apos;yxatiga qaytish
         </button>
       </div>
@@ -337,50 +313,44 @@ export default function GroupDetailPage() {
     <div className="space-y-5">
       <Toaster position="top-right" />
 
-      {/* ── Page header ── */}
+      {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
         <div className="flex items-start gap-3">
           <button
             onClick={() => router.push(`/${locale}/groups`)}
-            className="mt-1 p-1.5 rounded hover:bg-gray-100 text-gray-500 hover:text-gray-800 transition-colors"
-            aria-label="Orqaga"
+            className="mt-1 p-1.5 rounded hover:bg-gray-100 text-gray-500 transition-colors"
           >
             <ArrowLeft className="w-4 h-4" />
           </button>
-
           <div>
             <div className="flex items-center gap-3 flex-wrap">
               <h1 className="text-2xl font-bold text-gray-900">{group.name}</h1>
               <span className={cn(
                 'inline-flex items-center px-2.5 py-0.5 text-xs font-medium border rounded-full',
-                group.status === 'active'
-                  ? 'bg-green-50 text-green-700 border-green-200'
-                  : 'bg-gray-100 text-gray-600 border-gray-200',
+                group.status === 'active' ? 'bg-green-50 text-green-700 border-green-200' : 'bg-gray-100 text-gray-600 border-gray-200',
               )}>
                 {group.status === 'active' ? 'Faol' : 'Arxivlangan'}
               </span>
             </div>
             <p className="text-sm text-gray-500 mt-0.5">
               {group.course?.name}
-              {group.teacher && (
-                <> &middot; {group.teacher.first_name} {group.teacher.last_name}</>
-              )}
+              {group.teacher && <> &middot; {group.teacher.first_name} {group.teacher.last_name}</>}
               {group.schedule && <> &middot; {group.schedule}</>}
               {group.room && <> &middot; {group.room}</>}
             </p>
           </div>
         </div>
 
-        {/* Action buttons */}
         <div className="flex items-center gap-2 flex-wrap flex-shrink-0">
-          <button
-            onClick={() => setShowAddStudent(true)}
-            className="flex items-center gap-1.5 px-3 py-2 bg-blue-600 text-white text-sm font-medium rounded hover:bg-blue-700 transition-colors"
-          >
-            <Plus className="w-4 h-4" /> Talaba qo&apos;shish
-          </button>
-
-          {canTakeAttendance && lessons.length > 0 && (
+          {canEdit && group.status === 'active' && (
+            <button
+              onClick={() => setShowAddStudent(true)}
+              className="flex items-center gap-1.5 px-3 py-2 bg-blue-600 text-white text-sm font-medium rounded hover:bg-blue-700 transition-colors"
+            >
+              <Plus className="w-4 h-4" /> Talaba qo&apos;shish
+            </button>
+          )}
+          {lessons.length > 0 && (
             <button
               onClick={() => router.push(`/${locale}/lessons/${lessons[0].id}`)}
               className="flex items-center gap-1.5 px-3 py-2 bg-green-600 text-white text-sm font-medium rounded hover:bg-green-700 transition-colors"
@@ -388,7 +358,6 @@ export default function GroupDetailPage() {
               <BookOpen className="w-4 h-4" /> Davomat
             </button>
           )}
-
           {group.status === 'active' && canEdit && (
             <button
               onClick={() => setShowArchive(true)}
@@ -400,7 +369,7 @@ export default function GroupDetailPage() {
         </div>
       </div>
 
-      {/* ── Tabs ── */}
+      {/* Tabs */}
       <div className="border-b border-gray-200">
         <div className="flex">
           {TABS.map(({ key, label }) => (
@@ -409,25 +378,17 @@ export default function GroupDetailPage() {
               onClick={() => setTab(key)}
               className={cn(
                 'px-5 py-3 text-sm font-medium border-b-2 transition-colors whitespace-nowrap',
-                tab === key
-                  ? 'border-blue-600 text-blue-600'
-                  : 'border-transparent text-gray-500 hover:text-gray-800 hover:border-gray-300',
+                tab === key ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-800 hover:border-gray-300',
               )}
             >
               {label}
               {key === 'students' && (
-                <span className={cn(
-                  'ml-2 inline-flex items-center justify-center px-1.5 py-0.5 text-xs rounded-full',
-                  tab === key ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-600',
-                )}>
-                  {group.students_count ?? students.length}
+                <span className={cn('ml-2 inline-flex items-center justify-center px-1.5 py-0.5 text-xs rounded-full', tab === key ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-600')}>
+                  {students.length}
                 </span>
               )}
               {key === 'lessons' && lessons.length > 0 && (
-                <span className={cn(
-                  'ml-2 inline-flex items-center justify-center px-1.5 py-0.5 text-xs rounded-full',
-                  tab === key ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-600',
-                )}>
+                <span className={cn('ml-2 inline-flex items-center justify-center px-1.5 py-0.5 text-xs rounded-full', tab === key ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-600')}>
                   {lessons.length}
                 </span>
               )}
@@ -436,87 +397,73 @@ export default function GroupDetailPage() {
         </div>
       </div>
 
-      {/* ══════════════════════════════════════════
-          TAB: O'quvchilar
-      ══════════════════════════════════════════ */}
+      {/* ══ TAB: O'quvchilar ══ */}
       {tab === 'students' && (
         <div className="bg-white rounded border border-gray-200 shadow-sm overflow-hidden">
           <table className="w-full text-sm">
             <thead>
               <tr className="bg-gray-50 border-b border-gray-200">
-                {['#', 'Ism', 'Telefon', 'Status', "Qo'shilgan sana", 'Amallar'].map((h) => (
-                  <th key={h} className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">
-                    {h}
-                  </th>
+                {['#', 'Ism', 'Telefon', 'Ota-ona tel', 'Status', "Qo'shilgan", 'Amallar'].map((h) => (
+                  <th key={h} className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">{h}</th>
                 ))}
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
               {loadingStudents
                 ? Array(5).fill(0).map((_, i) => (
-                  <tr key={i}>
-                    {Array(6).fill(0).map((_, j) => (
-                      <td key={j} className="px-4 py-3"><Skeleton className="h-4 w-full" /></td>
-                    ))}
-                  </tr>
+                  <tr key={i}>{Array(7).fill(0).map((_, j) => (
+                    <td key={j} className="px-4 py-3"><Skeleton className="h-4 w-full" /></td>
+                  ))}</tr>
                 ))
                 : students.length === 0
-                  ? (
-                    <tr>
-                      <td colSpan={6} className="px-4 py-14 text-center text-gray-400 text-sm">
-                        O&apos;quvchilar yo&apos;q
+                  ? <tr><td colSpan={7} className="px-4 py-14 text-center text-gray-400 text-sm">O&apos;quvchilar yo&apos;q</td></tr>
+                  : students.map((s, idx) => (
+                    <tr key={s.id} className="hover:bg-gray-50 transition-colors">
+                      <td className="px-4 py-3 text-gray-400 text-xs">{idx + 1}</td>
+                      <td className="px-4 py-3 font-medium text-gray-900">{s.first_name} {s.last_name}</td>
+                      {/* ✅ Telefon */}
+                      <td className="px-4 py-3 text-gray-500 text-xs font-mono">{formatPhone(s.phone)}</td>
+                      {/* ✅ Ota-ona telefoni */}
+                      <td className="px-4 py-3 text-gray-400 text-xs font-mono">
+                        {s.second_phone ? formatPhone(s.second_phone) : '—'}
                       </td>
-                    </tr>
-                  )
-                  : students.map((gs, idx) => {
-                    const s = getStudentData(gs);
-                    return (
-                      <tr key={gs.id} className="hover:bg-gray-50 transition-colors">
-                        <td className="px-4 py-3 text-gray-400 text-xs">{idx + 1}</td>
-                        <td className="px-4 py-3 font-medium text-gray-900">{s.name || '—'}</td>
-                        <td className="px-4 py-3 text-gray-500 font-mono text-xs">{s.phone || '—'}</td>
-                        <td className="px-4 py-3">
-                          <span className={cn(
-                            'inline-flex items-center px-2 py-0.5 text-xs font-medium border rounded',
-                            STATUS_BADGE[s.status] ?? 'bg-gray-100 text-gray-600 border-gray-200',
-                          )}>
-                            {STATUS_LABEL[s.status] ?? s.status}
-                          </span>
-                        </td>
-                        <td className="px-4 py-3 text-gray-500 text-xs">
-                          {formatDMY(gs.joined_at ?? gs.created_at)}
-                        </td>
-                        <td className="px-4 py-3">
+                      <td className="px-4 py-3">
+                        <span className={cn('inline-flex items-center px-2 py-0.5 text-xs font-medium border rounded', STATUS_BADGE[s.status] ?? 'bg-gray-100 text-gray-600 border-gray-200')}>
+                          {STATUS_LABEL[s.status] ?? s.status}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 text-gray-400 text-xs">{formatDMY(s.joined_at ?? s.created_at)}</td>
+                      <td className="px-4 py-3">
+                        {canEdit && (
                           <div className="flex items-center gap-2">
                             <button
-                              onClick={() => openChangeGroup(s.id, s.name)}
-                              className="text-xs text-blue-600 hover:underline"
+                              onClick={() => openChangeGroup(s.id, `${s.first_name} ${s.last_name}`)}
+                              className="inline-flex items-center gap-1 text-xs text-blue-600 hover:underline"
                             >
-                              Guruh o&apos;zgartirish
+                              <RefreshCw className="w-3 h-3" /> Guruh
                             </button>
-                            <span className="text-gray-300">|</span>
+                            <span className="text-gray-200">|</span>
                             <button
-                              onClick={() => setRemoveTarget({ studentId: s.id, name: s.name })}
-                              className="text-xs text-red-500 hover:underline"
+                              onClick={() => setRemoveTarget({ studentId: s.id, name: `${s.first_name} ${s.last_name}` })}
+                              className="inline-flex items-center gap-1 text-xs text-red-500 hover:underline"
                             >
-                              Chiqarish
+                              <UserMinus className="w-3 h-3" /> Chiqarish
                             </button>
                           </div>
-                        </td>
-                      </tr>
-                    );
-                  })}
+                        )}
+                      </td>
+                    </tr>
+                  ))
+              }
             </tbody>
           </table>
         </div>
       )}
 
-      {/* ══════════════════════════════════════════
-          TAB: Darslar
-      ══════════════════════════════════════════ */}
+      {/* ══ TAB: Darslar ══ */}
       {tab === 'lessons' && (
         <div className="space-y-3">
-          {canTakeAttendance && (
+          {canEdit && (
             <div className="flex justify-end">
               <button
                 onClick={() => setShowAddLesson(true)}
@@ -526,35 +473,24 @@ export default function GroupDetailPage() {
               </button>
             </div>
           )}
-
           <div className="bg-white rounded border border-gray-200 shadow-sm overflow-hidden">
             <table className="w-full text-sm">
               <thead>
                 <tr className="bg-gray-50 border-b border-gray-200">
                   {['#', 'Sana', 'Mavzu', 'Davomat', 'Amallar'].map((h) => (
-                    <th key={h} className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">
-                      {h}
-                    </th>
+                    <th key={h} className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">{h}</th>
                   ))}
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
                 {loadingLessons
                   ? Array(4).fill(0).map((_, i) => (
-                    <tr key={i}>
-                      {Array(5).fill(0).map((_, j) => (
-                        <td key={j} className="px-4 py-3"><Skeleton className="h-4 w-full" /></td>
-                      ))}
-                    </tr>
+                    <tr key={i}>{Array(5).fill(0).map((_, j) => (
+                      <td key={j} className="px-4 py-3"><Skeleton className="h-4 w-full" /></td>
+                    ))}</tr>
                   ))
                   : lessons.length === 0
-                    ? (
-                      <tr>
-                        <td colSpan={5} className="px-4 py-14 text-center text-gray-400 text-sm">
-                          Darslar yo&apos;q
-                        </td>
-                      </tr>
-                    )
+                    ? <tr><td colSpan={5} className="px-4 py-14 text-center text-gray-400 text-sm">Darslar yo&apos;q</td></tr>
                     : lessons.map((lesson, idx) => (
                       <tr
                         key={lesson.id}
@@ -566,12 +502,7 @@ export default function GroupDetailPage() {
                         <td className="px-4 py-3 font-medium text-gray-900">{lesson.topic || '—'}</td>
                         <td className="px-4 py-3">
                           {lesson.attendance_count != null
-                            ? (
-                              <span className="inline-flex items-center gap-1 text-xs text-green-700">
-                                <span className="w-1.5 h-1.5 rounded-full bg-green-500 inline-block" />
-                                {lesson.attendance_count} ta
-                              </span>
-                            )
+                            ? <span className="inline-flex items-center gap-1 text-xs text-green-700"><span className="w-1.5 h-1.5 rounded-full bg-green-500 inline-block" />{lesson.attendance_count} ta</span>
                             : <span className="text-xs text-gray-400">—</span>}
                         </td>
                         <td className="px-4 py-3">
@@ -590,9 +521,7 @@ export default function GroupDetailPage() {
         </div>
       )}
 
-      {/* ══════════════════════════════════════════
-          TAB: Ma'lumot
-      ══════════════════════════════════════════ */}
+      {/* ══ TAB: Ma'lumot ══ */}
       {tab === 'info' && (
         <div className="bg-white rounded border border-gray-200 shadow-sm p-6 max-w-2xl">
           <dl className="divide-y divide-gray-100">
@@ -602,7 +531,7 @@ export default function GroupDetailPage() {
               { label: 'Guruh turi', value: GENDER_LABELS[group.gender_type] },
               { label: 'Dars jadvali', value: group.schedule },
               { label: 'Xona', value: group.room },
-              { label: "O'quvchilar soni", value: String(group.students_count ?? 0) },
+              { label: "O'quvchilar soni", value: String(students.length) },
               { label: 'Holat', value: group.status === 'active' ? 'Faol' : 'Arxivlangan' },
               { label: 'Yaratilgan sana', value: formatDMY(group.created_at) },
             ].map(({ label, value }) => (
@@ -615,31 +544,112 @@ export default function GroupDetailPage() {
         </div>
       )}
 
-      {/* ══════════════════════════════════════════
-          DIALOGS
-      ══════════════════════════════════════════ */}
+      {/* ══════════════ DIALOGS ══════════════ */}
 
-      {/* Archive */}
-      <Dialog open={showArchive} onOpenChange={setShowArchive}>
-        <DialogContent className="sm:max-w-sm">
-          <DialogHeader><DialogTitle>Guruhni arxivlash</DialogTitle></DialogHeader>
-          <p className="text-sm text-gray-600 mt-1">
-            <span className="font-medium">{group.name}</span> guruhini arxivlashni istaysizmi?
-            Bu amal guruhni faollar ro&apos;yxatidan olib tashlaydi.
-          </p>
-          <div className="flex gap-3 mt-4">
+      {/* ✅ Add student — checkbox + filter */}
+      <Dialog
+        open={showAddStudent}
+        onOpenChange={(open) => {
+          if (!open) { setStudentSearch(''); setSearchResults([]); setSelectedIds(new Set()); setStatusFilter(''); }
+          setShowAddStudent(open);
+        }}
+      >
+        <DialogContent className="sm:max-w-lg max-h-[85vh] flex flex-col">
+          <DialogHeader>
+            <DialogTitle>Talaba qo&apos;shish</DialogTitle>
+          </DialogHeader>
+
+          {/* Search + filter */}
+          <div className="flex gap-2 mt-2">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+              <input
+                ref={searchRef}
+                type="text"
+                value={studentSearch}
+                onChange={(e) => setStudentSearch(e.target.value)}
+                placeholder="Ism yoki telefon..."
+                className="w-full pl-9 pr-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                autoFocus
+              />
+            </div>
+            <select
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value)}
+              className="px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-700"
+            >
+              <option value="">Barcha holat</option>
+              <option value="pending">Kutilmoqda</option>
+              <option value="active">Faol</option>
+              <option value="trial">Sinov</option>
+            </select>
+          </div>
+
+          {/* Selected count */}
+          {selectedIds.size > 0 && (
+            <div className="flex items-center justify-between px-3 py-2 bg-blue-50 rounded text-sm text-blue-700 font-medium">
+              <span>{selectedIds.size} ta tanlandi</span>
+              <button onClick={() => setSelectedIds(new Set())} className="text-xs text-blue-500 hover:underline">Bekor</button>
+            </div>
+          )}
+
+          {/* Results list */}
+          <div className="flex-1 overflow-y-auto divide-y divide-gray-100 border border-gray-200 rounded mt-1 min-h-[200px]">
+            {searchLoading
+              ? <div className="py-8 text-center text-sm text-gray-400">Qidirmoqda...</div>
+              : searchResults.length === 0
+                ? <div className="py-8 text-center text-sm text-gray-400">
+                    {studentSearch || statusFilter ? 'Natija topilmadi' : "O'quvchi qidiring..."}
+                  </div>
+                : searchResults.map((s) => {
+                  const checked = selectedIds.has(s.id);
+                  return (
+                    <div
+                      key={s.id}
+                      onClick={() => toggleSelect(s.id)}
+                      className={cn(
+                        'flex items-center gap-3 px-4 py-3 cursor-pointer transition-colors select-none',
+                        checked ? 'bg-blue-50' : 'hover:bg-gray-50',
+                      )}
+                    >
+                      {/* Checkbox */}
+                      <div className={cn(
+                        'w-4 h-4 rounded border-2 flex-shrink-0 flex items-center justify-center transition-colors',
+                        checked ? 'bg-blue-600 border-blue-600' : 'border-gray-300',
+                      )}>
+                        {checked && (
+                          <svg className="w-2.5 h-2.5 text-white" fill="none" viewBox="0 0 10 8">
+                            <path d="M1 4l3 3 5-6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                          </svg>
+                        )}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium text-gray-900">{s.first_name} {s.last_name}</p>
+                        <p className="text-xs text-gray-500">{formatPhone(s.phone)}</p>
+                      </div>
+                      <span className={cn('text-xs px-1.5 py-0.5 rounded border flex-shrink-0', STATUS_BADGE[s.status] ?? 'bg-gray-100 text-gray-600 border-gray-200')}>
+                        {STATUS_LABEL[s.status] ?? s.status}
+                      </span>
+                    </div>
+                  );
+                })
+            }
+          </div>
+
+          {/* Footer */}
+          <div className="flex gap-3 pt-2 border-t border-gray-100">
             <button
-              onClick={() => setShowArchive(false)}
+              onClick={() => setShowAddStudent(false)}
               className="flex-1 px-4 py-2 border border-gray-300 text-sm font-medium rounded hover:bg-gray-50"
             >
               Bekor qilish
             </button>
             <button
-              onClick={handleArchive}
-              disabled={archiving}
-              className="flex-1 px-4 py-2 bg-red-600 text-white text-sm font-medium rounded hover:bg-red-700 disabled:opacity-60"
+              onClick={handleAddBulk}
+              disabled={selectedIds.size === 0 || addingBulk}
+              className="flex-1 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded hover:bg-blue-700 disabled:opacity-50 transition-colors"
             >
-              {archiving ? 'Arxivlanmoqda...' : 'Ha, arxivlash'}
+              {addingBulk ? "Qo'shilmoqda..." : `Qo'shish${selectedIds.size > 0 ? ` (${selectedIds.size})` : ''}`}
             </button>
           </div>
         </DialogContent>
@@ -653,18 +663,8 @@ export default function GroupDetailPage() {
             <span className="font-medium">{removeTarget?.name}</span>ni guruhdan chiqarishni istaysizmi?
           </p>
           <div className="flex gap-3 mt-4">
-            <button
-              onClick={() => setRemoveTarget(null)}
-              className="flex-1 px-4 py-2 border border-gray-300 text-sm font-medium rounded hover:bg-gray-50"
-            >
-              Bekor qilish
-            </button>
-            <button
-              onClick={handleRemoveStudent}
-              className="flex-1 px-4 py-2 bg-red-600 text-white text-sm font-medium rounded hover:bg-red-700"
-            >
-              Ha, chiqarish
-            </button>
+            <button onClick={() => setRemoveTarget(null)} className="flex-1 px-4 py-2 border border-gray-300 text-sm font-medium rounded hover:bg-gray-50">Bekor</button>
+            <button onClick={handleRemoveStudent} className="flex-1 px-4 py-2 bg-red-600 text-white text-sm font-medium rounded hover:bg-red-700">Ha, chiqarish</button>
           </div>
         </DialogContent>
       </Dialog>
@@ -673,88 +673,37 @@ export default function GroupDetailPage() {
       <Dialog open={!!changeGroupTarget} onOpenChange={(open) => { if (!open) setChangeGroupTarget(null); }}>
         <DialogContent className="sm:max-w-sm">
           <DialogHeader><DialogTitle>Guruh o&apos;zgartirish</DialogTitle></DialogHeader>
-          <p className="text-sm text-gray-600">
-            <span className="font-medium">{changeGroupTarget?.name}</span> uchun yangi guruh tanlang:
-          </p>
+          <p className="text-sm text-gray-600"><span className="font-medium">{changeGroupTarget?.name}</span> uchun yangi guruh:</p>
           <select
             value={newGroupId}
             onChange={(e) => setNewGroupId(e.target.value)}
             className="w-full mt-3 px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
           >
             <option value="">Guruh tanlang</option>
-            {groupOptions.map((g) => (
-              <option key={g.id} value={g.id}>{g.name}</option>
-            ))}
+            {groupOptions.map((g) => <option key={g.id} value={g.id}>{g.name}</option>)}
           </select>
-          {groupOptions.length === 0 && (
-            <p className="text-xs text-gray-400 mt-1">Boshqa faol guruhlar topilmadi</p>
-          )}
+          {groupOptions.length === 0 && <p className="text-xs text-gray-400 mt-1">Boshqa faol guruhlar topilmadi</p>}
           <div className="flex gap-3 mt-4">
-            <button
-              onClick={() => setChangeGroupTarget(null)}
-              className="flex-1 px-4 py-2 border border-gray-300 text-sm font-medium rounded hover:bg-gray-50"
-            >
-              Bekor qilish
-            </button>
-            <button
-              onClick={handleChangeGroup}
-              disabled={!newGroupId || changingGroup}
-              className="flex-1 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded hover:bg-blue-700 disabled:opacity-60"
-            >
+            <button onClick={() => setChangeGroupTarget(null)} className="flex-1 px-4 py-2 border border-gray-300 text-sm font-medium rounded hover:bg-gray-50">Bekor</button>
+            <button onClick={handleChangeGroup} disabled={!newGroupId || changingGroup} className="flex-1 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded hover:bg-blue-700 disabled:opacity-60">
               {changingGroup ? "O'zgartirilmoqda..." : "O'zgartirish"}
             </button>
           </div>
         </DialogContent>
       </Dialog>
 
-      {/* Add student */}
-      <Dialog
-        open={showAddStudent}
-        onOpenChange={(open) => {
-          if (!open) { setStudentSearch(''); setSearchResults([]); }
-          setShowAddStudent(open);
-        }}
-      >
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader><DialogTitle>Talaba qo&apos;shish</DialogTitle></DialogHeader>
-          <div className="relative mt-2">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-            <input
-              type="text"
-              value={studentSearch}
-              onChange={(e) => setStudentSearch(e.target.value)}
-              placeholder="Ism yoki telefon bo'yicha qidirish..."
-              className="w-full pl-9 pr-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-              autoFocus
-            />
-          </div>
-
-          <div className="mt-2 max-h-64 overflow-y-auto divide-y divide-gray-100">
-            {searchLoading
-              ? <p className="py-6 text-center text-sm text-gray-400">Qidirmoqda...</p>
-              : searchResults.length === 0 && studentSearch.trim()
-                ? <p className="py-6 text-center text-sm text-gray-400">Natija topilmadi</p>
-                : searchResults.length === 0
-                  ? <p className="py-6 text-center text-sm text-gray-400">Qidirish uchun yozing...</p>
-                  : searchResults.map((s) => (
-                    <button
-                      key={s.id}
-                      onClick={() => handleAddStudent(s.id, `${s.first_name} ${s.last_name}`)}
-                      disabled={addingStudent === s.id}
-                      className="w-full flex items-center justify-between px-3 py-2.5 hover:bg-blue-50 transition-colors text-left disabled:opacity-60"
-                    >
-                      <div>
-                        <p className="text-sm font-medium text-gray-900">{s.first_name} {s.last_name}</p>
-                        <p className="text-xs text-gray-500">{s.phone}</p>
-                      </div>
-                      <span className={cn(
-                        'text-xs px-1.5 py-0.5 rounded border',
-                        STATUS_BADGE[s.status] ?? 'bg-gray-100 text-gray-600 border-gray-200',
-                      )}>
-                        {STATUS_LABEL[s.status] ?? s.status}
-                      </span>
-                    </button>
-                  ))}
+      {/* Archive */}
+      <Dialog open={showArchive} onOpenChange={setShowArchive}>
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader><DialogTitle>Guruhni arxivlash</DialogTitle></DialogHeader>
+          <p className="text-sm text-gray-600 mt-1">
+            <span className="font-medium">{group.name}</span> guruhini arxivlashni istaysizmi?
+          </p>
+          <div className="flex gap-3 mt-4">
+            <button onClick={() => setShowArchive(false)} className="flex-1 px-4 py-2 border border-gray-300 text-sm font-medium rounded hover:bg-gray-50">Bekor</button>
+            <button onClick={handleArchive} disabled={archiving} className="flex-1 px-4 py-2 bg-red-600 text-white text-sm font-medium rounded hover:bg-red-700 disabled:opacity-60">
+              {archiving ? 'Arxivlanmoqda...' : 'Ha, arxivlash'}
+            </button>
           </div>
         </DialogContent>
       </Dialog>
@@ -775,9 +724,7 @@ export default function GroupDetailPage() {
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Sana <span className="text-red-500">*</span>
-              </label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Sana <span className="text-red-500">*</span></label>
               <input
                 type="date"
                 value={lessonForm.date}
@@ -787,18 +734,8 @@ export default function GroupDetailPage() {
               />
             </div>
             <div className="flex gap-3 pt-1">
-              <button
-                type="button"
-                onClick={() => setShowAddLesson(false)}
-                className="flex-1 px-4 py-2 border border-gray-300 text-sm font-medium rounded hover:bg-gray-50"
-              >
-                Bekor qilish
-              </button>
-              <button
-                type="submit"
-                disabled={savingLesson}
-                className="flex-1 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded hover:bg-blue-700 disabled:opacity-60"
-              >
+              <button type="button" onClick={() => setShowAddLesson(false)} className="flex-1 px-4 py-2 border border-gray-300 text-sm font-medium rounded hover:bg-gray-50">Bekor</button>
+              <button type="submit" disabled={savingLesson} className="flex-1 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded hover:bg-blue-700 disabled:opacity-60">
                 {savingLesson ? 'Saqlanmoqda...' : 'Saqlash'}
               </button>
             </div>

@@ -81,7 +81,7 @@ export default function StudentsPage() {
       setLoading(false);
     }
   // ✅ YANGI: courseFilter dependency ga qo'shildi
-  }, [page, pageSize, search, statusFilter, courseFilter, overdueIds]);
+  }, [page, pageSize, search, statusFilter, courseFilter]);
 
   useEffect(() => { fetchStudents(); }, [fetchStudents]);
   // ✅ YANGI: courseFilter o'zgarganda page 1 ga qaytadi

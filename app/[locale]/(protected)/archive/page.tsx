@@ -21,7 +21,7 @@ const TABS: { key: Tab; label: string }[] = [
 interface ArchivedStudent { id: string; first_name: string; last_name: string; phone: string; course_name: string | null; archived_at: string | null; }
 interface ArchivedTeacher { id: string; first_name: string; last_name: string; phone: string; subject: string; hired_at: string; archived_at: string | null; }
 interface ArchivedGroup { id: string; name: string; course?: { name: string }; teacher?: { first_name: string; last_name: string }; archived_at: string | null; }
-interface ArchivedCourse { id: string; name: string; price: number; archived_at: string | null; }
+interface ArchivedCourse { id: string; name: string; price: number; status: string; archived_at: string | null; }
 
 
 function formatDate(d: string | null) {
@@ -204,7 +204,7 @@ export default function ArchivePage() {
                   {tab === 'courses' && (
                     courses.length === 0
                       ? <tr><td colSpan={4} className="px-4 py-16 text-center text-gray-400">Arxivlangan kurslar topilmadi</td></tr>
-                      : courses.map((c) => (
+                      : courses.filter(c => c.status === 'archived').map((c) => (
                         <tr key={c.id} className="bg-[#FFFBEB] hover:brightness-95 transition-colors">
                           <td className="px-4 py-3 font-medium text-gray-900">{c.name}</td>
                           <td className="px-4 py-3 text-gray-700">{c.price?.toLocaleString()} so&apos;m</td>

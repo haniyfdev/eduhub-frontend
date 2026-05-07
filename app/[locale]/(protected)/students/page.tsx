@@ -36,6 +36,8 @@ export default function StudentsPage() {
   const [error, setError] = useState(false);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
+  // ✅ YANGI: kurs filtri
+  const [courseFilter, setCourseFilter] = useState('');
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(25);
   const [count, setCount] = useState(0);
@@ -62,6 +64,8 @@ export default function StudentsPage() {
       const params: Record<string, string | number> = { page, page_size: pageSize };
       if (search) params.search = search;
       if (statusFilter) params.status = statusFilter;
+      // ✅ YANGI: kurs filtri parametri
+      if (courseFilter) params.course = courseFilter;
       const { data } = await api.get<PaginatedResponse<Student>>('/api/v1/students/', { params });
       const sorted = [...(data.results ?? [])].sort((a, b) => {
         const wa = overdueIds.has(a.id) && a.status !== 'archived' ? 3 : (STATUS_ORDER[a.status] ?? 5);
@@ -76,10 +80,12 @@ export default function StudentsPage() {
     } finally {
       setLoading(false);
     }
-  }, [page, pageSize, search, statusFilter, overdueIds]);
+  // ✅ YANGI: courseFilter dependency ga qo'shildi
+  }, [page, pageSize, search, statusFilter, courseFilter, overdueIds]);
 
   useEffect(() => { fetchStudents(); }, [fetchStudents]);
-  useEffect(() => { setPage(1); }, [search, statusFilter]);
+  // ✅ YANGI: courseFilter o'zgarganda page 1 ga qaytadi
+  useEffect(() => { setPage(1); }, [search, statusFilter, courseFilter]);
 
   useEffect(() => {
     api.get<PaginatedResponse<Course>>('/api/v1/courses/?page_size=100')
@@ -174,6 +180,14 @@ export default function StudentsPage() {
           <option value="active">Faol</option>
           <option value="trial">Sinov</option>
           <option value="archived">Arxivlangan</option>
+        </select>
+        {/* ✅ YANGI: Kurs filtri dropdown */}
+        <select value={courseFilter} onChange={(e) => setCourseFilter(e.target.value)}
+          className="px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-700">
+          <option value="">Barcha kurslar</option>
+          {courses.map((c) => (
+            <option key={c.id} value={c.id}>{c.name}</option>
+          ))}
         </select>
       </div>
 

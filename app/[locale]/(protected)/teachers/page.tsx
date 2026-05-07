@@ -55,6 +55,11 @@ export default function TeachersPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const [search, setSearch] = useState('');
+  // ✅ subject va status filtrlari
+  const [subjectFilter, setSubjectFilter] = useState('');
+  const [statusFilter, setStatusFilter] = useState('');
+  // ✅ mavjud o'qituvchilardan unique subjectlar
+  const [subjects, setSubjects] = useState<string[]>([]);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(25);
   const [count, setCount] = useState(0);
@@ -64,12 +69,8 @@ export default function TeachersPage() {
   const [archiveTarget, setArchiveTarget] = useState<{ id: string; name: string } | null>(null);
   const [touched, setTouched] = useState<Record<string, boolean>>({});
 
-  // --- YANGI QO'SHILGAN STATE-LAR ---
-  const [courses, setCourses] = useState<any[]>([]);
-  const [courseId, setCourseId] = useState('all');
-
   const salaryAmt = parseFloat(form.salary_amount);
-  
+
   const fieldErrors = {
     first_name: !form.first_name ? 'Ism majburiy' : form.first_name.length < 2 ? 'Kamida 2 harf' : form.first_name.length > 50 ? "Ko'pi bilan 50 harf" : '',
     last_name: !form.last_name ? 'Familiya majburiy' : form.last_name.length < 2 ? 'Kamida 2 harf' : form.last_name.length > 50 ? "Ko'pi bilan 50 harf" : '',
@@ -86,14 +87,28 @@ export default function TeachersPage() {
   function touch(field: string) { setTouched((t) => ({ ...t, [field]: true })); }
   function showErr(field: string) { return touched[field] ? (fieldErrors as Record<string, string>)[field] ?? '' : ''; }
 
+  // ✅ Unique subjectlarni olish uchun alohida request (page_size katta, barcha o'qituvchilar)
+  useEffect(() => {
+    api.get<PaginatedResponse<Teacher>>('/api/v1/teachers/?page_size=200')
+      .then(({ data }) => {
+        const unique = Array.from(
+          new Set((data.results ?? []).map((t) => t.subject).filter(Boolean))
+        ).sort();
+        setSubjects(unique);
+      })
+      .catch(() => {});
+  }, []);
+
   const fetchTeachers = useCallback(async () => {
     setLoading(true);
     setError(false);
     try {
       const params: Record<string, string | number> = { page, page_size: pageSize };
       if (search) params.search = search;
-      // --- FILTR PARAMETRI QO'SHILDI ---
-      if (courseId !== 'all') params.course = courseId;
+      // ✅ subject bo'yicha filter — backend: filterset_fields = ['status', 'subject']
+      if (subjectFilter) params.subject = subjectFilter;
+      // ✅ status bo'yicha filter
+      if (statusFilter) params.status = statusFilter;
 
       const { data } = await api.get<PaginatedResponse<Teacher>>('/api/v1/teachers/', { params });
       setTeachers(data.results ?? []);
@@ -104,15 +119,10 @@ export default function TeachersPage() {
     } finally {
       setLoading(false);
     }
-  }, [page, pageSize, search, courseId]);
-
-  // Kurslarni yuklash
-  useEffect(() => {
-    api.get('/api/v1/courses/').then(res => setCourses(res.data.results || res.data)).catch(() => {});
-  }, []);
+  }, [page, pageSize, search, subjectFilter, statusFilter]);
 
   useEffect(() => { fetchTeachers(); }, [fetchTeachers]);
-  useEffect(() => { setPage(1); }, [search, courseId]);
+  useEffect(() => { setPage(1); }, [search, subjectFilter, statusFilter]);
 
   async function handleAdd(e: React.FormEvent) {
     e.preventDefault();
@@ -170,7 +180,7 @@ export default function TeachersPage() {
         </button>
       </div>
 
-      <div className="flex gap-3 items-center mb-5">
+      <div className="flex gap-3 items-center">
         <div className="relative max-w-xs flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
           <input
@@ -182,15 +192,27 @@ export default function TeachersPage() {
           />
         </div>
 
-        <select 
-          value={courseId} 
-          onChange={(e) => setCourseId(e.target.value)}
-          className="px-3 py-2 border border-gray-300 rounded text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+        {/* ✅ Fan (subject) filtri */}
+        <select
+          value={subjectFilter}
+          onChange={(e) => setSubjectFilter(e.target.value)}
+          className="px-3 py-2 border border-gray-300 rounded text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-700"
         >
-          <option value="all">Barcha kurslar</option>
-          {courses.map((c: any) => (
-            <option key={c.id} value={c.id}>{c.name}</option>
+          <option value="">Barcha fanlar</option>
+          {subjects.map((s) => (
+            <option key={s} value={s}>{s}</option>
           ))}
+        </select>
+
+        {/* ✅ Status filtri */}
+        <select
+          value={statusFilter}
+          onChange={(e) => setStatusFilter(e.target.value)}
+          className="px-3 py-2 border border-gray-300 rounded text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-700"
+        >
+          <option value="">Barcha holat</option>
+          <option value="active">Faol</option>
+          <option value="archived">Arxivlangan</option>
         </select>
       </div>
 

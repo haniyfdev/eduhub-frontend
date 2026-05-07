@@ -11,7 +11,6 @@ import api from '@/lib/axios';
 import { cn, formatPhone, formatDMY } from '@/lib/utils';
 import { PaginatedResponse } from '@/types';
 
-// O'qituvchi interfeysi
 interface Teacher {
   id: string;
   first_name: string;
@@ -42,7 +41,6 @@ const SALARY_AMOUNT_LABELS: Record<string, string> = {
   per_student: "O'quvchi boshiga (so'm)",
 };
 
-// EMPTY_FORM dan hired_date olib tashlandi
 const EMPTY_FORM: {
   first_name: string; last_name: string; phone: string; password: string;
   subject: string; birth_date: string; salary_type: 'fixed' | 'percent' | 'per_student';
@@ -66,9 +64,12 @@ export default function TeachersPage() {
   const [archiveTarget, setArchiveTarget] = useState<{ id: string; name: string } | null>(null);
   const [touched, setTouched] = useState<Record<string, boolean>>({});
 
+  // --- YANGI QO'SHILGAN STATE-LAR ---
+  const [courses, setCourses] = useState<any[]>([]);
+  const [courseId, setCourseId] = useState('all');
+
   const salaryAmt = parseFloat(form.salary_amount);
   
-  // Validatsiya mantiqidan hired_date guardi olib tashlandi
   const fieldErrors = {
     first_name: !form.first_name ? 'Ism majburiy' : form.first_name.length < 2 ? 'Kamida 2 harf' : form.first_name.length > 50 ? "Ko'pi bilan 50 harf" : '',
     last_name: !form.last_name ? 'Familiya majburiy' : form.last_name.length < 2 ? 'Kamida 2 harf' : form.last_name.length > 50 ? "Ko'pi bilan 50 harf" : '',
@@ -91,6 +92,9 @@ export default function TeachersPage() {
     try {
       const params: Record<string, string | number> = { page, page_size: pageSize };
       if (search) params.search = search;
+      // --- FILTR PARAMETRI QO'SHILDI ---
+      if (courseId !== 'all') params.course = courseId;
+
       const { data } = await api.get<PaginatedResponse<Teacher>>('/api/v1/teachers/', { params });
       setTeachers(data.results ?? []);
       setCount(data.count ?? 0);
@@ -100,10 +104,15 @@ export default function TeachersPage() {
     } finally {
       setLoading(false);
     }
-  }, [page, pageSize, search]);
+  }, [page, pageSize, search, courseId]);
+
+  // Kurslarni yuklash
+  useEffect(() => {
+    api.get('/api/v1/courses/').then(res => setCourses(res.data.results || res.data)).catch(() => {});
+  }, []);
 
   useEffect(() => { fetchTeachers(); }, [fetchTeachers]);
-  useEffect(() => { setPage(1); }, [search]);
+  useEffect(() => { setPage(1); }, [search, courseId]);
 
   async function handleAdd(e: React.FormEvent) {
     e.preventDefault();
@@ -111,7 +120,6 @@ export default function TeachersPage() {
     if (hasFormErrors) return;
     setSaving(true);
     try {
-      // API Payloaddan hired_at olib tashlandi - backend o'zi bugungi sanani qo'yadi
       await api.post('/api/v1/teachers/', {
         first_name: form.first_name,
         last_name: form.last_name,
@@ -130,9 +138,7 @@ export default function TeachersPage() {
       fetchTeachers();
     } catch (err: any) {
       const detail = err?.response?.data;
-      const msg = typeof detail === 'string'
-        ? detail
-        : detail?.detail || Object.values(detail ?? {})[0] || 'Xatolik yuz berdi';
+      const msg = typeof detail === 'string' ? detail : detail?.detail || Object.values(detail ?? {})[0] || 'Xatolik';
       toast.error(String(msg));
     } finally {
       setSaving(false);
@@ -164,15 +170,28 @@ export default function TeachersPage() {
         </button>
       </div>
 
-      <div className="relative max-w-xs">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-        <input
-          type="text"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          placeholder="Qidirish..."
-          className="w-full pl-9 pr-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-        />
+      <div className="flex gap-3 items-center mb-5">
+        <div className="relative max-w-xs flex-1">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+          <input
+            type="text"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Qidirish..."
+            className="w-full pl-9 pr-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+          />
+        </div>
+
+        <select 
+          value={courseId} 
+          onChange={(e) => setCourseId(e.target.value)}
+          className="px-3 py-2 border border-gray-300 rounded text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+        >
+          <option value="all">Barcha kurslar</option>
+          {courses.map((c: any) => (
+            <option key={c.id} value={c.id}>{c.name}</option>
+          ))}
+        </select>
       </div>
 
       <div className="bg-white rounded border border-gray-200 shadow-sm overflow-hidden">
@@ -200,15 +219,7 @@ export default function TeachersPage() {
                 : teachers.length === 0
                   ? <tr><td colSpan={9} className="px-4 py-16 text-center text-gray-400">Natija topilmadi</td></tr>
                   : teachers.map((t, idx) => (
-                    <tr 
-                        key={t.id} 
-                        className={cn(
-                          "transition-colors",
-                          t.status === 'archived' 
-                            ? "bg-yellow-50 hover:bg-yellow-100" 
-                            : "hover:bg-gray-50"
-                        )}
-                      >
+                    <tr key={t.id} className={cn("transition-colors", t.status === 'archived' ? "bg-yellow-50 hover:bg-yellow-100" : "hover:bg-gray-50")}>
                       <td className="px-4 py-3 text-gray-400 text-xs">{(page - 1) * pageSize + idx + 1}</td>
                       <td className="px-4 py-3 font-medium text-gray-900">{t.first_name} {t.last_name}</td>
                       <td className="px-4 py-3 text-gray-500">{formatPhone(t.phone)}</td>
@@ -242,7 +253,7 @@ export default function TeachersPage() {
         )}
       </div>
 
-      {!loading && (
+      {!loading && count > pageSize && (
         <Pagination
           page={page}
           pageSize={pageSize}
@@ -258,29 +269,29 @@ export default function TeachersPage() {
           <form onSubmit={handleAdd} className="space-y-4 mt-2">
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Ism <span className="text-red-500">*</span></label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Ism *</label>
                 <input
                   value={form.first_name}
                   onChange={(e) => setForm((f) => ({ ...f, first_name: e.target.value }))}
                   onBlur={() => touch('first_name')}
-                  className={cn('w-full px-3 py-2 border rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500', showErr('first_name') ? 'border-red-400' : 'border-gray-300')}
+                  className={cn('w-full px-3 py-2 border rounded text-sm', showErr('first_name') ? 'border-red-400' : 'border-gray-300')}
                 />
                 {showErr('first_name') && <p className="text-xs text-red-500 mt-0.5">{showErr('first_name')}</p>}
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Familiya <span className="text-red-500">*</span></label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Familiya *</label>
                 <input
                   value={form.last_name}
                   onChange={(e) => setForm((f) => ({ ...f, last_name: e.target.value }))}
                   onBlur={() => touch('last_name')}
-                  className={cn('w-full px-3 py-2 border rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500', showErr('last_name') ? 'border-red-400' : 'border-gray-300')}
+                  className={cn('w-full px-3 py-2 border rounded text-sm', showErr('last_name') ? 'border-red-400' : 'border-gray-300')}
                 />
                 {showErr('last_name') && <p className="text-xs text-red-500 mt-0.5">{showErr('last_name')}</p>}
               </div>
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Telefon <span className="text-red-500">*</span></label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Telefon *</label>
               <div className="flex">
                 <span className="inline-flex items-center px-3 border border-r-0 border-gray-300 bg-gray-50 text-gray-500 text-sm rounded-l">+998</span>
                 <input
@@ -289,19 +300,19 @@ export default function TeachersPage() {
                   onChange={(e) => setForm((f) => ({ ...f, phone: e.target.value.replace(/\D/g, '').slice(0, 9) }))}
                   onBlur={() => touch('phone')}
                   placeholder="XX XXX XX XX"
-                  className={cn('flex-1 px-3 py-2 border rounded-r text-sm focus:outline-none focus:ring-2 focus:ring-blue-500', showErr('phone') ? 'border-red-400' : 'border-gray-300')}
+                  className={cn('flex-1 px-3 py-2 border rounded-r text-sm', showErr('phone') ? 'border-red-400' : 'border-gray-300')}
                 />
               </div>
               {showErr('phone') && <p className="text-xs text-red-500 mt-0.5">{showErr('phone')}</p>}
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Parol <span className="text-red-500">*</span></label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Parol *</label>
               <input
                 type="password"
                 value={form.password}
                 onChange={(e) => setForm((f) => ({ ...f, password: e.target.value }))}
-                className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:ring-2 focus:ring-blue-500"
                 required
                 minLength={6}
               />
@@ -313,7 +324,7 @@ export default function TeachersPage() {
                 value={form.subject}
                 onChange={(e) => setForm((f) => ({ ...f, subject: e.target.value }))}
                 placeholder="Masalan: Matematika"
-                className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-3 py-2 border border-gray-300 rounded text-sm"
               />
             </div>
 
@@ -326,22 +337,15 @@ export default function TeachersPage() {
               />
             </div>
 
-            {/* ISH BOSHLAGAN SANA (DatePicker) SHU YERDAN OLIB TASHLANDI */}
-
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Maosh turi <span className="text-red-500">*</span></label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Maosh turi *</label>
               <div className="flex gap-2">
                 {(['fixed', 'percent', 'per_student'] as const).map((type) => (
                   <button
                     key={type}
                     type="button"
                     onClick={() => setForm((f) => ({ ...f, salary_type: type, salary_amount: '' }))}
-                    className={cn(
-                      'flex-1 py-2 text-xs font-medium border rounded transition-colors',
-                      form.salary_type === type
-                        ? 'border-blue-500 bg-blue-50 text-blue-700'
-                        : 'border-gray-300 text-gray-600 hover:bg-gray-50'
-                    )}
+                    className={cn('flex-1 py-2 text-xs font-medium border rounded transition-colors', form.salary_type === type ? 'border-blue-500 bg-blue-50 text-blue-700' : 'border-gray-300 text-gray-600 hover:bg-gray-50')}
                   >
                     {SALARY_LABELS[type]}
                   </button>
@@ -351,25 +355,17 @@ export default function TeachersPage() {
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                {SALARY_AMOUNT_LABELS[form.salary_type]} <span className="text-red-500">*</span>
+                {SALARY_AMOUNT_LABELS[form.salary_type]} *
               </label>
               <input
                 type="number"
                 value={form.salary_amount}
                 onChange={(e) => setForm((f) => ({ ...f, salary_amount: e.target.value }))}
                 onBlur={() => touch('salary_amount')}
-                min={form.salary_type === 'percent' ? 1 : form.salary_type === 'fixed' ? 100000 : 1000}
-                max={form.salary_type === 'percent' ? 100 : undefined}
-                step={form.salary_type === 'percent' ? '1' : '1000'}
-                className={cn(
-                  'w-full px-3 py-2 border rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500',
-                  showErr('salary_amount') ? 'border-red-400' : 'border-gray-300'
-                )}
+                className={cn('w-full px-3 py-2 border rounded text-sm', showErr('salary_amount') ? 'border-red-400' : 'border-gray-300')}
                 required
               />
-              {showErr('salary_amount') && (
-                <p className="text-xs text-red-500 mt-1">{showErr('salary_amount')}</p>
-              )}
+              {showErr('salary_amount') && <p className="text-xs text-red-500 mt-1">{showErr('salary_amount')}</p>}
             </div>
 
             <div className="flex gap-3 pt-2">
@@ -392,7 +388,6 @@ export default function TeachersPage() {
         </DialogContent>
       </Dialog>
 
-      {/* Archive confirmation dialog */}
       <Dialog open={!!archiveTarget} onOpenChange={(open) => { if (!open) setArchiveTarget(null); }}>
         <DialogContent className="sm:max-w-sm">
           <DialogHeader><DialogTitle>Arxivlash</DialogTitle></DialogHeader>
@@ -400,12 +395,10 @@ export default function TeachersPage() {
             <span className="font-medium">{archiveTarget?.name}</span>ni arxivlashni istaysizmi?
           </p>
           <div className="flex gap-3 mt-4">
-            <button onClick={() => setArchiveTarget(null)}
-              className="flex-1 px-4 py-2 border border-gray-300 text-sm font-medium rounded hover:bg-gray-50">
+            <button onClick={() => setArchiveTarget(null)} className="flex-1 px-4 py-2 border border-gray-300 text-sm font-medium rounded hover:bg-gray-50">
               Bekor qilish
             </button>
-            <button onClick={confirmArchive}
-              className="flex-1 px-4 py-2 bg-red-600 text-white text-sm font-medium rounded hover:bg-red-700">
+            <button onClick={confirmArchive} className="flex-1 px-4 py-2 bg-red-600 text-white text-sm font-medium rounded hover:bg-red-700">
               Ha, arxivlash
             </button>
           </div>

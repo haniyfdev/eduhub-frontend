@@ -171,7 +171,7 @@ export default function CoursesPage() {
                 ))
                 : courses.length === 0
                   ? <tr><td colSpan={7} className="px-4 py-16 text-center text-gray-400">Natija topilmadi</td></tr>
-                  : courses.map((c, idx) => (
+                  : [...courses].sort((a, b) => (a.status === 'archived' ? 1 : -1)).map((c, idx) => (
                     <tr 
                         key={c.id} 
                         className={cn(

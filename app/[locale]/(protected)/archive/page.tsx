@@ -51,7 +51,7 @@ export default function ArchivePage() {
       const endpoints: Record<Tab, string> = {
         students: '/api/v1/students/',
         teachers: '/api/v1/teachers/',
-        groups: '/api/v1/groups/',
+        groups: '/api/v1/groups/?status=archived',
         courses: '/api/v1/courses/',
       };
       const { data } = await api.get<PaginatedResponse<any>>(endpoints[tab], { params });

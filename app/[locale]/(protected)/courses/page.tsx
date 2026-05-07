@@ -172,7 +172,15 @@ export default function CoursesPage() {
                 : courses.length === 0
                   ? <tr><td colSpan={7} className="px-4 py-16 text-center text-gray-400">Natija topilmadi</td></tr>
                   : courses.map((c, idx) => (
-                    <tr key={c.id} className="hover:bg-gray-50 transition-colors">
+                    <tr 
+                        key={c.id} 
+                        className={cn(
+                          "transition-colors",
+                          c.status === 'archived' 
+                            ? "bg-yellow-50 hover:bg-yellow-100" 
+                            : "hover:bg-gray-50"
+                        )}
+                      >
                       <td className="px-4 py-3 text-gray-400 text-xs">{(page - 1) * pageSize + idx + 1}</td>
                       <td className="px-4 py-3 font-medium text-gray-900">{c.name}</td>
                       <td className="px-4 py-3 text-gray-700">{formatCurrency(c.price)}</td>

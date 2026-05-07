@@ -198,7 +198,15 @@ export default function TeachersPage() {
                 : teachers.length === 0
                   ? <tr><td colSpan={9} className="px-4 py-16 text-center text-gray-400">Natija topilmadi</td></tr>
                   : teachers.map((t, idx) => (
-                    <tr key={t.id} className="hover:bg-gray-50 transition-colors">
+                    <tr 
+                        key={t.id} 
+                        className={cn(
+                          "transition-colors",
+                          t.status === 'archived' 
+                            ? "bg-yellow-50 hover:bg-yellow-100" 
+                            : "hover:bg-gray-50"
+                        )}
+                      >
                       <td className="px-4 py-3 text-gray-400 text-xs">{(page - 1) * pageSize + idx + 1}</td>
                       <td className="px-4 py-3 font-medium text-gray-900">{t.first_name} {t.last_name}</td>
                       <td className="px-4 py-3 text-gray-500">{formatPhone(t.phone)}</td>

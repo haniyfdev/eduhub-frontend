@@ -190,7 +190,15 @@ export default function GroupsPage() {
                 : groups.length === 0
                   ? <tr><td colSpan={9} className="px-4 py-16 text-center text-gray-400">Natija topilmadi</td></tr>
                   : groups.map((g, idx) => (
-                    <tr key={g.id} className="hover:bg-gray-50 transition-colors">
+                    <tr 
+                        key={g.id} 
+                        className={cn(
+                          "transition-colors",
+                          g.status === 'archived' 
+                            ? "bg-yellow-50 hover:bg-yellow-100" 
+                            : "hover:bg-gray-50"
+                        )}
+                        >
                       <td className="px-4 py-3 text-gray-400 text-xs">{(page - 1) * pageSize + idx + 1}</td>
                       <td className="px-4 py-3 font-bold text-gray-900">{g.name}</td>
                       <td className="px-4 py-3 text-gray-600">{g.course?.name || '—'}</td>

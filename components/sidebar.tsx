@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useLocale, useTranslations } from 'next-intl';
 import {
-  LayoutDashboard, Users, Users2, UsersRound, GraduationCap, BookOpen,
+  LayoutDashboard, Users, Users2, GraduationCap, BookOpen,
   CreditCard, AlertCircle, BarChart3, Settings, Building2, Archive,
 } from 'lucide-react';
 import { useEffect, useState } from 'react';

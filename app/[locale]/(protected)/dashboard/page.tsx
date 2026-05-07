@@ -4,7 +4,6 @@ import { useEffect, useState, useRef } from 'react';
 import {
   Users, UsersRound, CreditCard, AlertCircle, MessageSquare, GraduationCap,
   Group,
-  Briefcase,
   Users2,
 } from 'lucide-react';
 import Link from 'next/link';
@@ -381,7 +380,7 @@ export default function DashboardPage() {
     { label: 'Faol guruhlar', value: d.groups, icon: Users2 },
     { label: 'Bu oy tushum', value: formatCurrency(d.revenue), icon: CreditCard },
     { label: 'Qarzdorlar', value: d.debtors, icon: AlertCircle, variant: 'danger' as const },
-    { label: 'O\'qituvchilar', value: d.teachers, icon: Briefcase, variant: 'success' as const },
+    { label: 'O\'qituvchilar', value: d.teachers, icon: GraduationCap, variant: 'success' as const },
   ] : [];
 
   // ── Render ─────────────────────────────────────────────────────────────

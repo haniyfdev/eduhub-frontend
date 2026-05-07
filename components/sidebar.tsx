@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useLocale, useTranslations } from 'next-intl';
 import {
-  LayoutDashboard, Users, UsersRound, GraduationCap, BookOpen,
+  LayoutDashboard, Users, Users2, UsersRound, GraduationCap, BookOpen,
   CreditCard, AlertCircle, BarChart3, Settings, Building2, Archive,
 } from 'lucide-react';
 import { useEffect, useState } from 'react';
@@ -20,9 +20,9 @@ const sections = [
   {
     label: "Ta'lim",
     items: [
-      { key: 'students', icon: GraduationCap, href: '/students' },
-      { key: 'groups', icon: UsersRound, href: '/groups' },
-      { key: 'teachers', icon: Users, href: '/teachers' },
+      { key: 'students', icon: Users, href: '/students' },
+      { key: 'groups', icon: Users2, href: '/groups' },
+      { key: 'teachers', icon: GraduationCap, href: '/teachers' },
       { key: 'courses', icon: BookOpen, href: '/courses' },
     ],
   },

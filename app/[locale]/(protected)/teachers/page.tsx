@@ -42,11 +42,10 @@ const SALARY_AMOUNT_LABELS: Record<string, string> = {
 const EMPTY_FORM: {
   first_name: string; last_name: string; phone: string; password: string;
   subject: string; birth_date: string; salary_type: 'fixed' | 'percent' | 'per_student';
-  salary_amount: string; hired_date: string;
+  salary_amount: string;
 } = {
   first_name: '', last_name: '', phone: '', password: '',
   subject: '', birth_date: '', salary_type: 'fixed', salary_amount: '',
-  hired_date: '',
 };
 
 export default function TeachersPage() {
@@ -106,7 +105,6 @@ export default function TeachersPage() {
     e.preventDefault();
     setTouched({ first_name: true, last_name: true, phone: true, salary_amount: true });
     if (hasFormErrors) return;
-    if (!form.hired_date) { toast.error('Ish boshlagan sanani tanlang'); return; }
     setSaving(true);
     try {
       await api.post('/api/v1/teachers/', {
@@ -120,7 +118,6 @@ export default function TeachersPage() {
         ...(form.salary_type === 'fixed' ? { fixed_amount: parseFloat(form.salary_amount) } : {}),
         ...(form.salary_type === 'percent' ? { salary_percent: parseFloat(form.salary_amount) } : {}),
         ...(form.salary_type === 'per_student' ? { per_student_amt: parseFloat(form.salary_amount) } : {}),
-        hired_at: form.hired_date,
       });
       toast.success("O'qituvchi muvaffaqiyatli qo'shildi");
       setShowAdd(false);
@@ -366,15 +363,6 @@ export default function TeachersPage() {
               {showErr('salary_amount') && (
                 <p className="text-xs text-red-500 mt-1">{showErr('salary_amount')}</p>
               )}
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Ish boshlagan sana <span className="text-red-500">*</span></label>
-              <DatePicker
-                value={form.hired_date}
-                onChange={(iso) => setForm((f) => ({ ...f, hired_date: iso }))}
-                maxYear={new Date().getFullYear()}
-              />
             </div>
 
             <div className="flex gap-3 pt-2">

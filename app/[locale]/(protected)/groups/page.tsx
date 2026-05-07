@@ -1,6 +1,8 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
+import { useRouter } from 'next/navigation';
+import { useLocale } from 'next-intl';
 import { Plus, Search } from 'lucide-react';
 import toast, { Toaster } from 'react-hot-toast';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -56,6 +58,9 @@ function buildSchedule(days: string[], time: string): string {
 }
 
 export default function GroupsPage() {
+  const router = useRouter();
+  const locale = useLocale();
+
   const [groups, setGroups] = useState<Group[]>([]);
   const [courses, setCourses] = useState<Course[]>([]);
   const [teachers, setTeachers] = useState<Teacher[]>([]);
@@ -190,12 +195,13 @@ export default function GroupsPage() {
                 : groups.length === 0
                   ? <tr><td colSpan={9} className="px-4 py-16 text-center text-gray-400">Natija topilmadi</td></tr>
                   : groups.map((g, idx) => (
-                    <tr 
-                        key={g.id} 
+                    <tr
+                        key={g.id}
+                        onClick={() => router.push(`/${locale}/groups/${g.id}`)}
                         className={cn(
-                          "transition-colors",
-                          g.status === 'archived' 
-                            ? "bg-yellow-50 hover:bg-yellow-100" 
+                          "cursor-pointer transition-colors",
+                          g.status === 'archived'
+                            ? "bg-yellow-50 hover:bg-yellow-100"
                             : "hover:bg-gray-50"
                         )}
                         >
@@ -221,7 +227,12 @@ export default function GroupsPage() {
                       </td>
                       <td className="px-4 py-3">
                         {g.status === 'active' && (
-                          <button onClick={() => setArchiveTarget({ id: g.id, name: g.name })} className="text-xs text-red-500 hover:underline">Arxivlash</button>
+                          <button
+                            onClick={(e) => { e.stopPropagation(); setArchiveTarget({ id: g.id, name: g.name }); }}
+                            className="text-xs text-red-500 hover:underline"
+                          >
+                            Arxivlash
+                          </button>
                         )}
                       </td>
                     </tr>

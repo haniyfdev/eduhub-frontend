@@ -4,7 +4,6 @@ import { useEffect, useState, useRef } from 'react';
 import {
   Users, UsersRound, CreditCard, AlertCircle, MessageSquare, GraduationCap,
   Group,
-  UserCheck,
 } from 'lucide-react';
 import Link from 'next/link';
 import { useLocale } from 'next-intl';

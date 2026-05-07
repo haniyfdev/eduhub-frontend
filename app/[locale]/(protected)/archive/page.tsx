@@ -151,7 +151,7 @@ export default function ArchivePage() {
                     students.length === 0
                       ? <tr><td colSpan={5} className="px-4 py-16 text-center text-gray-400">Arxivlangan o&apos;quvchilar topilmadi</td></tr>
                       : students.map((s) => (
-                        <tr key={s.id} className="hover:bg-gray-50">
+                        <tr key={s.id} className="bg-[#FFFBEB] hover:brightness-95 transition-colors">
                           <td className="px-4 py-3 font-medium text-gray-900">{s.first_name} {s.last_name}</td>
                           <td className="px-4 py-3 text-gray-500">{formatPhone(s.phone)}</td>
                           <td className="px-4 py-3 text-gray-600">{s.course_name || '—'}</td>
@@ -169,7 +169,7 @@ export default function ArchivePage() {
                     teachers.length === 0
                       ? <tr><td colSpan={5} className="px-4 py-16 text-center text-gray-400">Arxivlangan o&apos;qituvchilar topilmadi</td></tr>
                       : teachers.map((t) => (
-                        <tr key={t.id} className="hover:bg-gray-50">
+                        <tr key={t.id} className="bg-[#FFFBEB] hover:brightness-95 transition-colors">
                           <td className="px-4 py-3 font-medium text-gray-900">{t.first_name} {t.last_name}</td>
                           <td className="px-4 py-3 text-gray-500">{formatPhone(t.phone)}</td>
                           <td className="px-4 py-3 text-gray-600">{t.subject || '—'}</td>
@@ -187,7 +187,7 @@ export default function ArchivePage() {
                     groups.length === 0
                       ? <tr><td colSpan={5} className="px-4 py-16 text-center text-gray-400">Arxivlangan guruhlar topilmadi</td></tr>
                       : groups.map((g) => (
-                        <tr key={g.id} className="hover:bg-gray-50">
+                        <tr key={g.id} className="bg-[#FFFBEB] hover:brightness-95 transition-colors">
                           <td className="px-4 py-3 font-bold text-gray-900">{g.name}</td>
                           <td className="px-4 py-3 text-gray-600">{g.course?.name || '—'}</td>
                           <td className="px-4 py-3 text-gray-600">{g.teacher ? `${g.teacher.first_name} ${g.teacher.last_name}` : '—'}</td>
@@ -205,7 +205,7 @@ export default function ArchivePage() {
                     courses.length === 0
                       ? <tr><td colSpan={4} className="px-4 py-16 text-center text-gray-400">Arxivlangan kurslar topilmadi</td></tr>
                       : courses.map((c) => (
-                        <tr key={c.id} className="hover:bg-gray-50">
+                        <tr key={c.id} className="bg-[#FFFBEB] hover:brightness-95 transition-colors">
                           <td className="px-4 py-3 font-medium text-gray-900">{c.name}</td>
                           <td className="px-4 py-3 text-gray-700">{c.price?.toLocaleString()} so&apos;m</td>
                           <td className="px-4 py-3 text-gray-500 text-xs">{formatDate(c.archived_at)}</td>

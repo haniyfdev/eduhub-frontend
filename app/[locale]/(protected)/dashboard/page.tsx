@@ -3,6 +3,8 @@
 import { useEffect, useState, useRef } from 'react';
 import {
   Users, UsersRound, CreditCard, AlertCircle, MessageSquare, GraduationCap,
+  Group,
+  UserCheck,
 } from 'lucide-react';
 import Link from 'next/link';
 import { useLocale } from 'next-intl';
@@ -75,11 +77,12 @@ function buildSchedule(days: string[], time: string) {
 
 function resolve(data: DashboardData) {
   return {
-    students: data.active_students ?? data.total_students ?? data.students_count ?? 0,
-    groups: data.active_groups ?? data.groups_count ?? 0,
-    revenue: data.monthly_revenue ?? data.total_revenue ?? 0,
-    debtors: data.debtors_count ?? data.total_debtors ?? 0,
-    teachers: data.teachers_count ?? 0,
+    // Backenddan kelishi mumkin bo'lgan barcha variantlarni qo'shdik
+    students: data.active_students ?? data.students_count ?? data.total_students ?? (data as any).students ?? 0,
+    groups: data.active_groups ?? data.groups_count ?? (data as any).groups ?? 0,
+    revenue: data.monthly_revenue ?? data.total_revenue ?? (data as any).revenue ?? 0,
+    debtors: data.debtors_count ?? data.total_debtors ?? (data as any).debtors ?? 0,
+    teachers: data.teachers_count ?? (data as any).teachers ?? 0,
     chart: data.revenue_chart ?? [],
     topDebtors: data.top_debtors ?? [],
     teacherStats: data.teacher_stats ?? [],
@@ -374,7 +377,7 @@ export default function DashboardPage() {
 
   const stats = d ? [
     { label: 'Faol o\'quvchilar', value: d.students, icon: Users },
-    { label: 'Faol guruhlar', value: d.groups, icon: UsersRound },
+    { label: 'Faol guruhlar', value: d.groups, icon: Group },
     { label: 'Bu oy tushum', value: formatCurrency(d.revenue), icon: CreditCard },
     { label: 'Qarzdorlar', value: d.debtors, icon: AlertCircle, variant: 'danger' as const },
     { label: 'O\'qituvchilar', value: d.teachers, icon: GraduationCap, variant: 'success' as const },

@@ -11,6 +11,7 @@ import api from '@/lib/axios';
 import { cn, formatPhone, formatDMY } from '@/lib/utils';
 import { PaginatedResponse } from '@/types';
 
+// O'qituvchi interfeysi
 interface Teacher {
   id: string;
   first_name: string;
@@ -28,17 +29,20 @@ const SALARY_STYLES: Record<string, string> = {
   percent: 'bg-blue-50 text-blue-700 border-blue-200',
   per_student: 'bg-green-50 text-green-700 border-green-200',
 };
+
 const SALARY_LABELS: Record<string, string> = {
   fixed: 'Belgilangan',
   percent: 'Foizli',
   per_student: "O'quvchi bo'yicha",
 };
+
 const SALARY_AMOUNT_LABELS: Record<string, string> = {
   fixed: 'Oylik maosh (so\'m)',
   percent: 'Foiz (%)',
   per_student: "O'quvchi boshiga (so'm)",
 };
 
+// EMPTY_FORM dan hired_date olib tashlandi
 const EMPTY_FORM: {
   first_name: string; last_name: string; phone: string; password: string;
   subject: string; birth_date: string; salary_type: 'fixed' | 'percent' | 'per_student';
@@ -60,10 +64,11 @@ export default function TeachersPage() {
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState(EMPTY_FORM);
   const [archiveTarget, setArchiveTarget] = useState<{ id: string; name: string } | null>(null);
-
   const [touched, setTouched] = useState<Record<string, boolean>>({});
 
   const salaryAmt = parseFloat(form.salary_amount);
+  
+  // Validatsiya mantiqidan hired_date guardi olib tashlandi
   const fieldErrors = {
     first_name: !form.first_name ? 'Ism majburiy' : form.first_name.length < 2 ? 'Kamida 2 harf' : form.first_name.length > 50 ? "Ko'pi bilan 50 harf" : '',
     last_name: !form.last_name ? 'Familiya majburiy' : form.last_name.length < 2 ? 'Kamida 2 harf' : form.last_name.length > 50 ? "Ko'pi bilan 50 harf" : '',
@@ -74,12 +79,11 @@ export default function TeachersPage() {
         ? (isNaN(salaryAmt) || salaryAmt < 100000 ? 'Kamida 100 000 so\'m kiriting' : '')
         : (isNaN(salaryAmt) || salaryAmt < 1000 ? 'Kamida 1 000 so\'m kiriting' : ''),
   };
+
   const hasFormErrors = Object.values(fieldErrors).some(Boolean);
 
   function touch(field: string) { setTouched((t) => ({ ...t, [field]: true })); }
   function showErr(field: string) { return touched[field] ? (fieldErrors as Record<string, string>)[field] ?? '' : ''; }
-
-  // const percentInvalid = !!fieldErrors.salary_amount && form.salary_type === 'percent';
 
   const fetchTeachers = useCallback(async () => {
     setLoading(true);
@@ -107,6 +111,7 @@ export default function TeachersPage() {
     if (hasFormErrors) return;
     setSaving(true);
     try {
+      // API Payloaddan hired_at olib tashlandi - backend o'zi bugungi sanani qo'yadi
       await api.post('/api/v1/teachers/', {
         first_name: form.first_name,
         last_name: form.last_name,
@@ -320,6 +325,8 @@ export default function TeachersPage() {
                 maxYear={new Date().getFullYear() - 18}
               />
             </div>
+
+            {/* ISH BOSHLAGAN SANA (DatePicker) SHU YERDAN OLIB TASHLANDI */}
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Maosh turi <span className="text-red-500">*</span></label>

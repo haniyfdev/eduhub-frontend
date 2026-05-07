@@ -76,13 +76,16 @@ function buildSchedule(days: string[], time: string) {
 // ── Helpers ────────────────────────────────────────────────────────────────
 
 function resolve(data: DashboardData) {
+  // Console'ga qarab oling backenddan aynan nima kelyapti
+  console.log("Dashboard API data:", data); 
+
   return {
-    // Backenddan kelishi mumkin bo'lgan barcha variantlarni qo'shdik
-    students: data.active_students ?? data.students_count ?? data.total_students ?? (data as any).students ?? 0,
-    groups: data.active_groups ?? data.groups_count ?? (data as any).groups ?? 0,
-    revenue: data.monthly_revenue ?? data.total_revenue ?? (data as any).revenue ?? 0,
-    debtors: data.debtors_count ?? data.total_debtors ?? (data as any).debtors ?? 0,
-    teachers: data.teachers_count ?? (data as any).teachers ?? 0,
+    // Eng ishonchli tartib: avval umumiy son, keyin qolganlari
+    students: data.active_students || data.students_count || data.total_students || 0,
+    groups: data.active_groups || data.groups_count || 0,
+    revenue: data.monthly_revenue || data.total_revenue || 0,
+    debtors: data.debtors_count || data.total_debtors || 0,
+    teachers: data.teachers_count || 0,
     chart: data.revenue_chart ?? [],
     topDebtors: data.top_debtors ?? [],
     teacherStats: data.teacher_stats ?? [],

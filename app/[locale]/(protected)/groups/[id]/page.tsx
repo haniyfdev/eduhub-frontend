@@ -566,7 +566,7 @@ export default function GroupDetailPage() {
           setShowAddStudent(open);
         }}
       >
-        <DialogContent className="sm:max-w-2xl max-h-[90vh] flex flex-col">
+        <DialogContent className="sm:max-w-3xl max-h-[90vh] flex flex-col">
           <DialogHeader>
             <DialogTitle>Talaba qo&apos;shish</DialogTitle>
           </DialogHeader>
@@ -658,9 +658,9 @@ export default function GroupDetailPage() {
                             </div>
                           </td>
                           <td className="px-4 py-3 font-medium text-gray-900">{s.first_name} {s.last_name}</td>
-                          <td className="px-4 py-3 text-xs font-mono text-gray-500">{formatPhone(s.phone)}</td>
+                          <td className="px-4 py-3 text-xs font-mono text-gray-500 whitespace-nowrap">{formatPhone(s.phone)}</td>
                           {/* ✅ Tug'ilgan sana */}
-                          <td className="px-4 py-3 text-xs text-gray-500">{formatDMY(s.birth_date) || '—'}</td>
+                          <td className="px-4 py-3 text-sm font-medium text-gray-900 whitespace-nowrap">{formatDMY(s.birth_date) || '—'}</td>
                           <td className="px-4 py-3">
                             <span className={cn('text-xs px-1.5 py-0.5 rounded border', STATUS_BADGE[s.status] ?? 'bg-gray-100 text-gray-600 border-gray-200')}>
                               {STATUS_LABEL[s.status] ?? s.status}

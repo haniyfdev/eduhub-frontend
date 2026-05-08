@@ -165,10 +165,10 @@ export default function GroupDetailPage() {
 
   useEffect(() => {
     if (!showAddStudent) return;
-        if (!studentSearch.trim() && !statusFilter && !courseFilter) {
+        if (!studentSearch.trim() && !courseFilter) {
           setSearchResults([]);
           return;
-        }
+    }
     const timer = setTimeout(async () => {
       setSearchLoading(true);
       try {

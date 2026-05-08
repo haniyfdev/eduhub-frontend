@@ -435,17 +435,15 @@ export default function GroupDetailPage() {
                       <td className="px-4 py-3 text-gray-400 text-xs">{idx + 1}</td>
                       <td className="px-4 py-3 font-medium text-gray-900">{s.first_name} {s.last_name}</td>
                       {/* ✅ Telefon */}
-                      <td className="px-4 py-3 text-gray-500 text-xs font-mono">{formatPhone(s.phone)}</td>
+                      <td className="px-4 py-3 text-sm font-medium text-gray-900 whitespace-nowrap">{formatPhone(s.phone)}</td>
                       {/* ✅ Ota-ona telefoni */}
-                      <td className="px-4 py-3 text-gray-400 text-xs font-mono">
-                        {s.second_phone ? formatPhone(s.second_phone) : '—'}
-                      </td>
+                      <td className="px-4 py-3 text-sm font-medium text-gray-900 whitespace-nowrap">{formatDMY(s.birth_date) || '—'}</td>
                       <td className="px-4 py-3">
                         <span className={cn('inline-flex items-center px-2 py-0.5 text-xs font-medium border rounded', STATUS_BADGE[s.status] ?? 'bg-gray-100 text-gray-600 border-gray-200')}>
                           {STATUS_LABEL[s.status] ?? s.status}
                         </span>
                       </td>
-                      <td className="px-4 py-3 text-gray-400 text-xs">{formatDMY(s.joined_at ?? s.created_at)}</td>
+                      <td className="px-4 py-3 text-sm font-medium text-gray-900 whitespace-nowrap">{formatDMY(s.joined_at ?? s.created_at)}</td>
                       <td className="px-4 py-3">
                         {canEdit && (
                           <div className="flex items-center gap-2">

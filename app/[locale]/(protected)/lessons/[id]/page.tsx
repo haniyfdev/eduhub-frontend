@@ -116,20 +116,15 @@ export default function LessonAttendancePage() {
   const fetchStudentsAndAttendance = useCallback(async (groupId: string) => {
     setLoadingStudents(true);
     try {
-      const [studentsRes, attendanceRes] = await Promise.allSettled([
-        api.get<PaginatedResponse<GroupStudentRaw>>(`/api/v1/group-students/`, {
-          params: { group_id: groupId, page_size: 200 },
-        }),
-        api.get<AttendanceRecord[]>(`/api/v1/lessons/${id}/attendance/`),
-      ]);
+        const [groupRes, attendanceRes] = await Promise.allSettled([
+          api.get<{ students: GroupStudentRaw[] }>(`/api/v1/groups/${groupId}/`),
+          api.get<AttendanceRecord[]>(`/api/v1/lessons/${id}/attendance/`),
+        ]);
 
-      if (studentsRes.status !== 'fulfilled') return;
+        if (groupRes.status !== 'fulfilled') return;
 
-      const rawStudents = studentsRes.value.data;
-      const list: GroupStudentRaw[] = Array.isArray(rawStudents)
-        ? (rawStudents as GroupStudentRaw[])
-        : (rawStudents.results ?? []);
-      setStudents(list);
+        const list: GroupStudentRaw[] = groupRes.value.data.students ?? [];
+        setStudents(list);
 
       // Build initial attendance map
       const init: Record<string, AttendanceEntry> = {};

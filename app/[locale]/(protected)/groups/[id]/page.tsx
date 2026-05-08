@@ -37,6 +37,7 @@ interface Student {
   phone: string;
   second_phone?: string;
   birth_date?: string | null;
+  course_name?: string;
   status: string;
   joined_at?: string;
   created_at?: string;
@@ -164,11 +165,11 @@ export default function GroupDetailPage() {
   // ── Student search with debounce ───────────────────────────────────────────
 
   useEffect(() => {
-    if (!showAddStudent) return;
-        if (!studentSearch.trim() && !courseFilter) {
-          setSearchResults([]);
-          return;
-    }
+    // if (!showAddStudent) return;
+    //     if (!studentSearch.trim() && !courseFilter) {
+    //       setSearchResults([]);
+    //       return;
+    // }
     const timer = setTimeout(async () => {
       setSearchLoading(true);
       try {
@@ -421,7 +422,7 @@ export default function GroupDetailPage() {
     <table className="w-full text-sm">
       <thead>
         <tr className="bg-gray-50 border-b border-gray-200">
-          {['#', 'Ism', 'Telefon', 'Ota-ona tel', "Tug'ilgan sana", 'Holat', 'Amallar'].map((h) => (
+          {['#', 'Ism', 'Telefon', 'Ota-ona tel', "Tug'ilgan sana", 'Kurs', 'Amallar'].map((h) => (
             <th key={h} className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">{h}</th>
           ))}
         </tr>
@@ -618,7 +619,7 @@ export default function GroupDetailPage() {
                   <th className="text-left px-4 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wide">Telefon</th>
                   {/* ✅ Tug'ilgan sana */}
                   <th className="text-left px-4 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wide">Tug&apos;ilgan sana</th>
-                  <th className="text-left px-4 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wide">Holat</th>
+                  <th className="text-left px-4 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wide">Kurs</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
@@ -651,11 +652,7 @@ export default function GroupDetailPage() {
                               <td className="px-4 py-3 font-medium text-gray-900">{s.first_name} {s.last_name}</td>
                               <td className="px-4 py-3 text-gray-600">{formatPhone(s.phone)}</td>
                               <td className="px-4 py-3 text-gray-600">{formatDMY(s.birth_date) || '—'}</td>
-                              <td className="px-4 py-3">
-                                <span className={cn('inline-flex items-center px-2 py-0.5 text-xs font-medium border rounded', STATUS_BADGE[s.status] ?? 'bg-gray-100 text-gray-600 border-gray-200')}>
-                                  {STATUS_LABEL[s.status] ?? s.status}
-                                </span>
-                              </td>
+                              <td className="px-4 py-3 text-gray-600 text-sm">{s.course_name || '—'}</td>
                         </tr>
                       );
                     })

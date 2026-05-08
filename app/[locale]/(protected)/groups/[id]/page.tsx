@@ -92,7 +92,7 @@ export default function GroupDetailPage() {
   // Add student modal — search + checkbox
   const [showAddStudent, setShowAddStudent] = useState(false);
   const [studentSearch, setStudentSearch] = useState('');
-  const [statusFilter, setStatusFilter] = useState('');
+  const statusFilter = 'pending';
   const [courseFilter, setCourseFilter] = useState('');
   const [courses, setCourses] = useState<{ id: string; name: string }[]>([]);
   const [searchResults, setSearchResults] = useState<Student[]>([]);
@@ -562,7 +562,7 @@ export default function GroupDetailPage() {
       <Dialog
         open={showAddStudent}
         onOpenChange={(open) => {
-          if (!open) { setStudentSearch(''); setSearchResults([]); setSelectedIds(new Set()); setStatusFilter(''); setCourseFilter(''); }
+          if (!open) { setStudentSearch(''); setSearchResults([]); setSelectedIds(new Set()); setCourseFilter(''); }
           setShowAddStudent(open);
         }}
       >
@@ -585,16 +585,7 @@ export default function GroupDetailPage() {
                 autoFocus
               />
             </div>
-            <select
-              value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value)}
-              className="px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-700"
-            >
-              <option value="">Barcha holat</option>
-              <option value="pending">Kutilmoqda</option>
-              <option value="active">Faol</option>
-              <option value="trial">Sinov</option>
-            </select>
+
             {/* ✅ Kurs filtri */}
             <select
               value={courseFilter}

@@ -657,8 +657,6 @@ export default function GroupDetailPage() {
                               )}
                             </div>
                           </td>
-                          <td className="px-4 py-3 font-medium text-gray-900">{s.first_name} {s.last_name}</td>
-                          <td className="px-4 py-3 text-xs font-mono text-gray-500 whitespace-nowrap">{formatPhone(s.phone)}</td>
                           {/* ✅ Tug'ilgan sana */}
                           <td className="px-4 py-3 text-sm font-medium text-gray-900 whitespace-nowrap">{formatDMY(s.birth_date) || '—'}</td>
                           <td className="px-4 py-3">

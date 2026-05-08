@@ -10,7 +10,7 @@ import toast, { Toaster } from 'react-hot-toast';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import api from '@/lib/axios';
-import { cn, formatDMY } from '@/lib/utils';
+import { cn, formatPhone, formatDMY } from '@/lib/utils';
 import { PaginatedResponse } from '@/types';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -189,11 +189,7 @@ export default function GroupDetailPage() {
   function toggleSelect(id: string) {
     setSelectedIds((prev) => {
       const next = new Set(prev);
-      if (next.has(id)) {
-          next.delete(id);
-      } else {
-          next.add(id);
-      }
+      next.has(id) ? next.delete(id) : next.add(id);
       return next;
     });
   }
@@ -202,7 +198,7 @@ export default function GroupDetailPage() {
     if (selectedIds.size === 0) return;
     setAddingBulk(true);
     let success = 0;
-    for (const studentId of Array.from(selectedIds)) {
+    for (const studentId of selectedIds) {
       try {
         await api.post(`/api/v1/groups/${id}/add-student/`, { student_id: studentId });
         success++;
@@ -409,63 +405,69 @@ export default function GroupDetailPage() {
           ))}
         </div>
       </div>
-{/* ══ TAB: O'quvchilar ══ */}
-{tab === 'students' && (
-  <div className="bg-white rounded border border-gray-200 shadow-sm overflow-hidden">
-    <table className="w-full text-sm">
-      <thead>
-        <tr className="bg-gray-50 border-b border-gray-200">
-          {['#', 'Ism', "Tug'ilgan sana", 'Status', "Qo'shilgan", 'Amallar'].map((h) => (
-            <th key={h} className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">{h}</th>
-          ))}
-        </tr>
-      </thead>
-      <tbody className="divide-y divide-gray-100">
-        {loadingStudents
-          ? Array(5).fill(0).map((_, i) => (
-            <tr key={i}>{Array(6).fill(0).map((_, j) => (
-              <td key={j} className="px-4 py-3"><Skeleton className="h-4 w-full" /></td>
-            ))}</tr>
-          ))
-          : students.length === 0
-            ? <tr><td colSpan={6} className="px-4 py-14 text-center text-gray-400 text-sm">O&apos;quvchilar yo&apos;q</td></tr>
-            : students.map((s, idx) => (
-              <tr key={s.id} className="hover:bg-gray-50 transition-colors">
-                <td className="px-4 py-3 text-gray-400 text-xs">{idx + 1}</td>
-                <td className="px-4 py-3 font-medium text-gray-900">{s.first_name} {s.last_name}</td>
-                <td className="px-4 py-3 text-sm font-medium text-gray-900">{formatDMY(s.birth_date) || '—'}</td>
-                <td className="px-4 py-3">
-                  <span className={cn('inline-flex items-center px-2 py-0.5 text-xs font-medium border rounded', STATUS_BADGE[s.status] ?? 'bg-gray-100 text-gray-600 border-gray-200')}>
-                    {STATUS_LABEL[s.status] ?? s.status}
-                  </span>
-                </td>
-                <td className="px-4 py-3 text-gray-400 text-xs">{formatDMY(s.joined_at ?? s.created_at)}</td>
-                <td className="px-4 py-3">
-                  {canEdit && (
-                    <div className="flex items-center gap-2">
-                      <button
-                        onClick={() => openChangeGroup(s.id, `${s.first_name} ${s.last_name}`)}
-                        className="inline-flex items-center gap-1 text-xs text-blue-600 hover:underline"
-                      >
-                        <RefreshCw className="w-3 h-3" /> Guruh
-                      </button>
-                      <span className="text-gray-200">|</span>
-                      <button
-                        onClick={() => setRemoveTarget({ studentId: s.id, name: `${s.first_name} ${s.last_name}` })}
-                        className="inline-flex items-center gap-1 text-xs text-red-500 hover:underline"
-                      >
-                        <UserMinus className="w-3 h-3" /> Chiqarish
-                      </button>
-                    </div>
-                  )}
-                </td>
+
+      {/* ══ TAB: O'quvchilar ══ */}
+      {tab === 'students' && (
+        <div className="bg-white rounded border border-gray-200 shadow-sm overflow-hidden">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="bg-gray-50 border-b border-gray-200">
+                {['#', 'Ism', 'Telefon', 'Ota-ona tel', 'Status', "Qo'shilgan", 'Amallar'].map((h) => (
+                  <th key={h} className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">{h}</th>
+                ))}
               </tr>
-            ))
-        }
-      </tbody>
-    </table>
-  </div>
-)}
+            </thead>
+            <tbody className="divide-y divide-gray-100">
+              {loadingStudents
+                ? Array(5).fill(0).map((_, i) => (
+                  <tr key={i}>{Array(7).fill(0).map((_, j) => (
+                    <td key={j} className="px-4 py-3"><Skeleton className="h-4 w-full" /></td>
+                  ))}</tr>
+                ))
+                : students.length === 0
+                  ? <tr><td colSpan={7} className="px-4 py-14 text-center text-gray-400 text-sm">O&apos;quvchilar yo&apos;q</td></tr>
+                  : students.map((s, idx) => (
+                    <tr key={s.id} className="hover:bg-gray-50 transition-colors">
+                      <td className="px-4 py-3 text-gray-400 text-xs">{idx + 1}</td>
+                      <td className="px-4 py-3 font-medium text-gray-900">{s.first_name} {s.last_name}</td>
+                      {/* ✅ Telefon */}
+                      <td className="px-4 py-3 text-gray-500 text-xs font-mono">{formatPhone(s.phone)}</td>
+                      {/* ✅ Ota-ona telefoni */}
+                      <td className="px-4 py-3 text-gray-400 text-xs font-mono">
+                        {s.second_phone ? formatPhone(s.second_phone) : '—'}
+                      </td>
+                      <td className="px-4 py-3">
+                        <span className={cn('inline-flex items-center px-2 py-0.5 text-xs font-medium border rounded', STATUS_BADGE[s.status] ?? 'bg-gray-100 text-gray-600 border-gray-200')}>
+                          {STATUS_LABEL[s.status] ?? s.status}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 text-gray-400 text-xs">{formatDMY(s.joined_at ?? s.created_at)}</td>
+                      <td className="px-4 py-3">
+                        {canEdit && (
+                          <div className="flex items-center gap-2">
+                            <button
+                              onClick={() => openChangeGroup(s.id, `${s.first_name} ${s.last_name}`)}
+                              className="inline-flex items-center gap-1 text-xs text-blue-600 hover:underline"
+                            >
+                              <RefreshCw className="w-3 h-3" /> Guruh
+                            </button>
+                            <span className="text-gray-200">|</span>
+                            <button
+                              onClick={() => setRemoveTarget({ studentId: s.id, name: `${s.first_name} ${s.last_name}` })}
+                              className="inline-flex items-center gap-1 text-xs text-red-500 hover:underline"
+                            >
+                              <UserMinus className="w-3 h-3" /> Chiqarish
+                            </button>
+                          </div>
+                        )}
+                      </td>
+                    </tr>
+                  ))
+              }
+            </tbody>
+          </table>
+        </div>
+      )}
 
       {/* ══ TAB: Darslar ══ */}
       {tab === 'lessons' && (
@@ -651,8 +653,9 @@ export default function GroupDetailPage() {
                               )}
                             </div>
                           </td>
-                          {/* ✅ Tug'ilgan sana */}
-                          <td className="px-4 py-3 text-sm font-medium text-gray-900 whitespace-nowrap">{formatDMY(s.birth_date) || '—'}</td>
+                          <td className="px-4 py-3 font-medium text-gray-900">{s.first_name} {s.last_name}</td>
+                          <td className="px-4 py-3 font-medium text-gray-900 whitespace-nowrap">{formatPhone(s.phone)}</td>
+                          <td className="px-4 py-3 font-medium text-gray-900 whitespace-nowrap">{formatDMY(s.birth_date) || '—'}</td>
                           <td className="px-4 py-3">
                             <span className={cn('text-xs px-1.5 py-0.5 rounded border', STATUS_BADGE[s.status] ?? 'bg-gray-100 text-gray-600 border-gray-200')}>
                               {STATUS_LABEL[s.status] ?? s.status}

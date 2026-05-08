@@ -193,7 +193,7 @@ export default function GroupDetailPage() {
     if (selectedIds.size === 0) return;
     setAddingBulk(true);
     let success = 0;
-    for (const studentId of selectedIds) {
+    for (const studentId of Array.from(selectedIds)) {
       try {
         await api.post(`/api/v1/groups/${id}/add-student/`, { student_id: studentId });
         success++;

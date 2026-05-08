@@ -10,7 +10,7 @@ import toast, { Toaster } from 'react-hot-toast';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import api from '@/lib/axios';
-import { cn, formatPhone, formatDMY } from '@/lib/utils';
+import { cn, formatDMY } from '@/lib/utils';
 import { PaginatedResponse } from '@/types';
 
 // ─── Types ────────────────────────────────────────────────────────────────────

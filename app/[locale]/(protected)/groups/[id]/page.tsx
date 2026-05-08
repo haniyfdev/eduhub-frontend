@@ -413,70 +413,64 @@ export default function GroupDetailPage() {
           ))}
         </div>
       </div>
-
-      {/* ══ TAB: O'quvchilar ══ */}
-      {tab === 'students' && (
-        <div className="bg-white rounded border border-gray-200 shadow-sm overflow-hidden">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="bg-gray-50 border-b border-gray-200">
-                {['#', 'Ism', 'Telefon', 'Ota-ona tel', 'Status', "Qo'shilgan", 'Amallar'].map((h) => (
-                  <th key={h} className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">{h}</th>
-                ))}
+{/* ══ TAB: O'quvchilar ══ */}
+{tab === 'students' && (
+  <div className="bg-white rounded border border-gray-200 shadow-sm overflow-hidden">
+    <table className="w-full text-sm">
+      <thead>
+        <tr className="bg-gray-50 border-b border-gray-200">
+          {['#', 'Ism', 'Telefon', 'Ota-ona tel', "Tug'ilgan sana", 'Holat', 'Amallar'].map((h) => (
+            <th key={h} className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">{h}</th>
+          ))}
+        </tr>
+      </thead>
+      <tbody className="divide-y divide-gray-100">
+        {loadingStudents
+          ? Array(5).fill(0).map((_, i) => (
+            <tr key={i}>{Array(7).fill(0).map((_, j) => (
+              <td key={j} className="px-4 py-3"><Skeleton className="h-4 w-full" /></td>
+            ))}</tr>
+          ))
+          : students.length === 0
+            ? <tr><td colSpan={7} className="px-4 py-14 text-center text-gray-400 text-sm">O&apos;quvchilar yo&apos;q</td></tr>
+            : students.map((s, idx) => (
+              <tr key={s.id} className="hover:bg-gray-50 transition-colors">
+                <td className="px-4 py-3 text-gray-500">{idx + 1}</td>
+                <td className="px-4 py-3 font-medium text-gray-900">{s.first_name} {s.last_name}</td>
+                <td className="px-4 py-3 text-gray-600">{formatPhone(s.phone)}</td>
+                <td className="px-4 py-3 text-gray-600">{s.second_phone ? formatPhone(s.second_phone) : '—'}</td>
+                <td className="px-4 py-3 text-gray-600">{formatDMY(s.birth_date) || '—'}</td>
+                <td className="px-4 py-3">
+                  <span className={cn('inline-flex items-center px-2 py-0.5 text-xs font-medium border rounded', STATUS_BADGE[s.status] ?? 'bg-gray-100 text-gray-600 border-gray-200')}>
+                    {STATUS_LABEL[s.status] ?? s.status}
+                  </span>
+                </td>
+                <td className="px-4 py-3">
+                  {canEdit && (
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => openChangeGroup(s.id, `${s.first_name} ${s.last_name}`)}
+                        className="inline-flex items-center gap-1 text-xs text-blue-600 hover:underline"
+                      >
+                        <RefreshCw className="w-3 h-3" /> Guruh
+                      </button>
+                      <span className="text-gray-200">|</span>
+                      <button
+                        onClick={() => setRemoveTarget({ studentId: s.id, name: `${s.first_name} ${s.last_name}` })}
+                        className="inline-flex items-center gap-1 text-xs text-red-500 hover:underline"
+                      >
+                        <UserMinus className="w-3 h-3" /> Chiqarish
+                      </button>
+                    </div>
+                  )}
+                </td>
               </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-100">
-              {loadingStudents
-                ? Array(5).fill(0).map((_, i) => (
-                  <tr key={i}>{Array(7).fill(0).map((_, j) => (
-                    <td key={j} className="px-4 py-3"><Skeleton className="h-4 w-full" /></td>
-                  ))}</tr>
-                ))
-                : students.length === 0
-                  ? <tr><td colSpan={7} className="px-4 py-14 text-center text-gray-400 text-sm">O&apos;quvchilar yo&apos;q</td></tr>
-                  : students.map((s, idx) => (
-                    <tr key={s.id} className="hover:bg-gray-50 transition-colors">
-                      <td className="px-4 py-3 text-gray-400 text-xs">{idx + 1}</td>
-                      <td className="px-4 py-3 font-medium text-gray-900">{s.first_name} {s.last_name}</td>
-                      {/* ✅ Telefon */}
-                      <td className="px-4 py-3 text-sm font-medium text-gray-900 whitespace-nowrap">{formatPhone(s.phone)}</td>
-                      {/* ✅ Ota-ona telefoni */}
-                      <td className="px-4 py-3 text-gray-400 text-xs font-mono">
-                        {s.second_phone ? formatPhone(s.second_phone) : '—'}
-                      </td>
-                      <td className="px-4 py-3">
-                        <span className={cn('inline-flex items-center px-2 py-0.5 text-xs font-medium border rounded', STATUS_BADGE[s.status] ?? 'bg-gray-100 text-gray-600 border-gray-200')}>
-                          {STATUS_LABEL[s.status] ?? s.status}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3 text-gray-400 text-xs">{formatDMY(s.joined_at ?? s.created_at)}</td>
-                      <td className="px-4 py-3">
-                        {canEdit && (
-                          <div className="flex items-center gap-2">
-                            <button
-                              onClick={() => openChangeGroup(s.id, `${s.first_name} ${s.last_name}`)}
-                              className="inline-flex items-center gap-1 text-xs text-blue-600 hover:underline"
-                            >
-                              <RefreshCw className="w-3 h-3" /> Guruh
-                            </button>
-                            <span className="text-gray-200">|</span>
-                            <button
-                              onClick={() => setRemoveTarget({ studentId: s.id, name: `${s.first_name} ${s.last_name}` })}
-                              className="inline-flex items-center gap-1 text-xs text-red-500 hover:underline"
-                            >
-                              <UserMinus className="w-3 h-3" /> Chiqarish
-                            </button>
-                          </div>
-                        )}
-                      </td>
-                    </tr>
-                  ))
-              }
-            </tbody>
-          </table>
-        </div>
-      )}
-
+            ))
+        }
+      </tbody>
+    </table>
+  </div>
+)}
       {/* ══ TAB: Darslar ══ */}
       {tab === 'lessons' && (
         <div className="space-y-3">

@@ -8,7 +8,6 @@ import toast, { Toaster } from 'react-hot-toast';
 import { Skeleton } from '@/components/ui/skeleton';
 import api from '@/lib/axios';
 import { cn, formatDMY } from '@/lib/utils';
-import { PaginatedResponse } from '@/types';
 
 // ─── Local types ──────────────────────────────────────────────────────────────
 

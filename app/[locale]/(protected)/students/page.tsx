@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import { Plus, Search } from 'lucide-react';
 import toast, { Toaster } from 'react-hot-toast';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -36,7 +36,6 @@ export default function StudentsPage() {
   const [error, setError] = useState(false);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
-  // ✅ YANGI: kurs filtri
   const [courseFilter, setCourseFilter] = useState('');
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(25);
@@ -45,14 +44,14 @@ export default function StudentsPage() {
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState(EMPTY_FORM);
   const [archiveTarget, setArchiveTarget] = useState<{ id: string; name: string } | null>(null);
-  const [overdueIds, setOverdueIds] = useState<Set<string>>(new Set());
+  // ✅ FIX: useState o'rniga useRef — race condition va ESLint xatosi yo'qoladi
+  const overdueIdsRef = useRef<Set<string>>(new Set());
   const [touched, setTouched] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
     api.get<PaginatedResponse<{ student: string }>>('/api/v1/debts/?status=overdue&page_size=200')
       .then(({ data }) => {
-        const ids = new Set<string>(data.results.map((d) => d.student).filter(Boolean));
-        setOverdueIds(ids);
+        overdueIdsRef.current = new Set<string>(data.results.map((d) => d.student).filter(Boolean));
       })
       .catch(() => {});
   }, []);
@@ -64,12 +63,11 @@ export default function StudentsPage() {
       const params: Record<string, string | number> = { page, page_size: pageSize };
       if (search) params.search = search;
       if (statusFilter) params.status = statusFilter;
-      // ✅ YANGI: kurs filtri parametri
       if (courseFilter) params.course = courseFilter;
       const { data } = await api.get<PaginatedResponse<Student>>('/api/v1/students/', { params });
       const sorted = [...(data.results ?? [])].sort((a, b) => {
-        const wa = overdueIds.has(a.id) && a.status !== 'archived' ? 3 : (STATUS_ORDER[a.status] ?? 5);
-        const wb = overdueIds.has(b.id) && b.status !== 'archived' ? 3 : (STATUS_ORDER[b.status] ?? 5);
+        const wa = overdueIdsRef.current.has(a.id) && a.status !== 'archived' ? 3 : (STATUS_ORDER[a.status] ?? 5);
+        const wb = overdueIdsRef.current.has(b.id) && b.status !== 'archived' ? 3 : (STATUS_ORDER[b.status] ?? 5);
         return wa - wb;
       });
       setStudents(sorted);
@@ -80,11 +78,9 @@ export default function StudentsPage() {
     } finally {
       setLoading(false);
     }
-  // ✅ YANGI: courseFilter dependency ga qo'shildi
   }, [page, pageSize, search, statusFilter, courseFilter]);
 
   useEffect(() => { fetchStudents(); }, [fetchStudents]);
-  // ✅ YANGI: courseFilter o'zgarganda page 1 ga qaytadi
   useEffect(() => { setPage(1); }, [search, statusFilter, courseFilter]);
 
   useEffect(() => {
@@ -152,7 +148,7 @@ export default function StudentsPage() {
 
   function rowBg(s: Student): string {
     if (s.status === 'archived') return 'bg-[#FFFBEB]';
-    if (overdueIds.has(s.id)) return 'bg-[#FEF2F2]';
+    if (overdueIdsRef.current.has(s.id)) return 'bg-[#FEF2F2]';
     return '';
   }
 
@@ -181,7 +177,6 @@ export default function StudentsPage() {
           <option value="trial">Sinov</option>
           <option value="archived">Arxivlangan</option>
         </select>
-        {/* ✅ YANGI: Kurs filtri dropdown */}
         <select value={courseFilter} onChange={(e) => setCourseFilter(e.target.value)}
           className="px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-700">
           <option value="">Barcha kurslar</option>
@@ -258,7 +253,6 @@ export default function StudentsPage() {
         />
       )}
 
-      {/* Add student modal */}
       <Dialog open={showAdd} onOpenChange={(open) => { if (!open) setForm(EMPTY_FORM); setShowAdd(open); }}>
         <DialogContent className="sm:max-w-md max-h-[90vh] overflow-y-auto">
           <DialogHeader><DialogTitle>Yangi o'quvchi</DialogTitle></DialogHeader>
@@ -351,7 +345,6 @@ export default function StudentsPage() {
         </DialogContent>
       </Dialog>
 
-      {/* Archive confirmation dialog */}
       <Dialog open={!!archiveTarget} onOpenChange={(open) => { if (!open) setArchiveTarget(null); }}>
         <DialogContent className="sm:max-w-sm">
           <DialogHeader><DialogTitle>Arxivlash</DialogTitle></DialogHeader>

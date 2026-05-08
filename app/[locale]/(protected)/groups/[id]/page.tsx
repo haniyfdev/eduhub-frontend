@@ -413,6 +413,8 @@ export default function GroupDetailPage() {
           ))}
         </div>
       </div>
+
+
 {/* ══ TAB: O'quvchilar ══ */}
 {tab === 'students' && (
   <div className="bg-white rounded border border-gray-200 shadow-sm overflow-hidden">
@@ -655,14 +657,14 @@ export default function GroupDetailPage() {
                               )}
                             </div>
                           </td>
-                          <td className="px-4 py-3 font-medium text-gray-900">{s.first_name} {s.last_name}</td>
-                          <td className="px-4 py-3 font-medium text-gray-900 whitespace-nowrap">{formatPhone(s.phone)}</td>
-                          <td className="px-4 py-3 font-medium text-gray-900 whitespace-nowrap">{formatDMY(s.birth_date) || '—'}</td>
-                          <td className="px-4 py-3">
-                            <span className={cn('text-xs px-1.5 py-0.5 rounded border', STATUS_BADGE[s.status] ?? 'bg-gray-100 text-gray-600 border-gray-200')}>
-                              {STATUS_LABEL[s.status] ?? s.status}
-                            </span>
-                          </td>
+                              <td className="px-4 py-3 text-gray-600">{formatPhone(s.phone)}</td>
+                              <td className="px-4 py-3 text-gray-600">{s.second_phone ? formatPhone(s.second_phone) : '—'}</td>
+                              <td className="px-4 py-3 text-gray-600">{formatDMY(s.birth_date) || '—'}</td>
+                              <td className="px-4 py-3">
+                                <span className={cn('inline-flex items-center px-2 py-0.5 text-xs font-medium border rounded', STATUS_BADGE[s.status] ?? 'bg-gray-100 text-gray-600 border-gray-200')}>
+                                  {STATUS_LABEL[s.status] ?? s.status}
+                                </span>
+                              </td>
                         </tr>
                       );
                     })

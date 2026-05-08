@@ -482,7 +482,7 @@ export default function GroupDetailPage() {
     </table>
   </div>
 )}
-      {/* ══ TAB: Darslar ══ */}
+            {/* ══ TAB: Darslar ══ */}
       {tab === 'lessons' && (
         <div className="space-y-3">
           {canEdit && (
@@ -499,7 +499,7 @@ export default function GroupDetailPage() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="bg-gray-50 border-b border-gray-200">
-                  {['#', 'Sana', 'Mavzu', 'Davomat', 'Amallar'].map((h) => (
+                  {['#', 'Sana', 'Hafta kuni', 'Mavzu'].map((h) => (
                     <th key={h} className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">{h}</th>
                   ))}
                 </tr>
@@ -507,42 +507,34 @@ export default function GroupDetailPage() {
               <tbody className="divide-y divide-gray-100">
                 {loadingLessons
                   ? Array(4).fill(0).map((_, i) => (
-                    <tr key={i}>{Array(5).fill(0).map((_, j) => (
+                    <tr key={i}>{Array(4).fill(0).map((_, j) => (
                       <td key={j} className="px-4 py-3"><Skeleton className="h-4 w-full" /></td>
                     ))}</tr>
                   ))
                   : lessons.length === 0
-                    ? <tr><td colSpan={5} className="px-4 py-14 text-center text-gray-400 text-sm">Darslar yo&apos;q</td></tr>
-                    : lessons.map((lesson, idx) => (
-                      <tr
-                        key={lesson.id}
-                        className="hover:bg-gray-50 cursor-pointer transition-colors"
-                        onClick={() => router.push(`/${locale}/lessons/${lesson.id}`)}
-                      >
-                        <td className="px-4 py-3 text-gray-400 text-xs">{idx + 1}</td>
-                        <td className="px-4 py-3 text-gray-700">{formatDMY(lesson.date)}</td>
-                        <td className="px-4 py-3 font-medium text-gray-900">{lesson.topic || '—'}</td>
-                        <td className="px-4 py-3">
-                          {lesson.attendance_count != null
-                            ? <span className="inline-flex items-center gap-1 text-xs text-green-700"><span className="w-1.5 h-1.5 rounded-full bg-green-500 inline-block" />{lesson.attendance_count} ta</span>
-                            : <span className="text-xs text-gray-400">—</span>}
-                        </td>
-                        <td className="px-4 py-3">
-                          <button
-                            onClick={(e) => { e.stopPropagation(); router.push(`/${locale}/lessons/${lesson.id}`); }}
-                            className="text-xs text-blue-600 hover:underline inline-flex items-center gap-1"
-                          >
-                            Davomat <ChevronRight className="w-3 h-3" />
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
+                    ? <tr><td colSpan={4} className="px-4 py-14 text-center text-gray-400 text-sm">Darslar yo&apos;q</td></tr>
+                    : lessons.map((lesson, idx) => {
+                      const weekDay = lesson.date
+                        ? ['Yakshanba', 'Dushanba', 'Seshanba', 'Chorshanba', 'Payshanba', 'Juma', 'Shanba'][new Date(lesson.date).getDay()]
+                        : '—';
+                      return (
+                        <tr
+                          key={lesson.id}
+                          className="hover:bg-gray-50 cursor-pointer transition-colors"
+                          onClick={() => router.push(`/${locale}/lessons/${lesson.id}`)}
+                        >
+                          <td className="px-4 py-3 text-gray-400 text-xs">{idx + 1}</td>
+                          <td className="px-4 py-3 text-gray-700">{formatDMY(lesson.date)}</td>
+                          <td className="px-4 py-3 text-gray-600">{weekDay}</td>
+                          <td className="px-4 py-3 font-medium text-gray-900">{lesson.topic || '—'}</td>
+                        </tr>
+                      );
+                    })}
               </tbody>
             </table>
           </div>
         </div>
       )}
-
       {/* ══ TAB: Ma'lumot ══ */}
       {tab === 'info' && (
         <div className="bg-white rounded border border-gray-200 shadow-sm p-6 max-w-2xl">

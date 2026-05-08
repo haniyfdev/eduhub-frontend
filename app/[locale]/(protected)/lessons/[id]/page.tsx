@@ -148,7 +148,7 @@ export default function LessonAttendancePage() {
         gradeList.forEach((g: any) => {
           const sid = g.student_id ?? g.student?.id ?? g.student;
           if (sid && init[sid]) {
-            init[sid].score = String(g.score ?? '');
+            init[sid].score = String(Math.round(Number(g.score ?? 0)) || '');
           }
         });
       } catch { /* grades may not exist yet */ }

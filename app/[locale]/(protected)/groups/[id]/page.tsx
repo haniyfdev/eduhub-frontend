@@ -368,14 +368,22 @@ export default function GroupDetailPage() {
               <Plus className="w-4 h-4" /> Talaba qo&apos;shish
             </button>
           )}
-          {lessons.length > 0 && (
-            <button
-              onClick={() => router.push(`/${locale}/lessons/${lessons[0].id}`)}
-              className="flex items-center gap-1.5 px-3 py-2 bg-green-600 text-white text-sm font-medium rounded hover:bg-green-700 transition-colors"
-            >
-              <BookOpen className="w-4 h-4" /> Davomat
-            </button>
-          )}
+            {canEdit && (
+              <button
+                onClick={() => setShowAddLesson(true)}
+                className="flex items-center gap-1.5 px-3 py-2 bg-green-600 text-white text-sm font-medium rounded hover:bg-green-700 transition-colors"
+              >
+                <BookOpen className="w-4 h-4" /> Yangi dars
+              </button>
+            )}
+            {lessons.length > 0 && (
+              <button
+                onClick={() => router.push(`/${locale}/lessons/${lessons[lessons.length - 1].id}`)}
+                className="flex items-center gap-1.5 px-3 py-2 bg-blue-600 text-white text-sm font-medium rounded hover:bg-blue-700 transition-colors"
+              >
+                Davomat
+              </button>
+            )}
           {group.status === 'active' && canEdit && (
             <button
               onClick={() => setShowArchive(true)}
@@ -748,16 +756,7 @@ export default function GroupDetailPage() {
                 className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
             </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Sana <span className="text-red-500">*</span></label>
-              <input
-                type="date"
-                value={lessonForm.date}
-                onChange={(e) => setLessonForm((f) => ({ ...f, date: e.target.value }))}
-                required
-                className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
-            </div>
+        
             <div className="flex gap-3 pt-1">
               <button type="button" onClick={() => setShowAddLesson(false)} className="flex-1 px-4 py-2 border border-gray-300 text-sm font-medium rounded hover:bg-gray-50">Bekor</button>
               <button type="submit" disabled={savingLesson} className="flex-1 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded hover:bg-blue-700 disabled:opacity-60">

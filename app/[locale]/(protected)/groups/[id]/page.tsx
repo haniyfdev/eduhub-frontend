@@ -4,7 +4,7 @@ import { useEffect, useState, useCallback, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useLocale } from 'next-intl';
 import {
-  ArrowLeft, Plus, Search, BookOpen, ChevronRight, UserMinus, RefreshCw,
+  ArrowLeft, Plus, Search, BookOpen, UserMinus, RefreshCw,
 } from 'lucide-react';
 import toast, { Toaster } from 'react-hot-toast';
 import { Skeleton } from '@/components/ui/skeleton';

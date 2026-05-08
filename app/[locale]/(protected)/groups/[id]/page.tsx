@@ -657,8 +657,8 @@ export default function GroupDetailPage() {
                               )}
                             </div>
                           </td>
+                              <td className="px-4 py-3 font-medium text-gray-900">{s.first_name} {s.last_name}</td>
                               <td className="px-4 py-3 text-gray-600">{formatPhone(s.phone)}</td>
-                              <td className="px-4 py-3 text-gray-600">{s.second_phone ? formatPhone(s.second_phone) : '—'}</td>
                               <td className="px-4 py-3 text-gray-600">{formatDMY(s.birth_date) || '—'}</td>
                               <td className="px-4 py-3">
                                 <span className={cn('inline-flex items-center px-2 py-0.5 text-xs font-medium border rounded', STATUS_BADGE[s.status] ?? 'bg-gray-100 text-gray-600 border-gray-200')}>

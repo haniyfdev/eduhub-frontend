@@ -36,6 +36,7 @@ interface Student {
   last_name: string;
   phone: string;
   second_phone?: string;
+  birth_date?: string | null;
   status: string;
   joined_at?: string;
   created_at?: string;
@@ -92,6 +93,8 @@ export default function GroupDetailPage() {
   const [showAddStudent, setShowAddStudent] = useState(false);
   const [studentSearch, setStudentSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
+  const [courseFilter, setCourseFilter] = useState('');
+  const [courses, setCourses] = useState<{ id: string; name: string }[]>([]);
   const [searchResults, setSearchResults] = useState<Student[]>([]);
   const [searchLoading, setSearchLoading] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
@@ -152,6 +155,12 @@ export default function GroupDetailPage() {
   useEffect(() => { fetchGroup(); }, [fetchGroup]);
   useEffect(() => { fetchLessons(); }, [fetchLessons]);
 
+  useEffect(() => {
+    api.get<PaginatedResponse<{ id: string; name: string }>>('/api/v1/courses/?page_size=100')
+      .then(({ data }) => setCourses(data.results ?? []))
+      .catch(() => {});
+  }, []);
+
   // ── Student search with debounce ───────────────────────────────────────────
 
   useEffect(() => {
@@ -159,11 +168,11 @@ export default function GroupDetailPage() {
     const timer = setTimeout(async () => {
       setSearchLoading(true);
       try {
-        const params: Record<string, string | number> = { page_size: 30 };
+        const params: Record<string, string | number> = { page_size: 50 };
         if (studentSearch.trim()) params.search = studentSearch.trim();
         if (statusFilter) params.status = statusFilter;
+        if (courseFilter) params.course = courseFilter;
         const { data } = await api.get<PaginatedResponse<Student>>('/api/v1/students/', { params });
-        // ✅ Allaqachon guruhda bo'lganlarni exclude qilamiz
         const currentIds = new Set(students.map((s) => s.id));
         setSearchResults((data.results ?? []).filter((s) => !currentIds.has(s.id)));
       } catch {
@@ -173,18 +182,14 @@ export default function GroupDetailPage() {
       }
     }, 350);
     return () => clearTimeout(timer);
-  }, [studentSearch, statusFilter, showAddStudent, students]);
+  }, [studentSearch, statusFilter, courseFilter, showAddStudent, students]);
 
   // ── Handlers ───────────────────────────────────────────────────────────────
 
   function toggleSelect(id: string) {
     setSelectedIds((prev) => {
       const next = new Set(prev);
-      if (next.has(id)) {
-        next.delete(id);
-      } else {
-        next.add(id);
-      }
+      next.has(id) ? next.delete(id) : next.add(id);
       return next;
     });
   }
@@ -193,7 +198,7 @@ export default function GroupDetailPage() {
     if (selectedIds.size === 0) return;
     setAddingBulk(true);
     let success = 0;
-    for (const studentId of Array.from(selectedIds)) {
+    for (const studentId of selectedIds) {
       try {
         await api.post(`/api/v1/groups/${id}/add-student/`, { student_id: studentId });
         success++;
@@ -550,20 +555,19 @@ export default function GroupDetailPage() {
 
       {/* ══════════════ DIALOGS ══════════════ */}
 
-      {/* ✅ Add student — checkbox + filter */}
       <Dialog
         open={showAddStudent}
         onOpenChange={(open) => {
-          if (!open) { setStudentSearch(''); setSearchResults([]); setSelectedIds(new Set()); setStatusFilter(''); }
+          if (!open) { setStudentSearch(''); setSearchResults([]); setSelectedIds(new Set()); setStatusFilter(''); setCourseFilter(''); }
           setShowAddStudent(open);
         }}
       >
-        <DialogContent className="sm:max-w-lg max-h-[85vh] flex flex-col">
+        <DialogContent className="sm:max-w-2xl max-h-[90vh] flex flex-col">
           <DialogHeader>
             <DialogTitle>Talaba qo&apos;shish</DialogTitle>
           </DialogHeader>
 
-          {/* Search + filter */}
+          {/* Search + filters */}
           <div className="flex gap-2 mt-2">
             <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
@@ -587,6 +591,17 @@ export default function GroupDetailPage() {
               <option value="active">Faol</option>
               <option value="trial">Sinov</option>
             </select>
+            {/* ✅ Kurs filtri */}
+            <select
+              value={courseFilter}
+              onChange={(e) => setCourseFilter(e.target.value)}
+              className="px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-700"
+            >
+              <option value="">Barcha kurslar</option>
+              {courses.map((c) => (
+                <option key={c.id} value={c.id}>{c.name}</option>
+              ))}
+            </select>
           </div>
 
           {/* Selected count */}
@@ -598,46 +613,61 @@ export default function GroupDetailPage() {
           )}
 
           {/* Results list */}
-          <div className="flex-1 overflow-y-auto divide-y divide-gray-100 border border-gray-200 rounded mt-1 min-h-[200px]">
-            {searchLoading
-              ? <div className="py-8 text-center text-sm text-gray-400">Qidirmoqda...</div>
-              : searchResults.length === 0
-                ? <div className="py-8 text-center text-sm text-gray-400">
-                    {studentSearch || statusFilter ? 'Natija topilmadi' : "O'quvchi qidiring..."}
-                  </div>
-                : searchResults.map((s) => {
-                  const checked = selectedIds.has(s.id);
-                  return (
-                    <div
-                      key={s.id}
-                      onClick={() => toggleSelect(s.id)}
-                      className={cn(
-                        'flex items-center gap-3 px-4 py-3 cursor-pointer transition-colors select-none',
-                        checked ? 'bg-blue-50' : 'hover:bg-gray-50',
-                      )}
-                    >
-                      {/* Checkbox */}
-                      <div className={cn(
-                        'w-4 h-4 rounded border-2 flex-shrink-0 flex items-center justify-center transition-colors',
-                        checked ? 'bg-blue-600 border-blue-600' : 'border-gray-300',
-                      )}>
-                        {checked && (
-                          <svg className="w-2.5 h-2.5 text-white" fill="none" viewBox="0 0 10 8">
-                            <path d="M1 4l3 3 5-6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-                          </svg>
-                        )}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium text-gray-900">{s.first_name} {s.last_name}</p>
-                        <p className="text-xs text-gray-500">{formatPhone(s.phone)}</p>
-                      </div>
-                      <span className={cn('text-xs px-1.5 py-0.5 rounded border flex-shrink-0', STATUS_BADGE[s.status] ?? 'bg-gray-100 text-gray-600 border-gray-200')}>
-                        {STATUS_LABEL[s.status] ?? s.status}
-                      </span>
-                    </div>
-                  );
-                })
-            }
+          <div className="flex-1 overflow-y-auto border border-gray-200 rounded mt-1 min-h-[260px]">
+            {/* ✅ Table header */}
+            <table className="w-full text-sm">
+              <thead className="sticky top-0 bg-gray-50 border-b border-gray-200">
+                <tr>
+                  <th className="w-10 px-4 py-2"></th>
+                  <th className="text-left px-4 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wide">Ism</th>
+                  <th className="text-left px-4 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wide">Telefon</th>
+                  {/* ✅ Tug'ilgan sana */}
+                  <th className="text-left px-4 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wide">Tug&apos;ilgan sana</th>
+                  <th className="text-left px-4 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wide">Holat</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-100">
+                {searchLoading
+                  ? <tr><td colSpan={5} className="py-8 text-center text-sm text-gray-400">Qidirmoqda...</td></tr>
+                  : searchResults.length === 0
+                    ? <tr><td colSpan={5} className="py-8 text-center text-sm text-gray-400">
+                        {studentSearch || statusFilter || courseFilter ? 'Natija topilmadi' : "O'quvchi qidiring..."}
+                      </td></tr>
+                    : searchResults.map((s) => {
+                      const checked = selectedIds.has(s.id);
+                      return (
+                        <tr
+                          key={s.id}
+                          onClick={() => toggleSelect(s.id)}
+                          className={cn('cursor-pointer transition-colors select-none', checked ? 'bg-blue-50' : 'hover:bg-gray-50')}
+                        >
+                          <td className="px-4 py-3">
+                            <div className={cn(
+                              'w-4 h-4 rounded border-2 flex items-center justify-center transition-colors',
+                              checked ? 'bg-blue-600 border-blue-600' : 'border-gray-300',
+                            )}>
+                              {checked && (
+                                <svg className="w-2.5 h-2.5 text-white" fill="none" viewBox="0 0 10 8">
+                                  <path d="M1 4l3 3 5-6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                                </svg>
+                              )}
+                            </div>
+                          </td>
+                          <td className="px-4 py-3 font-medium text-gray-900">{s.first_name} {s.last_name}</td>
+                          <td className="px-4 py-3 text-xs font-mono text-gray-500">{formatPhone(s.phone)}</td>
+                          {/* ✅ Tug'ilgan sana */}
+                          <td className="px-4 py-3 text-xs text-gray-500">{formatDMY(s.birth_date) || '—'}</td>
+                          <td className="px-4 py-3">
+                            <span className={cn('text-xs px-1.5 py-0.5 rounded border', STATUS_BADGE[s.status] ?? 'bg-gray-100 text-gray-600 border-gray-200')}>
+                              {STATUS_LABEL[s.status] ?? s.status}
+                            </span>
+                          </td>
+                        </tr>
+                      );
+                    })
+                }
+              </tbody>
+            </table>
           </div>
 
           {/* Footer */}

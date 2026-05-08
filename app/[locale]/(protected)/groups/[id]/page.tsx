@@ -165,6 +165,10 @@ export default function GroupDetailPage() {
 
   useEffect(() => {
     if (!showAddStudent) return;
+        if (!studentSearch.trim() && !statusFilter && !courseFilter) {
+          setSearchResults([]);
+          return;
+        }
     const timer = setTimeout(async () => {
       setSearchLoading(true);
       try {
@@ -180,9 +184,9 @@ export default function GroupDetailPage() {
       } finally {
         setSearchLoading(false);
       }
-    }, 350);
+}, 350);
     return () => clearTimeout(timer);
-  }, [studentSearch, statusFilter, courseFilter, showAddStudent, students]);
+  }, [studentSearch, statusFilter, courseFilter, students]);
 
   // ── Handlers ───────────────────────────────────────────────────────────────
 
@@ -582,7 +586,7 @@ export default function GroupDetailPage() {
                 type="text"
                 value={studentSearch}
                 onChange={(e) => setStudentSearch(e.target.value)}
-                placeholder="Ism yoki telefon..."
+                placeholder="Ism yoki familyani kiriting..."
                 className="w-full pl-9 pr-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                 autoFocus
               />

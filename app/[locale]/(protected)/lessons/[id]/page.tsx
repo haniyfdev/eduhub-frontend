@@ -138,12 +138,13 @@ export default function LessonAttendancePage() {
         const attList: AttendanceRecord[] = Array.isArray(rawAtt)
           ? rawAtt
           : ((rawAtt as any)?.results ?? []);
-        attList.forEach((rec) => {
-          if (init[rec.student_id]) {
-            init[rec.student_id].status = rec.status;
-            init[rec.student_id].note = rec.note ?? '';
-          }
-        });
+          attList.forEach((rec: any) => {
+            const sid = rec.student_id ?? rec.student?.id ?? rec.student;
+            if (sid && init[sid]) {
+              init[sid].status = rec.status;
+              init[sid].note = rec.note ?? '';
+            }
+          });
       }
 
       // Apply saved grades
@@ -152,11 +153,12 @@ export default function LessonAttendancePage() {
         const gradeList: GradeRecord[] = Array.isArray(gradesData)
           ? gradesData
           : ((gradesData as any)?.results ?? []);
-        gradeList.forEach((g) => {
-          if (init[g.student_id]) {
-            init[g.student_id].score = String(g.score ?? '');
-          }
-        });
+          gradeList.forEach((g: any) => {
+            const sid = g.student_id ?? g.student?.id ?? g.student;
+            if (sid && init[sid]) {
+              init[sid].score = String(g.score ?? '');
+            }
+          });
       } catch { /* grades may not exist yet */ }
 
       setAttendance(init);
@@ -445,7 +447,7 @@ export default function LessonAttendancePage() {
                       >
                         <td className="px-4 py-3 text-gray-400 text-xs">{idx + 1}</td>
                         <td className="px-4 py-3 font-medium text-gray-900">{s.name || '—'}</td>
-                        <td className="px-4 py-3 text-gray-500 font-mono text-xs">{s.phone || '—'}</td>
+                        <td className="px-4 py-3 text-gray-600">{s.phone || '—'}</td>
 
                         {/* Attendance toggle */}
                         <td className="px-4 py-3">

@@ -440,8 +440,6 @@ export default function GroupDetailPage() {
                       <td className="px-4 py-3 font-medium text-gray-900">{s.first_name} {s.last_name}</td>
                       {/* ✅ Telefon */}
                       <td className="px-4 py-3 text-sm font-medium text-gray-900 whitespace-nowrap">{formatPhone(s.phone)}</td>
-                      {/* ✅ Tug'ilgan kun */}
-                      <td className="px-4 py-3 text-sm font-medium text-gray-900 whitespace-nowrap">{formatDMY(s.birth_date) || '—'}</td>
                       {/* ✅ Ota-ona telefoni */}
                       <td className="px-4 py-3 text-gray-400 text-xs font-mono">
                         {s.second_phone ? formatPhone(s.second_phone) : '—'}

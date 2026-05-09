@@ -10,6 +10,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import api from '@/lib/axios';
 import { cn, formatPhone, formatDMY } from '@/lib/utils';
 import { PaginatedResponse } from '@/types';
+import { getUser } from '@/lib/auth';
 
 interface GroupDetail {
   id: string;
@@ -77,7 +78,8 @@ export default function GroupDetailPage() {
   const id = params.id as string;
   const router = useRouter();
   const locale = useLocale();
-  const canEdit = true;
+  const user = getUser(); // yoki useAuth() — qaysi hook ishlatayotgan bo'lsang
+  const canEdit = ['boss', 'manager', 'admin'].includes(user?.role ?? '');
 
   const [group, setGroup] = useState<GroupDetail | null>(null);
   const [loadingGroup, setLoadingGroup] = useState(true);
@@ -329,24 +331,8 @@ export default function GroupDetailPage() {
               <Plus className="w-4 h-4" /> Talaba qo&apos;shish
             </button>
           )}
-          {canEdit && (
-            <button
-              onClick={() => setShowAddLesson(true)}
-              className="flex items-center gap-1.5 px-3 py-2 bg-green-600 text-white text-sm font-medium rounded hover:bg-green-700 transition-colors"
-            >
-              <BookOpen className="w-4 h-4" /> Yangi dars
-            </button>
-          )}
-          {latestLesson && (
-            <button
-              onClick={() => router.push(`/${locale}/lessons/${latestLesson.id}`)}
-              className="flex items-center gap-1.5 px-3 py-2 bg-indigo-600 text-white text-sm font-medium rounded hover:bg-indigo-700 transition-colors"
-            >
-              Davomat
-            </button>
-          )}
         </div>
-      </div>
+    </div>
 
       {/* Tabs */}
       <div className="border-b border-gray-200">

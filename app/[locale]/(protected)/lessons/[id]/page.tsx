@@ -10,8 +10,6 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import api from '@/lib/axios';
 import { cn, formatDMY } from '@/lib/utils';
 
-// ─── Types ────────────────────────────────────────────────────────────────────
-
 interface LessonDetail {
   id: string;
   topic: string;
@@ -49,8 +47,6 @@ interface AttendanceEntry {
   score: string;
 }
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
-
 function getStudentData(gs: GroupStudentRaw) {
   if (gs.student) {
     return {
@@ -79,11 +75,9 @@ function getGroupName(lesson: LessonDetail): string {
 }
 
 function formatTime(iso: string | null): string {
-  if (!iso) return '—';
+  if (!iso) return '';
   return new Date(iso).toLocaleTimeString('uz-UZ', { hour: '2-digit', minute: '2-digit' });
 }
-
-// ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function LessonAttendancePage() {
   const params = useParams();
@@ -100,18 +94,13 @@ export default function LessonAttendancePage() {
   const [saving, setSaving] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
   const [starting, setStarting] = useState(false);
-
   const [editingTopic, setEditingTopic] = useState(false);
   const [topicDraft, setTopicDraft] = useState('');
   const topicInputRef = useRef<HTMLInputElement>(null);
 
-  // ── Computed ────────────────────────────────────────────────────────────────
-
   const isFinished = lesson?.status === 'finished';
   const isOngoing = lesson?.status === 'ongoing';
   const isPending = lesson?.status === 'pending';
-
-  // ── Fetchers ─────────────────────────────────────────────────────────────────
 
   const fetchLesson = useCallback(async () => {
     setLoadingLesson(true);
@@ -191,8 +180,6 @@ export default function LessonAttendancePage() {
     return () => window.removeEventListener('beforeunload', handler);
   }, [dirty]);
 
-  // ── Handlers ─────────────────────────────────────────────────────────────────
-
   function toggleStatus(studentId: string, st: 'present' | 'absent' | 'late') {
     if (isFinished) return;
     setAttendance((a) => ({
@@ -215,7 +202,6 @@ export default function LessonAttendancePage() {
     setDirty(true);
   }
 
-  // Dars boshlash
   async function handleStart() {
     setStarting(true);
     try {
@@ -229,7 +215,6 @@ export default function LessonAttendancePage() {
     }
   }
 
-  // Saqlash — tasdiq so'rab
   async function handleSave() {
     setSaving(true);
     try {
@@ -254,7 +239,6 @@ export default function LessonAttendancePage() {
 
       setDirty(false);
       setShowConfirm(false);
-      // Refresh lesson to get updated status/finished_at
       await fetchLesson();
       toast.success('Davomat saqlandi');
     } catch (err: any) {
@@ -276,8 +260,6 @@ export default function LessonAttendancePage() {
     }
   }
 
-  // ── Summary ──────────────────────────────────────────────────────────────────
-
   const entries = Object.values(attendance);
   const summary = {
     present: entries.filter((e) => e.status === 'present').length,
@@ -285,8 +267,6 @@ export default function LessonAttendancePage() {
     late: entries.filter((e) => e.status === 'late').length,
     unmarked: entries.filter((e) => !e.status).length,
   };
-
-  // ── Loading ───────────────────────────────────────────────────────────────────
 
   if (loadingLesson) {
     return (
@@ -309,22 +289,14 @@ export default function LessonAttendancePage() {
 
   const groupId = getGroupId(lesson);
   const groupName = getGroupName(lesson);
-
-  // ── Status badge ──────────────────────────────────────────────────────────────
-
-  const statusBadge = {
-    pending: { label: 'Boshlanmagan', cls: 'bg-gray-100 text-gray-600 border-gray-200' },
-    ongoing: { label: 'Jarayonda', cls: 'bg-green-100 text-green-700 border-green-200' },
-    finished: { label: 'Tugadi', cls: 'bg-blue-50 text-blue-700 border-blue-200' },
-  }[lesson.status];
-
-  // ── Render ────────────────────────────────────────────────────────────────────
+  const startTime = formatTime(lesson.started_at);
+  const endTime = formatTime(lesson.finished_at);
 
   return (
     <div className="space-y-5">
       <Toaster position="top-right" />
 
-      {/* ── Header ── */}
+      {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
         <div className="flex items-start gap-3">
           <button
@@ -334,7 +306,6 @@ export default function LessonAttendancePage() {
             <ArrowLeft className="w-4 h-4" />
           </button>
           <div>
-            {/* Topic */}
             <div className="flex items-center gap-2 flex-wrap">
               {editingTopic ? (
                 <div className="flex items-center gap-1.5">
@@ -367,26 +338,25 @@ export default function LessonAttendancePage() {
                       <Pencil className="w-3.5 h-3.5" />
                     </button>
                   )}
+                  {/* ✅ Faqat ongoing da badge */}
+                  {isOngoing && (
+                    <span className="inline-flex items-center px-2 py-0.5 text-xs font-medium border rounded-full bg-green-100 text-green-700 border-green-200">
+                      Jarayonda
+                    </span>
+                  )}
                 </>
               )}
-              {/* Status badge */}
-              <span className={cn('inline-flex items-center px-2 py-0.5 text-xs font-medium border rounded-full', statusBadge.cls)}>
-                {statusBadge.label}
-              </span>
             </div>
-
-            {/* Subtitle */}
             <div className="flex items-center gap-3 mt-1 flex-wrap">
               <p className="text-sm text-gray-500">
                 {groupName && <>{groupName} &middot; </>}
                 {formatDMY(lesson.date)}
               </p>
-              {/* Dars vaqti */}
-              {(lesson.started_at || lesson.finished_at) && (
+              {/* Dars vaqti — faqat boshlangan bo'lsa */}
+              {startTime && (
                 <span className="inline-flex items-center gap-1 text-xs text-gray-500 bg-gray-100 px-2 py-0.5 rounded">
                   <Clock className="w-3 h-3" />
-                  {formatTime(lesson.started_at)}
-                  {lesson.finished_at && <> — {formatTime(lesson.finished_at)}</>}
+                  {startTime}{endTime ? ` — ${endTime}` : ''}
                 </span>
               )}
               {dirty && !isFinished && (
@@ -396,7 +366,7 @@ export default function LessonAttendancePage() {
           </div>
         </div>
 
-        {/* Action buttons */}
+        {/* Buttons */}
         <div className="flex gap-2 flex-shrink-0">
           {isPending && (
             <button
@@ -425,7 +395,7 @@ export default function LessonAttendancePage() {
         </div>
       </div>
 
-      {/* ── Summary bar ── */}
+      {/* Summary */}
       <div className="flex flex-wrap gap-2">
         {([
           { label: 'Keldi', count: summary.present, color: 'bg-green-50 text-green-700 border-green-200' },
@@ -440,7 +410,7 @@ export default function LessonAttendancePage() {
         ))}
       </div>
 
-      {/* ── Attendance table ── */}
+      {/* Table */}
       <div className="bg-white rounded border border-gray-200 shadow-sm overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-sm min-w-[680px]">
@@ -477,11 +447,9 @@ export default function LessonAttendancePage() {
                           !entry.status && 'hover:bg-gray-50',
                         )}
                       >
-                        <td className="px-4 py-3 text-gray-500 text-sm">{idx + 1}</td>
+                        <td className="px-4 py-3 text-gray-500">{idx + 1}</td>
                         <td className="px-4 py-3 font-medium text-gray-900">{s.name || '—'}</td>
                         <td className="px-4 py-3 text-gray-600">{s.phone || '—'}</td>
-
-                        {/* Davomat tugmalari */}
                         <td className="px-4 py-3">
                           <div className="flex gap-1.5">
                             {(['present', 'absent', 'late'] as const).map((st) => (
@@ -491,7 +459,7 @@ export default function LessonAttendancePage() {
                                 disabled={isFinished}
                                 className={cn(
                                   'px-2.5 py-1 text-xs font-medium rounded border transition-colors',
-                                  (isFinished) && 'cursor-not-allowed opacity-60',
+                                  isFinished && 'cursor-not-allowed opacity-60',
                                   st === 'present' && entry.status === 'present' && 'bg-green-500 text-white border-green-500',
                                   st === 'present' && entry.status !== 'present' && 'border-gray-300 text-gray-600 hover:bg-green-50',
                                   st === 'absent' && entry.status === 'absent' && 'bg-red-500 text-white border-red-500',
@@ -505,8 +473,6 @@ export default function LessonAttendancePage() {
                             ))}
                           </div>
                         </td>
-
-                        {/* Baho */}
                         <td className="px-4 py-3">
                           <input
                             type="number"
@@ -514,19 +480,17 @@ export default function LessonAttendancePage() {
                             max={100}
                             value={entry.score}
                             onChange={(e) => setScore(s.id, e.target.value)}
-                            disabled={isFinished || isPending}
+                            disabled={isFinished}
                             placeholder="—"
                             className="w-16 px-2 py-1 border border-gray-300 rounded text-sm text-center focus:outline-none focus:ring-1 focus:ring-blue-500 disabled:opacity-60 disabled:cursor-not-allowed disabled:bg-gray-50"
                           />
                         </td>
-
-                        {/* Izoh */}
                         <td className="px-4 py-3">
                           <input
                             type="text"
                             value={entry.note}
                             onChange={(e) => setNote(s.id, e.target.value)}
-                            disabled={isFinished || isPending}
+                            disabled={isFinished}
                             placeholder="Sabab..."
                             className="w-full px-2 py-1 border border-gray-200 rounded text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 bg-transparent placeholder-gray-400 disabled:opacity-60 disabled:cursor-not-allowed"
                           />
@@ -539,7 +503,7 @@ export default function LessonAttendancePage() {
         </div>
       </div>
 
-      {/* ── Tasdiqlash dialogi ── */}
+      {/* Confirm dialog */}
       <Dialog open={showConfirm} onOpenChange={setShowConfirm}>
         <DialogContent className="sm:max-w-sm">
           <DialogHeader>
@@ -566,7 +530,7 @@ export default function LessonAttendancePage() {
         </DialogContent>
       </Dialog>
 
-      {/* Mobile sticky save */}
+      {/* Mobile sticky */}
       {isOngoing && dirty && (
         <div className="fixed bottom-4 right-4 sm:hidden z-40">
           <button

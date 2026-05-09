@@ -3,17 +3,13 @@
 import { useEffect, useState, useCallback, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useLocale } from 'next-intl';
-import {
-  ArrowLeft, Plus, Search, BookOpen, UserMinus, RefreshCw,
-} from 'lucide-react';
+import { ArrowLeft, Plus, Search, BookOpen, UserMinus, RefreshCw } from 'lucide-react';
 import toast, { Toaster } from 'react-hot-toast';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import api from '@/lib/axios';
 import { cn, formatPhone, formatDMY } from '@/lib/utils';
 import { PaginatedResponse } from '@/types';
-
-// ─── Types ────────────────────────────────────────────────────────────────────
 
 interface GroupDetail {
   id: string;
@@ -50,15 +46,12 @@ interface Lesson {
   status: 'pending' | 'ongoing' | 'finished';
   started_at: string | null;
   finished_at: string | null;
-  attendance_count?: number;
 }
 
 interface GroupOption {
   id: string;
   name: string;
 }
-
-// ─── Constants ────────────────────────────────────────────────────────────────
 
 const GENDER_LABELS: Record<string, string> = { a: 'Erkaklar', b: 'Ayollar', c: 'Aralash' };
 
@@ -74,26 +67,25 @@ const STATUS_LABEL: Record<string, string> = {
 
 type TabKey = 'students' | 'lessons' | 'info';
 
-// ─── Page ─────────────────────────────────────────────────────────────────────
+function formatTime(iso: string | null): string {
+  if (!iso) return '';
+  return new Date(iso).toLocaleTimeString('uz-UZ', { hour: '2-digit', minute: '2-digit' });
+}
 
 export default function GroupDetailPage() {
   const params = useParams();
   const id = params.id as string;
   const router = useRouter();
   const locale = useLocale();
-
-  // ✅ Role check — admin huquqlari
-  const canEdit = true; // role === 'admin' yoki boshqa — kerakli hook bilan almashtiring
+  const canEdit = true;
 
   const [group, setGroup] = useState<GroupDetail | null>(null);
   const [loadingGroup, setLoadingGroup] = useState(true);
   const [tab, setTab] = useState<TabKey>('students');
-
-  // Students
   const [students, setStudents] = useState<Student[]>([]);
   const [loadingStudents, setLoadingStudents] = useState(false);
 
-  // Add student modal — search + checkbox
+  // Add student modal
   const [showAddStudent, setShowAddStudent] = useState(false);
   const [studentSearch, setStudentSearch] = useState('');
   const statusFilter = 'pending';
@@ -115,18 +107,11 @@ export default function GroupDetailPage() {
   const [lessons, setLessons] = useState<Lesson[]>([]);
   const [loadingLessons, setLoadingLessons] = useState(false);
   const [showAddLesson, setShowAddLesson] = useState(false);
-  const [lessonForm, setLessonForm] = useState({ topic: '', date: new Date().toISOString().slice(0, 10) });
+  const [lessonForm, setLessonForm] = useState({ topic: '' });
   const [savingLesson, setSavingLesson] = useState(false);
-
-  // Archive
-  const [showArchive, setShowArchive] = useState(false);
-  const [archiving, setArchiving] = useState(false);
 
   const searchRef = useRef<HTMLInputElement>(null);
 
-  // ── Fetchers ───────────────────────────────────────────────────────────────
-
-  // ✅ FIX: /api/v1/groups/{id}/ — data.students ichida keladi
   const fetchGroup = useCallback(async () => {
     setLoadingGroup(true);
     setLoadingStudents(true);
@@ -165,14 +150,8 @@ export default function GroupDetailPage() {
       .catch(() => {});
   }, []);
 
-  // ── Student search with debounce ───────────────────────────────────────────
-
+  // Student search
   useEffect(() => {
-    // if (!showAddStudent) return;
-    //     if (!studentSearch.trim() && !courseFilter) {
-    //       setSearchResults([]);
-    //       return;
-    // }
     const timer = setTimeout(async () => {
       setSearchLoading(true);
       try {
@@ -188,20 +167,14 @@ export default function GroupDetailPage() {
       } finally {
         setSearchLoading(false);
       }
-}, 350);
+    }, 350);
     return () => clearTimeout(timer);
   }, [studentSearch, statusFilter, courseFilter, students]);
 
-  // ── Handlers ───────────────────────────────────────────────────────────────
-
-  function toggleSelect(id: string) {
+  function toggleSelect(sid: string) {
     setSelectedIds((prev) => {
       const next = new Set(prev);
-      if (next.has(id)) {
-            next.delete(id);
-        } else {
-            next.add(id);
-        }
+      next.has(sid) ? next.delete(sid) : next.add(sid);
       return next;
     });
   }
@@ -214,7 +187,7 @@ export default function GroupDetailPage() {
       try {
         await api.post(`/api/v1/groups/${id}/add-student/`, { student_id: studentId });
         success++;
-      } catch { /* skip duplicates */ }
+      } catch { /* skip */ }
     }
     toast.success(`${success} ta o'quvchi qo'shildi`);
     setShowAddStudent(false);
@@ -272,30 +245,16 @@ export default function GroupDetailPage() {
       await api.post('/api/v1/lessons/', {
         group: id,
         topic: lessonForm.topic || 'Dars',
-        date: lessonForm.date,
+        date: new Date().toISOString().slice(0, 10),
       });
       toast.success("Dars qo'shildi");
       setShowAddLesson(false);
-      setLessonForm({ topic: '', date: new Date().toISOString().slice(0, 10) });
+      setLessonForm({ topic: '' });
       fetchLessons();
     } catch (err: any) {
       toast.error(err?.response?.data?.detail ?? 'Xatolik yuz berdi');
     } finally {
       setSavingLesson(false);
-    }
-  }
-
-  async function handleArchive() {
-    setArchiving(true);
-    try {
-      await api.post(`/api/v1/groups/${id}/archive/`);
-      toast.success('Guruh arxivlandi');
-      setShowArchive(false);
-      fetchGroup();
-    } catch {
-      toast.error('Xatolik yuz berdi');
-    } finally {
-      setArchiving(false);
     }
   }
 
@@ -305,7 +264,8 @@ export default function GroupDetailPage() {
     { key: 'info', label: "Ma'lumot" },
   ];
 
-  // ── Loading ────────────────────────────────────────────────────────────────
+  // Oxirgi saqlangan bo'lmagan dars
+  const latestLesson = lessons[0] ?? null;
 
   if (loadingGroup) {
     return (
@@ -327,8 +287,6 @@ export default function GroupDetailPage() {
       </div>
     );
   }
-
-  // ── Render ─────────────────────────────────────────────────────────────────
 
   return (
     <div className="space-y-5">
@@ -371,23 +329,22 @@ export default function GroupDetailPage() {
               <Plus className="w-4 h-4" /> Talaba qo&apos;shish
             </button>
           )}
-            {canEdit && (
-              <button
-                onClick={() => setShowAddLesson(true)}
-                className="flex items-center gap-1.5 px-3 py-2 bg-green-600 text-white text-sm font-medium rounded hover:bg-green-700 transition-colors"
-              >
-                <BookOpen className="w-4 h-4" /> Yangi dars
-              </button>
-            )}
-            {lessons.length > 0 && (
-              <button
-                onClick={() => router.push(`/${locale}/lessons/${lessons[lessons.length - 1].id}`)}
-                className="flex items-center gap-1.5 px-3 py-2 bg-blue-600 text-white text-sm font-medium rounded hover:bg-blue-700 transition-colors"
-              >
-                Davomat
-              </button>
-            )}
-      
+          {canEdit && (
+            <button
+              onClick={() => setShowAddLesson(true)}
+              className="flex items-center gap-1.5 px-3 py-2 bg-green-600 text-white text-sm font-medium rounded hover:bg-green-700 transition-colors"
+            >
+              <BookOpen className="w-4 h-4" /> Yangi dars
+            </button>
+          )}
+          {latestLesson && (
+            <button
+              onClick={() => router.push(`/${locale}/lessons/${latestLesson.id}`)}
+              className="flex items-center gap-1.5 px-3 py-2 bg-indigo-600 text-white text-sm font-medium rounded hover:bg-indigo-700 transition-colors"
+            >
+              Davomat
+            </button>
+          )}
         </div>
       </div>
 
@@ -419,66 +376,66 @@ export default function GroupDetailPage() {
         </div>
       </div>
 
-
-{/* ══ TAB: O'quvchilar ══ */}
-{tab === 'students' && (
-  <div className="bg-white rounded border border-gray-200 shadow-sm overflow-hidden">
-    <table className="w-full text-sm">
-      <thead>
-        <tr className="bg-gray-50 border-b border-gray-200">
-          {['#', 'Ism', 'Telefon', 'Ota-ona tel', "Tug'ilgan sana", 'Kurs', 'Amallar'].map((h) => (
-            <th key={h} className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">{h}</th>
-          ))}
-        </tr>
-      </thead>
-      <tbody className="divide-y divide-gray-100">
-        {loadingStudents
-          ? Array(5).fill(0).map((_, i) => (
-            <tr key={i}>{Array(7).fill(0).map((_, j) => (
-              <td key={j} className="px-4 py-3"><Skeleton className="h-4 w-full" /></td>
-            ))}</tr>
-          ))
-          : students.length === 0
-            ? <tr><td colSpan={7} className="px-4 py-14 text-center text-gray-400 text-sm">O&apos;quvchilar yo&apos;q</td></tr>
-            : students.map((s, idx) => (
-              <tr key={s.id} className="hover:bg-gray-50 transition-colors">
-                <td className="px-4 py-3 text-gray-500">{idx + 1}</td>
-                <td className="px-4 py-3 font-medium text-gray-900">{s.first_name} {s.last_name}</td>
-                <td className="px-4 py-3 text-gray-600">{formatPhone(s.phone)}</td>
-                <td className="px-4 py-3 text-gray-600">{s.second_phone ? formatPhone(s.second_phone) : '—'}</td>
-                <td className="px-4 py-3 text-gray-600">{formatDMY(s.birth_date) || '—'}</td>
-                <td className="px-4 py-3">
-                  <span className={cn('inline-flex items-center px-2 py-0.5 text-xs font-medium border rounded', STATUS_BADGE[s.status] ?? 'bg-gray-100 text-gray-600 border-gray-200')}>
-                    {STATUS_LABEL[s.status] ?? s.status}
-                  </span>
-                </td>
-                <td className="px-4 py-3">
-                  {canEdit && (
-                    <div className="flex items-center gap-2">
-                      <button
-                        onClick={() => openChangeGroup(s.id, `${s.first_name} ${s.last_name}`)}
-                        className="inline-flex items-center gap-1 text-xs text-blue-600 hover:underline"
-                      >
-                        <RefreshCw className="w-3 h-3" /> Guruh
-                      </button>
-                      <span className="text-gray-200">|</span>
-                      <button
-                        onClick={() => setRemoveTarget({ studentId: s.id, name: `${s.first_name} ${s.last_name}` })}
-                        className="inline-flex items-center gap-1 text-xs text-red-500 hover:underline"
-                      >
-                        <UserMinus className="w-3 h-3" /> Chiqarish
-                      </button>
-                    </div>
-                  )}
-                </td>
+      {/* ══ TAB: O'quvchilar ══ */}
+      {tab === 'students' && (
+        <div className="bg-white rounded border border-gray-200 shadow-sm overflow-hidden">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="bg-gray-50 border-b border-gray-200">
+                {['#', 'Ism', 'Telefon', 'Ota-ona tel', "Tug'ilgan sana", 'Holat', 'Amallar'].map((h) => (
+                  <th key={h} className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">{h}</th>
+                ))}
               </tr>
-            ))
-        }
-      </tbody>
-    </table>
-  </div>
-)}
-            {/* ══ TAB: Darslar ══ */}
+            </thead>
+            <tbody className="divide-y divide-gray-100">
+              {loadingStudents
+                ? Array(5).fill(0).map((_, i) => (
+                  <tr key={i}>{Array(7).fill(0).map((_, j) => (
+                    <td key={j} className="px-4 py-3"><Skeleton className="h-4 w-full" /></td>
+                  ))}</tr>
+                ))
+                : students.length === 0
+                  ? <tr><td colSpan={7} className="px-4 py-14 text-center text-gray-400 text-sm">O&apos;quvchilar yo&apos;q</td></tr>
+                  : students.map((s, idx) => (
+                    <tr key={s.id} className="hover:bg-gray-50 transition-colors">
+                      <td className="px-4 py-3 text-gray-500">{idx + 1}</td>
+                      <td className="px-4 py-3 font-medium text-gray-900">{s.first_name} {s.last_name}</td>
+                      <td className="px-4 py-3 text-gray-600">{formatPhone(s.phone)}</td>
+                      <td className="px-4 py-3 text-gray-600">{s.second_phone ? formatPhone(s.second_phone) : '—'}</td>
+                      <td className="px-4 py-3 text-gray-600">{formatDMY(s.birth_date) || '—'}</td>
+                      <td className="px-4 py-3">
+                        <span className={cn('inline-flex items-center px-2 py-0.5 text-xs font-medium border rounded', STATUS_BADGE[s.status] ?? 'bg-gray-100 text-gray-600 border-gray-200')}>
+                          {STATUS_LABEL[s.status] ?? s.status}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3">
+                        {canEdit && (
+                          <div className="flex items-center gap-2">
+                            <button
+                              onClick={() => openChangeGroup(s.id, `${s.first_name} ${s.last_name}`)}
+                              className="inline-flex items-center gap-1 text-xs text-blue-600 hover:underline"
+                            >
+                              <RefreshCw className="w-3 h-3" /> Guruh
+                            </button>
+                            <span className="text-gray-200">|</span>
+                            <button
+                              onClick={() => setRemoveTarget({ studentId: s.id, name: `${s.first_name} ${s.last_name}` })}
+                              className="inline-flex items-center gap-1 text-xs text-red-500 hover:underline"
+                            >
+                              <UserMinus className="w-3 h-3" /> Chiqarish
+                            </button>
+                          </div>
+                        )}
+                      </td>
+                    </tr>
+                  ))
+              }
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {/* ══ TAB: Darslar ══ */}
       {tab === 'lessons' && (
         <div className="space-y-3">
           {canEdit && (
@@ -503,39 +460,33 @@ export default function GroupDetailPage() {
               <tbody className="divide-y divide-gray-100">
                 {loadingLessons
                   ? Array(4).fill(0).map((_, i) => (
-                    <tr key={i}>{Array(4).fill(0).map((_, j) => (
+                    <tr key={i}>{Array(5).fill(0).map((_, j) => (
                       <td key={j} className="px-4 py-3"><Skeleton className="h-4 w-full" /></td>
                     ))}</tr>
                   ))
                   : lessons.length === 0
-                    ? <tr><td colSpan={4} className="px-4 py-14 text-center text-gray-400 text-sm">Darslar yo&apos;q</td></tr>
+                    ? <tr><td colSpan={5} className="px-4 py-14 text-center text-gray-400 text-sm">Darslar yo&apos;q</td></tr>
                     : lessons.map((lesson, idx) => {
                       const weekDay = lesson.date
                         ? ['Yakshanba', 'Dushanba', 'Seshanba', 'Chorshanba', 'Payshanba', 'Juma', 'Shanba'][new Date(lesson.date).getDay()]
                         : '—';
+                      const startTime = formatTime(lesson.started_at);
+                      const endTime = formatTime(lesson.finished_at);
                       return (
-                          <tr
-                            key={lesson.id}
-                            className="hover:bg-gray-50 cursor-pointer transition-colors"
-                            onClick={() => router.push(`/${locale}/lessons/${lesson.id}`)}
-                          >
-                          <td className="px-4 py-3 text-gray-500 text-sm">{idx + 1}</td>
+                        <tr
+                          key={lesson.id}
+                          onClick={() => router.push(`/${locale}/lessons/${lesson.id}`)}
+                          className={cn(
+                            'cursor-pointer transition-colors',
+                            lesson.status === 'ongoing' ? 'bg-green-200 hover:bg-green-300' : 'hover:bg-gray-50',
+                          )}
+                        >
+                          <td className="px-4 py-3 text-gray-500">{idx + 1}</td>
                           <td className="px-4 py-3 text-gray-700">{formatDMY(lesson.date)}</td>
                           <td className="px-4 py-3 text-gray-600">{weekDay}</td>
                           <td className="px-4 py-3 font-medium text-gray-900">{lesson.topic || '—'}</td>
-                          <td className="px-4 py-3">
-                            <span className={cn('inline-flex items-center px-2 py-0.5 text-xs font-medium border rounded-full',
-                              lesson.status === 'finished' ? 'bg-blue-50 text-blue-700 border-blue-200' :
-                              lesson.status === 'ongoing' ? 'bg-green-100 text-green-700 border-green-200' :
-                              'bg-gray-100 text-gray-600 border-gray-200'
-                            )}>
-                              {lesson.status === 'finished' ? 'Tugadi' : lesson.status === 'ongoing' ? 'Jarayonda' : 'Boshlanmagan'}
-                            </span>
-                          </td>
-                          <td className="px-4 py-3 text-gray-600 text-sm">
-                            {lesson.started_at
-                              ? `${new Date(lesson.started_at).toLocaleTimeString('uz-UZ', { hour: '2-digit', minute: '2-digit' })}${lesson.finished_at ? ' — ' + new Date(lesson.finished_at).toLocaleTimeString('uz-UZ', { hour: '2-digit', minute: '2-digit' }) : ''}`
-                              : '—'}
+                          <td className="px-4 py-3 text-gray-600">
+                            {startTime ? `${startTime}${endTime ? ` — ${endTime}` : ''}` : '—'}
                           </td>
                         </tr>
                       );
@@ -545,6 +496,7 @@ export default function GroupDetailPage() {
           </div>
         </div>
       )}
+
       {/* ══ TAB: Ma'lumot ══ */}
       {tab === 'info' && (
         <div className="bg-white rounded border border-gray-200 shadow-sm p-6 max-w-2xl">
@@ -568,8 +520,7 @@ export default function GroupDetailPage() {
         </div>
       )}
 
-      {/* ══════════════ DIALOGS ══════════════ */}
-
+      {/* ══ Add Student Dialog ══ */}
       <Dialog
         open={showAddStudent}
         onOpenChange={(open) => {
@@ -581,8 +532,6 @@ export default function GroupDetailPage() {
           <DialogHeader>
             <DialogTitle>Talaba qo&apos;shish</DialogTitle>
           </DialogHeader>
-
-          {/* Search + filters */}
           <div className="flex gap-2 mt-2">
             <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
@@ -596,8 +545,6 @@ export default function GroupDetailPage() {
                 autoFocus
               />
             </div>
-
-            {/* ✅ Kurs filtri */}
             <select
               value={courseFilter}
               onChange={(e) => setCourseFilter(e.target.value)}
@@ -610,7 +557,6 @@ export default function GroupDetailPage() {
             </select>
           </div>
 
-          {/* Selected count */}
           {selectedIds.size > 0 && (
             <div className="flex items-center justify-between px-3 py-2 bg-blue-50 rounded text-sm text-blue-700 font-medium">
               <span>{selectedIds.size} ta tanlandi</span>
@@ -618,16 +564,13 @@ export default function GroupDetailPage() {
             </div>
           )}
 
-          {/* Results list */}
           <div className="flex-1 overflow-y-auto border border-gray-200 rounded mt-1 min-h-[260px]">
-            {/* ✅ Table header */}
             <table className="w-full text-sm">
               <thead className="sticky top-0 bg-gray-50 border-b border-gray-200">
                 <tr>
                   <th className="w-10 px-4 py-2"></th>
                   <th className="text-left px-4 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wide">Ism</th>
                   <th className="text-left px-4 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wide">Telefon</th>
-                  {/* ✅ Tug'ilgan sana */}
                   <th className="text-left px-4 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wide">Tug&apos;ilgan sana</th>
                   <th className="text-left px-4 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wide">Kurs</th>
                 </tr>
@@ -637,7 +580,7 @@ export default function GroupDetailPage() {
                   ? <tr><td colSpan={5} className="py-8 text-center text-sm text-gray-400">Qidirmoqda...</td></tr>
                   : searchResults.length === 0
                     ? <tr><td colSpan={5} className="py-8 text-center text-sm text-gray-400">
-                        {studentSearch || statusFilter || courseFilter ? 'Natija topilmadi' : "O'quvchi qidiring..."}
+                        {studentSearch || courseFilter ? 'Natija topilmadi' : "O'quvchi qidiring..."}
                       </td></tr>
                     : searchResults.map((s) => {
                       const checked = selectedIds.has(s.id);
@@ -648,10 +591,7 @@ export default function GroupDetailPage() {
                           className={cn('cursor-pointer transition-colors select-none', checked ? 'bg-blue-50' : 'hover:bg-gray-50')}
                         >
                           <td className="px-4 py-3">
-                            <div className={cn(
-                              'w-4 h-4 rounded border-2 flex items-center justify-center transition-colors',
-                              checked ? 'bg-blue-600 border-blue-600' : 'border-gray-300',
-                            )}>
+                            <div className={cn('w-4 h-4 rounded border-2 flex items-center justify-center transition-colors', checked ? 'bg-blue-600 border-blue-600' : 'border-gray-300')}>
                               {checked && (
                                 <svg className="w-2.5 h-2.5 text-white" fill="none" viewBox="0 0 10 8">
                                   <path d="M1 4l3 3 5-6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
@@ -659,10 +599,10 @@ export default function GroupDetailPage() {
                               )}
                             </div>
                           </td>
-                              <td className="px-4 py-3 font-medium text-gray-900">{s.first_name} {s.last_name}</td>
-                              <td className="px-4 py-3 text-gray-600">{formatPhone(s.phone)}</td>
-                              <td className="px-4 py-3 text-gray-600">{formatDMY(s.birth_date) || '—'}</td>
-                              <td className="px-4 py-3 text-gray-600 text-sm">{s.course_name || '—'}</td>
+                          <td className="px-4 py-3 font-medium text-gray-900">{s.first_name} {s.last_name}</td>
+                          <td className="px-4 py-3 text-gray-600">{formatPhone(s.phone)}</td>
+                          <td className="px-4 py-3 text-gray-600">{formatDMY(s.birth_date) || '—'}</td>
+                          <td className="px-4 py-3 text-gray-600">{s.course_name || '—'}</td>
                         </tr>
                       );
                     })
@@ -671,12 +611,8 @@ export default function GroupDetailPage() {
             </table>
           </div>
 
-          {/* Footer */}
           <div className="flex gap-3 pt-2 border-t border-gray-100">
-            <button
-              onClick={() => setShowAddStudent(false)}
-              className="flex-1 px-4 py-2 border border-gray-300 text-sm font-medium rounded hover:bg-gray-50"
-            >
+            <button onClick={() => setShowAddStudent(false)} className="flex-1 px-4 py-2 border border-gray-300 text-sm font-medium rounded hover:bg-gray-50">
               Bekor qilish
             </button>
             <button
@@ -709,11 +645,7 @@ export default function GroupDetailPage() {
         <DialogContent className="sm:max-w-sm">
           <DialogHeader><DialogTitle>Guruh o&apos;zgartirish</DialogTitle></DialogHeader>
           <p className="text-sm text-gray-600"><span className="font-medium">{changeGroupTarget?.name}</span> uchun yangi guruh:</p>
-          <select
-            value={newGroupId}
-            onChange={(e) => setNewGroupId(e.target.value)}
-            className="w-full mt-3 px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-          >
+          <select value={newGroupId} onChange={(e) => setNewGroupId(e.target.value)} className="w-full mt-3 px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
             <option value="">Guruh tanlang</option>
             {groupOptions.map((g) => <option key={g.id} value={g.id}>{g.name}</option>)}
           </select>
@@ -722,22 +654,6 @@ export default function GroupDetailPage() {
             <button onClick={() => setChangeGroupTarget(null)} className="flex-1 px-4 py-2 border border-gray-300 text-sm font-medium rounded hover:bg-gray-50">Bekor</button>
             <button onClick={handleChangeGroup} disabled={!newGroupId || changingGroup} className="flex-1 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded hover:bg-blue-700 disabled:opacity-60">
               {changingGroup ? "O'zgartirilmoqda..." : "O'zgartirish"}
-            </button>
-          </div>
-        </DialogContent>
-      </Dialog>
-
-      {/* Archive */}
-      <Dialog open={showArchive} onOpenChange={setShowArchive}>
-        <DialogContent className="sm:max-w-sm">
-          <DialogHeader><DialogTitle>Guruhni arxivlash</DialogTitle></DialogHeader>
-          <p className="text-sm text-gray-600 mt-1">
-            <span className="font-medium">{group.name}</span> guruhini arxivlashni istaysizmi?
-          </p>
-          <div className="flex gap-3 mt-4">
-            <button onClick={() => setShowArchive(false)} className="flex-1 px-4 py-2 border border-gray-300 text-sm font-medium rounded hover:bg-gray-50">Bekor</button>
-            <button onClick={handleArchive} disabled={archiving} className="flex-1 px-4 py-2 bg-red-600 text-white text-sm font-medium rounded hover:bg-red-700 disabled:opacity-60">
-              {archiving ? 'Arxivlanmoqda...' : 'Ha, arxivlash'}
             </button>
           </div>
         </DialogContent>
@@ -753,12 +669,11 @@ export default function GroupDetailPage() {
               <input
                 type="text"
                 value={lessonForm.topic}
-                onChange={(e) => setLessonForm((f) => ({ ...f, topic: e.target.value }))}
+                onChange={(e) => setLessonForm({ topic: e.target.value })}
                 placeholder="Dars mavzusi..."
                 className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
             </div>
-        
             <div className="flex gap-3 pt-1">
               <button type="button" onClick={() => setShowAddLesson(false)} className="flex-1 px-4 py-2 border border-gray-300 text-sm font-medium rounded hover:bg-gray-50">Bekor</button>
               <button type="submit" disabled={savingLesson} className="flex-1 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded hover:bg-blue-700 disabled:opacity-60">

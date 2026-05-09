@@ -452,7 +452,7 @@ export default function LessonAttendancePage() {
                         key={gs.id}
                         className={cn(
                           'transition-colors',
-                          entry.status === 'present' && 'bg-green-100',
+                          entry.status === 'present' && '',
                           entry.status === 'absent' && 'bg-red-100',
                           entry.status === 'late' && 'bg-yellow-100',
                           !entry.status && 'hover:bg-gray-50',
@@ -491,7 +491,7 @@ export default function LessonAttendancePage() {
                             max={100}
                             value={entry.score}
                             onChange={(e) => setScore(s.id, e.target.value)}
-                            disabled={isLocked}
+                            disabled={isLocked || entry.status === 'absent'}
                             placeholder="—"
                             className="w-16 px-2 py-1 border border-gray-300 rounded text-sm text-center focus:outline-none focus:ring-1 focus:ring-blue-500 disabled:opacity-60 disabled:cursor-not-allowed disabled:bg-gray-50"
                           />

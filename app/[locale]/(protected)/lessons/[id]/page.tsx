@@ -378,7 +378,7 @@ export default function LessonAttendancePage() {
               {starting ? 'Boshlanmoqda...' : 'Darsni boshlash'}
             </button>
           )}
-          {isOngoing && (
+          {isOngoing && !saved && (
             <button
               onClick={() => setShowConfirm(true)}
               disabled={saving}
@@ -388,11 +388,11 @@ export default function LessonAttendancePage() {
               Saqlash
             </button>
           )}
-          {isFinished && (
-            <span className="inline-flex items-center gap-1.5 px-4 py-2 bg-gray-100 text-gray-600 text-sm font-medium rounded">
-              <Check className="w-4 h-4 text-green-600" /> Saqlandi
-            </span>
-          )}
+            {(isFinished || saved) && (
+          <span className="inline-flex items-center gap-1.5 px-4 py-2 bg-gray-100 text-gray-600 text-sm font-medium rounded">
+            <Check className="w-4 h-4 text-green-600" /> Saqlandi
+          </span>
+        )}
         </div>
       </div>
 
@@ -457,7 +457,7 @@ export default function LessonAttendancePage() {
                               <button
                                 key={st}
                                 onClick={() => toggleStatus(s.id, st)}
-                                disabled={isFinished}
+                                disabled={isFinished || saved}
                                 className={cn(
                                   'px-2.5 py-1 text-xs font-medium rounded border transition-colors',
                                   isFinished && 'cursor-not-allowed opacity-60',
@@ -481,7 +481,7 @@ export default function LessonAttendancePage() {
                             max={100}
                             value={entry.score}
                             onChange={(e) => setScore(s.id, e.target.value)}
-                            disabled={isFinished}
+                            disabled={isFinished || saved}
                             placeholder="—"
                             className="w-16 px-2 py-1 border border-gray-300 rounded text-sm text-center focus:outline-none focus:ring-1 focus:ring-blue-500 disabled:opacity-60 disabled:cursor-not-allowed disabled:bg-gray-50"
                           />
@@ -491,7 +491,7 @@ export default function LessonAttendancePage() {
                             type="text"
                             value={entry.note}
                             onChange={(e) => setNote(s.id, e.target.value)}
-                            disabled={isFinished}
+                            disabled={isFinished || saved}
                             placeholder="Sabab..."
                             className="w-full px-2 py-1 border border-gray-200 rounded text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 bg-transparent placeholder-gray-400 disabled:opacity-60 disabled:cursor-not-allowed"
                           />

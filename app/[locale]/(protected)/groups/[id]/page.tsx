@@ -47,6 +47,9 @@ interface Lesson {
   id: string;
   topic: string;
   date: string;
+  status: 'pending' | 'ongoing' | 'finished';
+  started_at: string | null;
+  finished_at: string | null;
   attendance_count?: number;
 }
 
@@ -499,7 +502,7 @@ export default function GroupDetailPage() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="bg-gray-50 border-b border-gray-200">
-                  {['#', 'Sana', 'Hafta kuni', 'Mavzu'].map((h) => (
+                  {['#', 'Sana', 'Hafta kuni', 'Mavzu', 'Holat', 'Dars vaqti'].map((h) => (
                     <th key={h} className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">{h}</th>
                   ))}
                 </tr>
@@ -523,10 +526,24 @@ export default function GroupDetailPage() {
                           className="hover:bg-gray-50 cursor-pointer transition-colors"
                           onClick={() => router.push(`/${locale}/lessons/${lesson.id}`)}
                         >
-                          <td className="px-4 py-3 text-gray-400 text-xs">{idx + 1}</td>
+                          <td className="px-4 py-3 text-gray-500 text-sm">{idx + 1}</td>
                           <td className="px-4 py-3 text-gray-700">{formatDMY(lesson.date)}</td>
                           <td className="px-4 py-3 text-gray-600">{weekDay}</td>
                           <td className="px-4 py-3 font-medium text-gray-900">{lesson.topic || '—'}</td>
+                          <td className="px-4 py-3">
+                            <span className={cn('inline-flex items-center px-2 py-0.5 text-xs font-medium border rounded-full',
+                              lesson.status === 'finished' ? 'bg-blue-50 text-blue-700 border-blue-200' :
+                              lesson.status === 'ongoing' ? 'bg-green-100 text-green-700 border-green-200' :
+                              'bg-gray-100 text-gray-600 border-gray-200'
+                            )}>
+                              {lesson.status === 'finished' ? 'Tugadi' : lesson.status === 'ongoing' ? 'Jarayonda' : 'Boshlanmagan'}
+                            </span>
+                          </td>
+                          <td className="px-4 py-3 text-gray-600 text-sm">
+                            {lesson.started_at
+                              ? `${new Date(lesson.started_at).toLocaleTimeString('uz-UZ', { hour: '2-digit', minute: '2-digit' })}${lesson.finished_at ? ' — ' + new Date(lesson.finished_at).toLocaleTimeString('uz-UZ', { hour: '2-digit', minute: '2-digit' }) : ''}`
+                              : '—'}
+                          </td>
                         </tr>
                       );
                     })}

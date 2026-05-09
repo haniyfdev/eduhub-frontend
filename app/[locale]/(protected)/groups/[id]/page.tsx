@@ -387,14 +387,7 @@ export default function GroupDetailPage() {
                 Davomat
               </button>
             )}
-          {group.status === 'active' && canEdit && (
-            <button
-              onClick={() => setShowArchive(true)}
-              className="flex items-center gap-1.5 px-3 py-2 border border-red-300 text-red-600 text-sm font-medium rounded hover:bg-red-50 transition-colors"
-            >
-              Arxivlash
-            </button>
-          )}
+      
         </div>
       </div>
 
@@ -523,10 +516,7 @@ export default function GroupDetailPage() {
                       return (
                           <tr
                             key={lesson.id}
-                            className={cn(
-                              'cursor-pointer transition-colors',
-                              lesson.status === 'ongoing' ? 'bg-green-50 hover:bg-green-100' : 'hover:bg-gray-50'
-                            )}
+                            className="hover:bg-gray-50 cursor-pointer transition-colors"
                             onClick={() => router.push(`/${locale}/lessons/${lesson.id}`)}
                           >
                           <td className="px-4 py-3 text-gray-500 text-sm">{idx + 1}</td>

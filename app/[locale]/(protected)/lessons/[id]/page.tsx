@@ -488,10 +488,10 @@ export default function LessonAttendancePage() {
                               <button
                                 key={st}
                                 onClick={() => toggleStatus(s.id, st)}
-                                disabled={isFinished || isPending}
+                                disabled={isFinished}
                                 className={cn(
                                   'px-2.5 py-1 text-xs font-medium rounded border transition-colors',
-                                  (isFinished || isPending) && 'cursor-not-allowed opacity-60',
+                                  (isFinished) && 'cursor-not-allowed opacity-60',
                                   st === 'present' && entry.status === 'present' && 'bg-green-500 text-white border-green-500',
                                   st === 'present' && entry.status !== 'present' && 'border-gray-300 text-gray-600 hover:bg-green-50',
                                   st === 'absent' && entry.status === 'absent' && 'bg-red-500 text-white border-red-500',

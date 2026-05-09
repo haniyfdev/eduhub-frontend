@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useLocale } from 'next-intl';
-import { ArrowLeft, Plus, Search, BookOpen, UserMinus, RefreshCw } from 'lucide-react';
+import { ArrowLeft, Plus, Search, UserMinus, RefreshCw } from 'lucide-react';
 import toast, { Toaster } from 'react-hot-toast';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -266,8 +266,6 @@ export default function GroupDetailPage() {
     { key: 'info', label: "Ma'lumot" },
   ];
 
-  // Oxirgi saqlangan bo'lmagan dars
-  const latestLesson = lessons[0] ?? null;
 
   if (loadingGroup) {
     return (

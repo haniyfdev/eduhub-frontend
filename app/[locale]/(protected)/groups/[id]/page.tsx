@@ -143,7 +143,7 @@ export default function GroupDetailPage() {
     setLoadingLessons(true);
     try {
       const { data } = await api.get<PaginatedResponse<Lesson>>('/api/v1/lessons/', {
-        params: { group_id: id, ordering: '-date', page_size: 200 },
+        params: { group: id, ordering: '-date', page_size: 200 },
       });
       setLessons(Array.isArray(data) ? data : (data.results ?? []));
     } catch {

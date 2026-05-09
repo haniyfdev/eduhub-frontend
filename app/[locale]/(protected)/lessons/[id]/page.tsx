@@ -3,29 +3,33 @@
 import { useEffect, useState, useCallback, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useLocale } from 'next-intl';
-import { ArrowLeft, Save, Pencil, Check, X } from 'lucide-react';
+import { ArrowLeft, Save, Pencil, Check, X, Clock } from 'lucide-react';
 import toast, { Toaster } from 'react-hot-toast';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import api from '@/lib/axios';
 import { cn, formatDMY } from '@/lib/utils';
+
+// ─── Types ────────────────────────────────────────────────────────────────────
 
 interface LessonDetail {
   id: string;
   topic: string;
   date: string;
-  group: string | { id: string; name: string; course?: { name: string } };
+  status: 'pending' | 'ongoing' | 'finished';
+  started_at: string | null;
+  finished_at: string | null;
+  group: string | { id: string; name: string };
   group_id?: string;
-  attendance_count?: number;
 }
 
 interface GroupStudentRaw {
   id: string;
-  student?: { id: string; first_name: string; last_name: string; phone: string; status: string };
+  student?: { id: string; first_name: string; last_name: string; phone: string };
   student_id?: string;
   first_name?: string;
   last_name?: string;
   phone?: string;
-  status?: string;
 }
 
 interface AttendanceRecord {
@@ -44,6 +48,8 @@ interface AttendanceEntry {
   note: string;
   score: string;
 }
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function getStudentData(gs: GroupStudentRaw) {
   if (gs.student) {
@@ -72,6 +78,13 @@ function getGroupName(lesson: LessonDetail): string {
   return '';
 }
 
+function formatTime(iso: string | null): string {
+  if (!iso) return '—';
+  return new Date(iso).toLocaleTimeString('uz-UZ', { hour: '2-digit', minute: '2-digit' });
+}
+
+// ─── Page ─────────────────────────────────────────────────────────────────────
+
 export default function LessonAttendancePage() {
   const params = useParams();
   const id = params.id as string;
@@ -85,12 +98,20 @@ export default function LessonAttendancePage() {
   const [attendance, setAttendance] = useState<Record<string, AttendanceEntry>>({});
   const [dirty, setDirty] = useState(false);
   const [saving, setSaving] = useState(false);
-  // ✅ saved: saqlangandan keyin edit bo'lmaydi
-  const [saved, setSaved] = useState(false);
+  const [showConfirm, setShowConfirm] = useState(false);
+  const [starting, setStarting] = useState(false);
 
   const [editingTopic, setEditingTopic] = useState(false);
   const [topicDraft, setTopicDraft] = useState('');
   const topicInputRef = useRef<HTMLInputElement>(null);
+
+  // ── Computed ────────────────────────────────────────────────────────────────
+
+  const isFinished = lesson?.status === 'finished';
+  const isOngoing = lesson?.status === 'ongoing';
+  const isPending = lesson?.status === 'pending';
+
+  // ── Fetchers ─────────────────────────────────────────────────────────────────
 
   const fetchLesson = useCallback(async () => {
     setLoadingLesson(true);
@@ -114,7 +135,6 @@ export default function LessonAttendancePage() {
       ]);
 
       if (groupRes.status !== 'fulfilled') return;
-
       const list: GroupStudentRaw[] = groupRes.value.data.students ?? [];
       setStudents(list);
 
@@ -126,9 +146,7 @@ export default function LessonAttendancePage() {
 
       if (attendanceRes.status === 'fulfilled') {
         const rawAtt = attendanceRes.value.data;
-        const attList: AttendanceRecord[] = Array.isArray(rawAtt)
-          ? rawAtt
-          : ((rawAtt as any)?.results ?? []);
+        const attList: AttendanceRecord[] = Array.isArray(rawAtt) ? rawAtt : ((rawAtt as any)?.results ?? []);
         attList.forEach((rec: any) => {
           const sid = rec.student_id ?? rec.student?.id ?? rec.student;
           if (sid && init[sid]) {
@@ -136,22 +154,18 @@ export default function LessonAttendancePage() {
             init[sid].note = rec.note ?? '';
           }
         });
-        // ✅ Agar avval saqlangan attendance bo'lsa — saved=true qilib qo'y
-        if (attList.length > 0) setSaved(true);
       }
 
       try {
         const { data: gradesData } = await api.get<GradeRecord[]>(`/api/v1/lessons/${id}/grades/`);
-        const gradeList: GradeRecord[] = Array.isArray(gradesData)
-          ? gradesData
-          : ((gradesData as any)?.results ?? []);
+        const gradeList: GradeRecord[] = Array.isArray(gradesData) ? gradesData : ((gradesData as any)?.results ?? []);
         gradeList.forEach((g: any) => {
           const sid = g.student_id ?? g.student?.id ?? g.student;
           if (sid && init[sid]) {
             init[sid].score = String(Math.round(Number(g.score ?? 0)) || '');
           }
         });
-      } catch { /* grades may not exist yet */ }
+      } catch { /* grades may not exist */ }
 
       setAttendance(init);
     } catch {
@@ -177,51 +191,61 @@ export default function LessonAttendancePage() {
     return () => window.removeEventListener('beforeunload', handler);
   }, [dirty]);
 
+  // ── Handlers ─────────────────────────────────────────────────────────────────
+
   function toggleStatus(studentId: string, st: 'present' | 'absent' | 'late') {
-    if (saved) return;
+    if (isFinished) return;
     setAttendance((a) => ({
       ...a,
-      [studentId]: {
-        ...a[studentId],
-        status: a[studentId]?.status === st ? null : st,
-      },
+      [studentId]: { ...a[studentId], status: a[studentId]?.status === st ? null : st },
     }));
     setDirty(true);
   }
 
   function setNote(studentId: string, note: string) {
-    if (saved) return;
+    if (isFinished) return;
     setAttendance((a) => ({ ...a, [studentId]: { ...a[studentId], note } }));
     setDirty(true);
   }
 
   function setScore(studentId: string, raw: string) {
-    if (saved) return;
+    if (isFinished) return;
     if (raw !== '' && (isNaN(Number(raw)) || Number(raw) < 0 || Number(raw) > 100)) return;
     setAttendance((a) => ({ ...a, [studentId]: { ...a[studentId], score: raw } }));
     setDirty(true);
   }
 
+  // Dars boshlash
+  async function handleStart() {
+    setStarting(true);
+    try {
+      const { data } = await api.post<LessonDetail>(`/api/v1/lessons/${id}/start/`);
+      setLesson(data);
+      toast.success('Dars boshlandi');
+    } catch {
+      toast.error('Xatolik yuz berdi');
+    } finally {
+      setStarting(false);
+    }
+  }
+
+  // Saqlash — tasdiq so'rab
   async function handleSave() {
     setSaving(true);
     try {
-      const attendanceRows = students.reduce<{ student_id: string; status: string; note: string }[]>(
-        (acc, gs) => {
-          const s = getStudentData(gs);
-          const entry = attendance[s.id];
-          if (entry?.status) acc.push({ student_id: s.id, status: entry.status, note: entry.note ?? '' });
-          return acc;
-        }, [],
-      );
+      const attendanceRows = students.reduce<{ student_id: string; status: string; note: string }[]>((acc, gs) => {
+        const s = getStudentData(gs);
+        const entry = attendance[s.id];
+        if (entry?.status) acc.push({ student_id: s.id, status: entry.status, note: entry.note ?? '' });
+        return acc;
+      }, []);
 
-      const gradeRows = students.reduce<{ student_id: string; score: number }[]>(
-        (acc, gs) => {
-          const s = getStudentData(gs);
-          const entry = attendance[s.id];
-          if (entry?.score) acc.push({ student_id: s.id, score: parseInt(entry.score, 10) });
-          return acc;
-        }, [],
-      );
+      const gradeRows = students.reduce<{ student_id: string; score: number }[]>((acc, gs) => {
+        const s = getStudentData(gs);
+        const entry = attendance[s.id];
+        if (entry?.score) acc.push({ student_id: s.id, score: parseInt(entry.score, 10) });
+        return acc;
+      }, []);
 
       await api.post(`/api/v1/lessons/${id}/attendance/`, attendanceRows);
       if (gradeRows.length > 0) {
@@ -229,7 +253,9 @@ export default function LessonAttendancePage() {
       }
 
       setDirty(false);
-      setSaved(true);
+      setShowConfirm(false);
+      // Refresh lesson to get updated status/finished_at
+      await fetchLesson();
       toast.success('Davomat saqlandi');
     } catch (err: any) {
       toast.error(err?.response?.data?.detail ?? 'Xatolik yuz berdi');
@@ -250,6 +276,8 @@ export default function LessonAttendancePage() {
     }
   }
 
+  // ── Summary ──────────────────────────────────────────────────────────────────
+
   const entries = Object.values(attendance);
   const summary = {
     present: entries.filter((e) => e.status === 'present').length,
@@ -257,6 +285,8 @@ export default function LessonAttendancePage() {
     late: entries.filter((e) => e.status === 'late').length,
     unmarked: entries.filter((e) => !e.status).length,
   };
+
+  // ── Loading ───────────────────────────────────────────────────────────────────
 
   if (loadingLesson) {
     return (
@@ -280,21 +310,32 @@ export default function LessonAttendancePage() {
   const groupId = getGroupId(lesson);
   const groupName = getGroupName(lesson);
 
+  // ── Status badge ──────────────────────────────────────────────────────────────
+
+  const statusBadge = {
+    pending: { label: 'Boshlanmagan', cls: 'bg-gray-100 text-gray-600 border-gray-200' },
+    ongoing: { label: 'Jarayonda', cls: 'bg-green-100 text-green-700 border-green-200' },
+    finished: { label: 'Tugadi', cls: 'bg-blue-50 text-blue-700 border-blue-200' },
+  }[lesson.status];
+
+  // ── Render ────────────────────────────────────────────────────────────────────
+
   return (
     <div className="space-y-5">
       <Toaster position="top-right" />
 
-      {/* Header */}
+      {/* ── Header ── */}
       <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
         <div className="flex items-start gap-3">
           <button
             onClick={() => groupId ? router.push(`/${locale}/groups/${groupId}`) : router.back()}
-            className="mt-1 p-1.5 rounded hover:bg-gray-100 text-gray-500 hover:text-gray-800 transition-colors"
+            className="mt-1 p-1.5 rounded hover:bg-gray-100 text-gray-500 transition-colors"
           >
             <ArrowLeft className="w-4 h-4" />
           </button>
           <div>
-            <div className="flex items-center gap-2">
+            {/* Topic */}
+            <div className="flex items-center gap-2 flex-wrap">
               {editingTopic ? (
                 <div className="flex items-center gap-1.5">
                   <input
@@ -305,55 +346,86 @@ export default function LessonAttendancePage() {
                       if (e.key === 'Enter') handleSaveTopic();
                       if (e.key === 'Escape') setEditingTopic(false);
                     }}
-                    className="text-xl font-bold text-gray-900 border-b-2 border-blue-500 outline-none bg-transparent min-w-[180px]"
+                    className="text-xl font-bold text-gray-900 border-b-2 border-blue-500 outline-none bg-transparent min-w-[200px]"
                     autoFocus
                   />
-                  <button onClick={handleSaveTopic} className="p-1 text-green-600 hover:bg-green-50 rounded transition-colors">
+                  <button onClick={handleSaveTopic} className="p-1 text-green-600 hover:bg-green-50 rounded">
                     <Check className="w-4 h-4" />
                   </button>
-                  <button onClick={() => setEditingTopic(false)} className="p-1 text-gray-400 hover:bg-gray-100 rounded transition-colors">
+                  <button onClick={() => setEditingTopic(false)} className="p-1 text-gray-400 hover:bg-gray-100 rounded">
                     <X className="w-4 h-4" />
                   </button>
                 </div>
               ) : (
                 <>
                   <h1 className="text-xl font-bold text-gray-900">{lesson.topic || 'Dars'}</h1>
-                  <button
-                    onClick={() => { setTopicDraft(lesson.topic ?? ''); setEditingTopic(true); }}
-                    className="p-1 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded transition-colors"
-                  >
-                    <Pencil className="w-3.5 h-3.5" />
-                  </button>
+                  {!isFinished && (
+                    <button
+                      onClick={() => { setTopicDraft(lesson.topic ?? ''); setEditingTopic(true); }}
+                      className="p-1 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded"
+                    >
+                      <Pencil className="w-3.5 h-3.5" />
+                    </button>
+                  )}
                 </>
               )}
+              {/* Status badge */}
+              <span className={cn('inline-flex items-center px-2 py-0.5 text-xs font-medium border rounded-full', statusBadge.cls)}>
+                {statusBadge.label}
+              </span>
             </div>
-            <p className="text-sm text-gray-500 mt-0.5">
-              {groupName && <>{groupName} &middot; </>}
-              {formatDMY(lesson.date)}
-              {/* ✅ Saqlangan bo'lsa "Saqlangan" badge chiqaradi */}
-              {saved
-                ? <span className="ml-2 text-green-600 text-xs font-medium">✓ Saqlangan</span>
-                : dirty && <span className="ml-2 text-orange-500 text-xs font-medium">● Saqlanmagan o&apos;zgarishlar</span>
-              }
-            </p>
+
+            {/* Subtitle */}
+            <div className="flex items-center gap-3 mt-1 flex-wrap">
+              <p className="text-sm text-gray-500">
+                {groupName && <>{groupName} &middot; </>}
+                {formatDMY(lesson.date)}
+              </p>
+              {/* Dars vaqti */}
+              {(lesson.started_at || lesson.finished_at) && (
+                <span className="inline-flex items-center gap-1 text-xs text-gray-500 bg-gray-100 px-2 py-0.5 rounded">
+                  <Clock className="w-3 h-3" />
+                  {formatTime(lesson.started_at)}
+                  {lesson.finished_at && <> — {formatTime(lesson.finished_at)}</>}
+                </span>
+              )}
+              {dirty && !isFinished && (
+                <span className="text-orange-500 text-xs font-medium">● Saqlanmagan o&apos;zgarishlar</span>
+              )}
+            </div>
           </div>
         </div>
 
-        {/* ✅ Saqlangandan keyin button disabled */}
-        <button
-          onClick={handleSave}
-          disabled={saving || saved}
-          className={cn(
-            'flex items-center gap-1.5 px-4 py-2 text-white text-sm font-medium rounded transition-colors self-start',
-            saved ? 'bg-gray-400 cursor-not-allowed' : 'bg-green-600 hover:bg-green-700 disabled:opacity-60',
+        {/* Action buttons */}
+        <div className="flex gap-2 flex-shrink-0">
+          {isPending && (
+            <button
+              onClick={handleStart}
+              disabled={starting}
+              className="flex items-center gap-1.5 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded hover:bg-blue-700 disabled:opacity-60 transition-colors"
+            >
+              {starting ? 'Boshlanmoqda...' : 'Darsni boshlash'}
+            </button>
           )}
-        >
-          <Save className="w-4 h-4" />
-          {saving ? 'Saqlanmoqda...' : saved ? 'Saqlandi' : 'Saqlash'}
-        </button>
+          {isOngoing && (
+            <button
+              onClick={() => setShowConfirm(true)}
+              disabled={saving}
+              className="flex items-center gap-1.5 px-4 py-2 bg-green-600 text-white text-sm font-medium rounded hover:bg-green-700 disabled:opacity-60 transition-colors"
+            >
+              <Save className="w-4 h-4" />
+              Saqlash
+            </button>
+          )}
+          {isFinished && (
+            <span className="inline-flex items-center gap-1.5 px-4 py-2 bg-gray-100 text-gray-600 text-sm font-medium rounded">
+              <Check className="w-4 h-4 text-green-600" /> Saqlandi
+            </span>
+          )}
+        </div>
       </div>
 
-      {/* Summary bar */}
+      {/* ── Summary bar ── */}
       <div className="flex flex-wrap gap-2">
         {([
           { label: 'Keldi', count: summary.present, color: 'bg-green-50 text-green-700 border-green-200' },
@@ -368,7 +440,15 @@ export default function LessonAttendancePage() {
         ))}
       </div>
 
-      {/* Attendance table */}
+      {/* ── Pending notice ── */}
+      {isPending && (
+        <div className="flex items-center gap-3 px-4 py-3 bg-yellow-50 border border-yellow-200 rounded text-sm text-yellow-700">
+          <Clock className="w-4 h-4 flex-shrink-0" />
+          Davomat olish uchun avval darsni boshlang.
+        </div>
+      )}
+
+      {/* ── Attendance table ── */}
       <div className="bg-white rounded border border-gray-200 shadow-sm overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-sm min-w-[680px]">
@@ -405,27 +485,27 @@ export default function LessonAttendancePage() {
                           !entry.status && 'hover:bg-gray-50',
                         )}
                       >
-                        <td className="px-4 py-3 text-gray-400 text-xs">{idx + 1}</td>
+                        <td className="px-4 py-3 text-gray-500 text-sm">{idx + 1}</td>
                         <td className="px-4 py-3 font-medium text-gray-900">{s.name || '—'}</td>
                         <td className="px-4 py-3 text-gray-600">{s.phone || '—'}</td>
 
-                        {/* ✅ Davomat tugmalari — saved bo'lsa disabled */}
+                        {/* Davomat tugmalari */}
                         <td className="px-4 py-3">
                           <div className="flex gap-1.5">
                             {(['present', 'absent', 'late'] as const).map((st) => (
                               <button
                                 key={st}
                                 onClick={() => toggleStatus(s.id, st)}
-                                disabled={saved}
+                                disabled={isFinished || isPending}
                                 className={cn(
                                   'px-2.5 py-1 text-xs font-medium rounded border transition-colors',
-                                  saved && 'cursor-not-allowed',
+                                  (isFinished || isPending) && 'cursor-not-allowed opacity-60',
                                   st === 'present' && entry.status === 'present' && 'bg-green-500 text-white border-green-500',
-                                  st === 'present' && entry.status !== 'present' && 'border-gray-300 text-gray-600',
+                                  st === 'present' && entry.status !== 'present' && 'border-gray-300 text-gray-600 hover:bg-green-50',
                                   st === 'absent' && entry.status === 'absent' && 'bg-red-500 text-white border-red-500',
-                                  st === 'absent' && entry.status !== 'absent' && 'border-gray-300 text-gray-600',
+                                  st === 'absent' && entry.status !== 'absent' && 'border-gray-300 text-gray-600 hover:bg-red-50',
                                   st === 'late' && entry.status === 'late' && 'bg-yellow-500 text-white border-yellow-500',
-                                  st === 'late' && entry.status !== 'late' && 'border-gray-300 text-gray-600',
+                                  st === 'late' && entry.status !== 'late' && 'border-gray-300 text-gray-600 hover:bg-yellow-50',
                                 )}
                               >
                                 {st === 'present' ? '✓ Keldi' : st === 'absent' ? '○ Kelmadi' : '⏰ Kech'}
@@ -434,7 +514,7 @@ export default function LessonAttendancePage() {
                           </div>
                         </td>
 
-                        {/* ✅ Baho — saved bo'lsa disabled */}
+                        {/* Baho */}
                         <td className="px-4 py-3">
                           <input
                             type="number"
@@ -442,21 +522,21 @@ export default function LessonAttendancePage() {
                             max={100}
                             value={entry.score}
                             onChange={(e) => setScore(s.id, e.target.value)}
-                            disabled={saved}
+                            disabled={isFinished || isPending}
                             placeholder="—"
-                            className="w-16 px-2 py-1 border border-gray-300 rounded text-xs text-center focus:outline-none focus:ring-1 focus:ring-blue-500 disabled:opacity-60 disabled:cursor-not-allowed disabled:bg-gray-50"
+                            className="w-16 px-2 py-1 border border-gray-300 rounded text-sm text-center focus:outline-none focus:ring-1 focus:ring-blue-500 disabled:opacity-60 disabled:cursor-not-allowed disabled:bg-gray-50"
                           />
                         </td>
 
-                        {/* ✅ Izoh — saved bo'lsa disabled */}
+                        {/* Izoh */}
                         <td className="px-4 py-3">
                           <input
                             type="text"
                             value={entry.note}
                             onChange={(e) => setNote(s.id, e.target.value)}
-                            disabled={saved}
+                            disabled={isFinished || isPending}
                             placeholder="Sabab..."
-                            className="w-full px-2 py-1 border border-gray-200 rounded text-xs focus:outline-none focus:ring-1 focus:ring-blue-500 bg-transparent placeholder-gray-400 disabled:opacity-60 disabled:cursor-not-allowed"
+                            className="w-full px-2 py-1 border border-gray-200 rounded text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 bg-transparent placeholder-gray-400 disabled:opacity-60 disabled:cursor-not-allowed"
                           />
                         </td>
                       </tr>
@@ -467,15 +547,42 @@ export default function LessonAttendancePage() {
         </div>
       </div>
 
-      {dirty && !saved && (
+      {/* ── Tasdiqlash dialogi ── */}
+      <Dialog open={showConfirm} onOpenChange={setShowConfirm}>
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Davomatni tasdiqlash</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-gray-600 mt-1">
+            Ushbu dars ma&apos;lumotlarini tasdiqlaysizmi? Saqlangandan keyin tahrirlash imkoni bo&apos;lmaydi.
+          </p>
+          <div className="flex gap-3 mt-4">
+            <button
+              onClick={() => setShowConfirm(false)}
+              className="flex-1 px-4 py-2 border border-gray-300 text-sm font-medium rounded hover:bg-gray-50"
+            >
+              Yo&apos;q
+            </button>
+            <button
+              onClick={handleSave}
+              disabled={saving}
+              className="flex-1 px-4 py-2 bg-green-600 text-white text-sm font-medium rounded hover:bg-green-700 disabled:opacity-60"
+            >
+              {saving ? 'Saqlanmoqda...' : 'Tasdiqlayman'}
+            </button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Mobile sticky save */}
+      {isOngoing && dirty && (
         <div className="fixed bottom-4 right-4 sm:hidden z-40">
           <button
-            onClick={handleSave}
-            disabled={saving}
-            className="flex items-center gap-2 px-5 py-3 bg-green-600 text-white text-sm font-medium rounded-full shadow-lg hover:bg-green-700 disabled:opacity-60 transition-colors"
+            onClick={() => setShowConfirm(true)}
+            className="flex items-center gap-2 px-5 py-3 bg-green-600 text-white text-sm font-medium rounded-full shadow-lg hover:bg-green-700 transition-colors"
           >
             <Save className="w-4 h-4" />
-            {saving ? 'Saqlanmoqda...' : 'Saqlash'}
+            Saqlash
           </button>
         </div>
       )}

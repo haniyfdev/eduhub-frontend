@@ -440,14 +440,6 @@ export default function LessonAttendancePage() {
         ))}
       </div>
 
-      {/* ── Pending notice ── */}
-      {isPending && (
-        <div className="flex items-center gap-3 px-4 py-3 bg-yellow-50 border border-yellow-200 rounded text-sm text-yellow-700">
-          <Clock className="w-4 h-4 flex-shrink-0" />
-          Davomat olish uchun avval darsni boshlang.
-        </div>
-      )}
-
       {/* ── Attendance table ── */}
       <div className="bg-white rounded border border-gray-200 shadow-sm overflow-hidden">
         <div className="overflow-x-auto">

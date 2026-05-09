@@ -502,7 +502,7 @@ export default function GroupDetailPage() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="bg-gray-50 border-b border-gray-200">
-                  {['#', 'Sana', 'Hafta kuni', 'Mavzu', 'Holat', 'Dars vaqti'].map((h) => (
+                  {['#', 'Sana', 'Hafta kuni', 'Mavzu', 'Dars vaqti'].map((h) => (
                     <th key={h} className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">{h}</th>
                   ))}
                 </tr>
@@ -521,11 +521,14 @@ export default function GroupDetailPage() {
                         ? ['Yakshanba', 'Dushanba', 'Seshanba', 'Chorshanba', 'Payshanba', 'Juma', 'Shanba'][new Date(lesson.date).getDay()]
                         : '—';
                       return (
-                        <tr
-                          key={lesson.id}
-                          className="hover:bg-gray-50 cursor-pointer transition-colors"
-                          onClick={() => router.push(`/${locale}/lessons/${lesson.id}`)}
-                        >
+                          <tr
+                            key={lesson.id}
+                            className={cn(
+                              'cursor-pointer transition-colors',
+                              lesson.status === 'ongoing' ? 'bg-green-50 hover:bg-green-100' : 'hover:bg-gray-50'
+                            )}
+                            onClick={() => router.push(`/${locale}/lessons/${lesson.id}`)}
+                          >
                           <td className="px-4 py-3 text-gray-500 text-sm">{idx + 1}</td>
                           <td className="px-4 py-3 text-gray-700">{formatDMY(lesson.date)}</td>
                           <td className="px-4 py-3 text-gray-600">{weekDay}</td>

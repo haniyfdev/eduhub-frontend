@@ -27,6 +27,7 @@ interface GroupStudentRaw {
   student_id?: string;
   first_name?: string;
   last_name?: string;
+  birth_date?: string | null;
   phone?: string;
 }
 
@@ -53,12 +54,14 @@ function getStudentData(gs: GroupStudentRaw) {
       id: gs.student.id,
       name: `${gs.student.first_name} ${gs.student.last_name}`.trim(),
       phone: gs.student.phone,
+      birth_date: (gs.student as any).birth_date ?? null,
     };
   }
   return {
     id: gs.student_id ?? gs.id,
     name: `${gs.first_name ?? ''} ${gs.last_name ?? ''}`.trim(),
     phone: gs.phone ?? '',
+    birth_date: gs.birth_date ?? null,
   };
 }
 
@@ -167,12 +170,17 @@ export default function LessonAttendancePage() {
 
   useEffect(() => { fetchLesson(); }, [fetchLesson]);
 
-  useEffect(() => {
-    if (!lesson) return;
-    const groupId = getGroupId(lesson);
-    if (groupId) fetchStudentsAndAttendance(groupId);
-    if (lesson.status === 'finished') setSaved(true);
+const attendanceFetchedRef = useRef(false);
+
+useEffect(() => {
+  if (!lesson) return;
+  if (attendanceFetchedRef.current) return;
+  attendanceFetchedRef.current = true;
+  const groupId = getGroupId(lesson);
+  if (groupId) fetchStudentsAndAttendance(groupId);
+  if (lesson.status === 'finished') setSaved(true);
   }, [lesson, fetchStudentsAndAttendance]);
+
   useEffect(() => {
     const handler = (e: BeforeUnloadEvent) => {
       if (dirty) { e.preventDefault(); e.returnValue = ''; }
@@ -419,7 +427,7 @@ export default function LessonAttendancePage() {
               <tr className="bg-gray-50 border-b border-gray-200">
                 <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide w-10">#</th>
                 <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Ism</th>
-                <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Telefon</th>
+                <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Tug'ilgan yil</th>
                 <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide min-w-[240px]">Davomat</th>
                 <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide w-20">Baho</th>
                 <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Izoh</th>
@@ -450,7 +458,7 @@ export default function LessonAttendancePage() {
                       >
                         <td className="px-4 py-3 text-gray-500">{idx + 1}</td>
                         <td className="px-4 py-3 font-medium text-gray-900">{s.name || '—'}</td>
-                        <td className="px-4 py-3 text-gray-600">{s.phone || '—'}</td>
+                        <td className="px-4 py-3 text-gray-600">{formatDMY((s as any).birth_date) || '—'}</td>
                         <td className="px-4 py-3">
                           <div className="flex gap-1.5">
                             {(['present', 'absent', 'late'] as const).map((st) => (

@@ -245,7 +245,7 @@ export default function GroupDetailPage() {
     setSavingLesson(true);
     try {
       await api.post('/api/v1/lessons/', {
-        group: id,
+        group_id: id,
         topic: lessonForm.topic || 'Dars',
         date: new Date().toISOString().slice(0, 10),
       });

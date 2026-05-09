@@ -101,6 +101,7 @@ export default function LessonAttendancePage() {
   const [editingTopic, setEditingTopic] = useState(false);
   const [topicDraft, setTopicDraft] = useState('');
   const topicInputRef = useRef<HTMLInputElement>(null);
+  const attendanceFetchedRef = useRef(false);
 
   const isFinished = lesson?.status === 'finished';
   const isOngoing = lesson?.status === 'ongoing';
@@ -170,16 +171,14 @@ export default function LessonAttendancePage() {
 
   useEffect(() => { fetchLesson(); }, [fetchLesson]);
 
-const attendanceFetchedRef = useRef(false);
-
 useEffect(() => {
   if (!lesson) return;
+  if (lesson.status === 'finished') setSaved(true);
   if (attendanceFetchedRef.current) return;
   attendanceFetchedRef.current = true;
   const groupId = getGroupId(lesson);
   if (groupId) fetchStudentsAndAttendance(groupId);
-  if (lesson.status === 'finished') setSaved(true);
-  }, [lesson, fetchStudentsAndAttendance]);
+}, [lesson, fetchStudentsAndAttendance]);
 
   useEffect(() => {
     const handler = (e: BeforeUnloadEvent) => {

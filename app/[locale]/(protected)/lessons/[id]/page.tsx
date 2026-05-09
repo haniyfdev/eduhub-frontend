@@ -92,6 +92,7 @@ export default function LessonAttendancePage() {
   const [attendance, setAttendance] = useState<Record<string, AttendanceEntry>>({});
   const [dirty, setDirty] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
   const [starting, setStarting] = useState(false);
   const [editingTopic, setEditingTopic] = useState(false);
@@ -170,8 +171,8 @@ export default function LessonAttendancePage() {
     if (!lesson) return;
     const groupId = getGroupId(lesson);
     if (groupId) fetchStudentsAndAttendance(groupId);
+    if (lesson.status === 'finished') setSaved(true);
   }, [lesson, fetchStudentsAndAttendance]);
-
   useEffect(() => {
     const handler = (e: BeforeUnloadEvent) => {
       if (dirty) { e.preventDefault(); e.returnValue = ''; }

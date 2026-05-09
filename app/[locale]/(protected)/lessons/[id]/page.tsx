@@ -23,7 +23,7 @@ interface LessonDetail {
 
 interface GroupStudentRaw {
   id: string;
-  student?: { id: string; first_name: string; last_name: string; phone: string };
+  student?: { id: string; first_name: string; last_name: string; phone: string; birth_date?: string | null };
   student_id?: string;
   first_name?: string;
   last_name?: string;
@@ -53,14 +53,12 @@ function getStudentData(gs: GroupStudentRaw) {
     return {
       id: gs.student.id,
       name: `${gs.student.first_name} ${gs.student.last_name}`.trim(),
-      phone: gs.student.phone,
-      birth_date: (gs.student as any).birth_date ?? null,
+      birth_date: gs.student.birth_date ?? null,
     };
   }
   return {
     id: gs.student_id ?? gs.id,
     name: `${gs.first_name ?? ''} ${gs.last_name ?? ''}`.trim(),
-    phone: gs.phone ?? '',
     birth_date: gs.birth_date ?? null,
   };
 }
@@ -100,12 +98,15 @@ export default function LessonAttendancePage() {
   const [starting, setStarting] = useState(false);
   const [editingTopic, setEditingTopic] = useState(false);
   const [topicDraft, setTopicDraft] = useState('');
+
   const topicInputRef = useRef<HTMLInputElement>(null);
+  // Attendance faqat bir marta fetch qilinadi
   const attendanceFetchedRef = useRef(false);
 
   const isFinished = lesson?.status === 'finished';
   const isOngoing = lesson?.status === 'ongoing';
   const isPending = lesson?.status === 'pending';
+  const isLocked = isFinished || saved;
 
   const fetchLesson = useCallback(async () => {
     setLoadingLesson(true);
@@ -113,6 +114,8 @@ export default function LessonAttendancePage() {
       const { data } = await api.get<LessonDetail>(`/api/v1/lessons/${id}/`);
       setLesson(data);
       setTopicDraft(data.topic ?? '');
+      // finished bo'lsa lock
+      if (data.status === 'finished') setSaved(true);
     } catch {
       toast.error("Dars ma'lumotlari yuklanmadi");
     } finally {
@@ -171,14 +174,14 @@ export default function LessonAttendancePage() {
 
   useEffect(() => { fetchLesson(); }, [fetchLesson]);
 
-useEffect(() => {
-  if (!lesson) return;
-  if (lesson.status === 'finished') setSaved(true);
-  if (attendanceFetchedRef.current) return;
-  attendanceFetchedRef.current = true;
-  const groupId = getGroupId(lesson);
-  if (groupId) fetchStudentsAndAttendance(groupId);
-}, [lesson, fetchStudentsAndAttendance]);
+  useEffect(() => {
+    if (!lesson) return;
+    // Faqat bir marta fetch
+    if (attendanceFetchedRef.current) return;
+    attendanceFetchedRef.current = true;
+    const groupId = getGroupId(lesson);
+    if (groupId) fetchStudentsAndAttendance(groupId);
+  }, [lesson, fetchStudentsAndAttendance]);
 
   useEffect(() => {
     const handler = (e: BeforeUnloadEvent) => {
@@ -189,7 +192,7 @@ useEffect(() => {
   }, [dirty]);
 
   function toggleStatus(studentId: string, st: 'present' | 'absent' | 'late') {
-    if (isFinished) return;
+    if (isLocked) return;
     setAttendance((a) => ({
       ...a,
       [studentId]: { ...a[studentId], status: a[studentId]?.status === st ? null : st },
@@ -198,13 +201,13 @@ useEffect(() => {
   }
 
   function setNote(studentId: string, note: string) {
-    if (isFinished) return;
+    if (isLocked) return;
     setAttendance((a) => ({ ...a, [studentId]: { ...a[studentId], note } }));
     setDirty(true);
   }
 
   function setScore(studentId: string, raw: string) {
-    if (isFinished) return;
+    if (isLocked) return;
     if (raw !== '' && (isNaN(Number(raw)) || Number(raw) < 0 || Number(raw) > 100)) return;
     setAttendance((a) => ({ ...a, [studentId]: { ...a[studentId], score: raw } }));
     setDirty(true);
@@ -247,7 +250,10 @@ useEffect(() => {
 
       setDirty(false);
       setShowConfirm(false);
-      await fetchLesson();
+      setSaved(true); // ✅ lock qilamiz
+      // lesson ni refresh qilamiz lekin attendance qayta fetch bo'lmaydi (ref=true)
+      const { data } = await api.get<LessonDetail>(`/api/v1/lessons/${id}/`);
+      setLesson(data);
       toast.success('Davomat saqlandi');
     } catch (err: any) {
       toast.error(err?.response?.data?.detail ?? 'Xatolik yuz berdi');
@@ -338,7 +344,7 @@ useEffect(() => {
               ) : (
                 <>
                   <h1 className="text-xl font-bold text-gray-900">{lesson.topic || 'Dars'}</h1>
-                  {!isFinished && (
+                  {!isLocked && (
                     <button
                       onClick={() => { setTopicDraft(lesson.topic ?? ''); setEditingTopic(true); }}
                       className="p-1 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded"
@@ -346,8 +352,7 @@ useEffect(() => {
                       <Pencil className="w-3.5 h-3.5" />
                     </button>
                   )}
-                  {/* ✅ Faqat ongoing da badge */}
-                  {isOngoing && (
+                  {isOngoing && !isLocked && (
                     <span className="inline-flex items-center px-2 py-0.5 text-xs font-medium border rounded-full bg-green-100 text-green-700 border-green-200">
                       Jarayonda
                     </span>
@@ -360,23 +365,21 @@ useEffect(() => {
                 {groupName && <>{groupName} &middot; </>}
                 {formatDMY(lesson.date)}
               </p>
-              {/* Dars vaqti — faqat boshlangan bo'lsa */}
               {startTime && (
                 <span className="inline-flex items-center gap-1 text-xs text-gray-500 bg-gray-100 px-2 py-0.5 rounded">
                   <Clock className="w-3 h-3" />
                   {startTime}{endTime ? ` — ${endTime}` : ''}
                 </span>
               )}
-              {dirty && !isFinished && (
+              {dirty && !isLocked && (
                 <span className="text-orange-500 text-xs font-medium">● Saqlanmagan o&apos;zgarishlar</span>
               )}
             </div>
           </div>
         </div>
 
-        {/* Buttons */}
         <div className="flex gap-2 flex-shrink-0">
-          {isPending && (
+          {isPending && !isLocked && (
             <button
               onClick={handleStart}
               disabled={starting}
@@ -385,7 +388,7 @@ useEffect(() => {
               {starting ? 'Boshlanmoqda...' : 'Darsni boshlash'}
             </button>
           )}
-          {isOngoing && !saved && (
+          {isOngoing && !isLocked && (
             <button
               onClick={() => setShowConfirm(true)}
               disabled={saving}
@@ -395,11 +398,11 @@ useEffect(() => {
               Saqlash
             </button>
           )}
-            {(isFinished || saved) && (
-          <span className="inline-flex items-center gap-1.5 px-4 py-2 bg-gray-100 text-gray-600 text-sm font-medium rounded">
-            <Check className="w-4 h-4 text-green-600" /> Saqlandi
-          </span>
-        )}
+          {isLocked && (
+            <span className="inline-flex items-center gap-1.5 px-4 py-2 bg-gray-100 text-gray-600 text-sm font-medium rounded">
+              <Check className="w-4 h-4 text-green-600" /> Saqlandi
+            </span>
+          )}
         </div>
       </div>
 
@@ -426,7 +429,7 @@ useEffect(() => {
               <tr className="bg-gray-50 border-b border-gray-200">
                 <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide w-10">#</th>
                 <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Ism</th>
-                <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Tug'ilgan yil</th>
+                <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Tug&apos;ilgan sana</th>
                 <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide min-w-[240px]">Davomat</th>
                 <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide w-20">Baho</th>
                 <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Izoh</th>
@@ -457,17 +460,17 @@ useEffect(() => {
                       >
                         <td className="px-4 py-3 text-gray-500">{idx + 1}</td>
                         <td className="px-4 py-3 font-medium text-gray-900">{s.name || '—'}</td>
-                        <td className="px-4 py-3 text-gray-600">{formatDMY((s as any).birth_date) || '—'}</td>
+                        <td className="px-4 py-3 text-gray-600">{formatDMY(s.birth_date) || '—'}</td>
                         <td className="px-4 py-3">
                           <div className="flex gap-1.5">
                             {(['present', 'absent', 'late'] as const).map((st) => (
                               <button
                                 key={st}
                                 onClick={() => toggleStatus(s.id, st)}
-                                disabled={isFinished || saved}
+                                disabled={isLocked}
                                 className={cn(
                                   'px-2.5 py-1 text-xs font-medium rounded border transition-colors',
-                                  isFinished && 'cursor-not-allowed opacity-60',
+                                  isLocked && 'cursor-not-allowed opacity-60',
                                   st === 'present' && entry.status === 'present' && 'bg-green-500 text-white border-green-500',
                                   st === 'present' && entry.status !== 'present' && 'border-gray-300 text-gray-600 hover:bg-green-50',
                                   st === 'absent' && entry.status === 'absent' && 'bg-red-500 text-white border-red-500',
@@ -488,7 +491,7 @@ useEffect(() => {
                             max={100}
                             value={entry.score}
                             onChange={(e) => setScore(s.id, e.target.value)}
-                            disabled={isFinished || saved}
+                            disabled={isLocked}
                             placeholder="—"
                             className="w-16 px-2 py-1 border border-gray-300 rounded text-sm text-center focus:outline-none focus:ring-1 focus:ring-blue-500 disabled:opacity-60 disabled:cursor-not-allowed disabled:bg-gray-50"
                           />
@@ -498,7 +501,7 @@ useEffect(() => {
                             type="text"
                             value={entry.note}
                             onChange={(e) => setNote(s.id, e.target.value)}
-                            disabled={isFinished || saved}
+                            disabled={isLocked}
                             placeholder="Sabab..."
                             className="w-full px-2 py-1 border border-gray-200 rounded text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 bg-transparent placeholder-gray-400 disabled:opacity-60 disabled:cursor-not-allowed"
                           />
@@ -539,7 +542,7 @@ useEffect(() => {
       </Dialog>
 
       {/* Mobile sticky */}
-      {isOngoing && dirty && (
+      {isOngoing && !isLocked && dirty && (
         <div className="fixed bottom-4 right-4 sm:hidden z-40">
           <button
             onClick={() => setShowConfirm(true)}

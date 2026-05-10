@@ -133,7 +133,8 @@ export default function StudentsPage() {
   const fieldErrors = {
     first_name: !form.first_name ? 'Ism majburiy' : form.first_name.length < 2 ? 'Kamida 2 harf' : form.first_name.length > 50 ? "Ko'pi bilan 50 harf" : '',
     last_name: !form.last_name ? 'Familiya majburiy' : form.last_name.length < 2 ? 'Kamida 2 harf' : form.last_name.length > 50 ? "Ko'pi bilan 50 harf" : '',
-    phone: form.phone.replace(/\D/g, '').length !== 9 ? "To'liq 9 raqam kiriting" : '',
+    phone: form.phone.replace(/\D/g, '').length !== 9 ? "To'liq 9 raqam kiriting" : '', course_id: !form.course_id ? 'Kurs majburiy' : '',
+    birth_date: !form.birth_date ? "Tug'ilgan sana majburiy" : '',
     second_phone: form.second_phone && form.second_phone.replace(/\D/g, '').length !== 9 ? '9 raqam kiriting' : '',
   };
   const hasFormErrors = Object.values(fieldErrors).some(Boolean);
@@ -399,7 +400,7 @@ export default function StudentsPage() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Kurs (ixtiyoriy)</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Kurs <span className="text-red-500">*</span></label>
               <select value={form.course_id} onChange={(e) => setForm((f) => ({ ...f, course_id: e.target.value }))}
                 className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
                 <option value="">Tanlang</option>

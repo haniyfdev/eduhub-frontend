@@ -6,7 +6,6 @@ import toast, { Toaster } from 'react-hot-toast';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Pagination } from '@/components/pagination';
-import { DatePicker } from '@/components/date-picker';
 import api from '@/lib/axios';
 import { cn, formatPhone, formatDMY } from '@/lib/utils';
 import { Student, PaginatedResponse } from '@/types';

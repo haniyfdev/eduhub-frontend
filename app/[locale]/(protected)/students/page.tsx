@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState, useCallback, useRef } from 'react';
-import { Plus, Search } from 'lucide-react';
+import { Plus, Search, Send } from 'lucide-react';
 import toast, { Toaster } from 'react-hot-toast';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -47,6 +47,9 @@ export default function StudentsPage() {
   // ✅ FIX: useState o'rniga useRef — race condition va ESLint xatosi yo'qoladi
   const overdueIdsRef = useRef<Set<string>>(new Set());
   const [touched, setTouched] = useState<Record<string, boolean>>({});
+  const [phoneSelection, setPhoneSelection] = useState<Record<string, { phone1: boolean; phone2: boolean }>>({});
+  const [showSmsConfirm, setShowSmsConfirm] = useState(false);
+  const [sendingSms, setSendingSms] = useState(false);
 
   useEffect(() => {
     api.get<PaginatedResponse<{ student: string }>>('/api/v1/debts/?status=overdue&page_size=200')
@@ -72,6 +75,9 @@ export default function StudentsPage() {
       });
       setStudents(sorted);
       setCount(data.count);
+      const init: Record<string, { phone1: boolean; phone2: boolean }> = {};
+      sorted.forEach((s) => { init[s.id] = { phone1: false, phone2: false }; });
+      setPhoneSelection(init);
     } catch {
       setError(true);
       toast.error('Ma\'lumotlarni yuklashda xatolik');
@@ -152,11 +158,54 @@ export default function StudentsPage() {
     return '';
   }
 
+  const selectedSmsCount = students.reduce((acc, s) => {
+  const sel = phoneSelection[s.id];
+  if (sel?.phone1 && s.phone) acc++;
+  if (sel?.phone2 && s.second_phone) acc++;
+  return acc;
+}, 0);
+
+async function handleSendSms() {
+  setSendingSms(true);
+  let success = 0;
+  for (const s of students) {
+    const sel = phoneSelection[s.id];
+    const phones: string[] = [];
+    if (sel?.phone1 && s.phone) phones.push(s.phone);
+    if (sel?.phone2 && s.second_phone) phones.push(s.second_phone);
+    for (const phone of phones) {
+      try {
+        await api.post(`/api/v1/students/${s.id}/send-sms/`, { phone });
+        success++;
+      } catch { /* skip */ }
+    }
+  }
+  toast.success(`${success} ta SMS yuborildi`);
+  setShowSmsConfirm(false);
+  setSendingSms(false);
+}
+
   return (
     <div className="space-y-5">
       <Toaster position="top-right" />
       <div className="flex items-center justify-between">
         <h1 className="text-xl font-bold text-gray-900">O'quvchilar</h1>
+        <button onClick={() => setShowAdd(true)}
+          className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded hover:bg-blue-700 transition-colors">
+          <Plus className="w-4 h-4" /> Qo'shish
+        </button>
+      </div>
+
+      <div className="flex items-center gap-2">
+        {selectedSmsCount > 0 && (
+          <button
+            onClick={() => setShowSmsConfirm(true)}
+            className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded hover:bg-blue-700 transition-colors"
+          >
+            <Send className="w-4 h-4" />
+            SMS yuborish ({selectedSmsCount})
+          </button>
+        )}
         <button onClick={() => setShowAdd(true)}
           className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded hover:bg-blue-700 transition-colors">
           <Plus className="w-4 h-4" /> Qo'shish

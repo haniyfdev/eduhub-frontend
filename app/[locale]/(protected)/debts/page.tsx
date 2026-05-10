@@ -83,7 +83,7 @@ export default function DebtsPage() {
       // Init phone selections — default: phone1 checked
       const init: PhoneSelection = {};
       data.results.forEach((d) => {
-        init[d.id] = { phone1: true, phone2: false };
+        init[d.id] = { phone1: false, phone2: false };
       });
       setPhoneSelection(init);
     } catch {

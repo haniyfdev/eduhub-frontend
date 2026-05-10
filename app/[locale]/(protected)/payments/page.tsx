@@ -297,7 +297,7 @@ export default function PaymentsPage() {
             <table className="w-full text-sm">
               <thead className="sticky top-0 bg-gray-50 border-b border-gray-200">
                 <tr>
-                  {['#', 'Ism', "Tug'ilgan sana", 'Kurs', 'Kurs narxi', 'Guruh'].map((h) => (
+                  {['#', 'Ism', 'Guruh', "Tug'ilgan sana", 'Kurs', 'Kurs narxi'].map((h) => (
                     <th key={h} className="text-left px-4 py-2.5 text-xs font-semibold text-gray-500 uppercase tracking-wide">{h}</th>
                   ))}
                 </tr>
@@ -319,10 +319,10 @@ export default function PaymentsPage() {
                       >
                         <td className="px-4 py-3 text-gray-400">{idx + 1}</td>
                         <td className="px-4 py-3 font-medium text-gray-900">{row.first_name} {row.last_name}</td>
+                        <td className="px-4 py-3 font-medium text-gray-700">{row.group_display || '—'}</td>
                         <td className="px-4 py-3 text-gray-600">{formatDMY(row.birth_date) || '—'}</td>
                         <td className="px-4 py-3 text-gray-600">{row.course_name || '—'}</td>
                         <td className="px-4 py-3 text-gray-600">{row.course_price ? formatCurrency(row.course_price) : '—'}</td>
-                        <td className="px-4 py-3 font-medium text-gray-700">{row.group_display || '—'}</td>
                       </tr>
                     ))
                 }

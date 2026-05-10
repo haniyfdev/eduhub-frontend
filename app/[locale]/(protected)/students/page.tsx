@@ -12,9 +12,9 @@ import { cn, formatPhone, formatDMY } from '@/lib/utils';
 import { Student, PaginatedResponse } from '@/types';
 
 const STATUS_STYLES: Record<string, string> = {
-  pending: 'bg-yellow-50 text-yellow-700 border-yellow-200',
-  active: 'bg-green-50 text-green-700 border-green-200',
-  trial: 'bg-blue-50 text-blue-700 border-blue-200',
+  pending:  'bg-yellow-50 text-yellow-700 border-yellow-200',
+  active:   'bg-green-50 text-green-700 border-green-200',
+  trial:    'bg-blue-50 text-blue-700 border-blue-200',
   archived: 'bg-gray-100 text-gray-600 border-gray-200',
 };
 const STATUS_LABELS: Record<string, string> = {
@@ -32,25 +32,54 @@ const EMPTY_FORM = {
 type PhoneSelection = Record<string, { phone1: boolean; phone2: boolean }>;
 
 export default function StudentsPage() {
-  const [students, setStudents] = useState<Student[]>([]);
-  const [courses, setCourses] = useState<Course[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(false);
-  const [search, setSearch] = useState('');
+  const [students, setStudents]         = useState<Student[]>([]);
+  const [courses, setCourses]           = useState<Course[]>([]);
+  const [loading, setLoading]           = useState(true);
+  const [error, setError]               = useState(false);
+  const [search, setSearch]             = useState('');
   const [statusFilter, setStatusFilter] = useState('');
   const [courseFilter, setCourseFilter] = useState('');
-  const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(25);
-  const [count, setCount] = useState(0);
-  const [showAdd, setShowAdd] = useState(false);
-  const [saving, setSaving] = useState(false);
-  const [form, setForm] = useState(EMPTY_FORM);
+  const [page, setPage]                 = useState(1);
+  const [pageSize, setPageSize]         = useState(25);
+  const [count, setCount]               = useState(0);
+  const [showAdd, setShowAdd]           = useState(false);
+  const [saving, setSaving]             = useState(false);
+  const [form, setForm]                 = useState(EMPTY_FORM);
   const [archiveTarget, setArchiveTarget] = useState<{ id: string; name: string } | null>(null);
   const overdueIdsRef = useRef<Set<string>>(new Set());
-  const [touched, setTouched] = useState<Record<string, boolean>>({});
+  const [touched, setTouched]           = useState<Record<string, boolean>>({});
   const [phoneSelection, setPhoneSelection] = useState<PhoneSelection>({});
   const [showSmsConfirm, setShowSmsConfirm] = useState(false);
-  const [sendingSms, setSendingSms] = useState(false);
+  const [sendingSms, setSendingSms]     = useState(false);
+
+  // ── Keyboard refs ──────────────────────────────────────────────────────────
+  const firstNameRef = useRef<HTMLInputElement>(null);
+  const lastNameRef  = useRef<HTMLInputElement>(null);
+  const phoneRef     = useRef<HTMLInputElement>(null);
+  const phone2Ref    = useRef<HTMLInputElement>(null);
+  const saveRef      = useRef<HTMLButtonElement>(null);
+
+  function handleKey(
+    e: React.KeyboardEvent,
+    next?: React.RefObject<HTMLElement>,
+    prev?: React.RefObject<HTMLElement>,
+  ) {
+    if (e.key === 'Escape') {
+      setShowAdd(false);
+      setForm(EMPTY_FORM);
+      setTouched({});
+    }
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      next?.current?.focus();
+    }
+    if (e.key === 'Backspace' && (e.target as HTMLInputElement).value === '') {
+      e.preventDefault();
+      prev?.current?.focus();
+    }
+  }
+
+  // ── Data fetching ──────────────────────────────────────────────────────────
 
   useEffect(() => {
     api.get<PaginatedResponse<{ student: string }>>('/api/v1/debts/?status=overdue&page_size=200')
@@ -65,7 +94,7 @@ export default function StudentsPage() {
     setError(false);
     try {
       const params: Record<string, string | number> = { page, page_size: pageSize };
-      if (search) params.search = search;
+      if (search)       params.search = search;
       if (statusFilter) params.status = statusFilter;
       if (courseFilter) params.course = courseFilter;
       const { data } = await api.get<PaginatedResponse<Student>>('/api/v1/students/', { params });
@@ -81,7 +110,7 @@ export default function StudentsPage() {
       setPhoneSelection(init);
     } catch {
       setError(true);
-      toast.error('Ma\'lumotlarni yuklashda xatolik');
+      toast.error("Ma'lumotlarni yuklashda xatolik");
     } finally {
       setLoading(false);
     }
@@ -96,6 +125,8 @@ export default function StudentsPage() {
       .catch(() => {});
   }, []);
 
+  // ── SMS ────────────────────────────────────────────────────────────────────
+
   function togglePhone(id: string, key: 'phone1' | 'phone2') {
     setPhoneSelection((prev) => ({
       ...prev,
@@ -105,7 +136,7 @@ export default function StudentsPage() {
 
   const selectedSmsCount = students.reduce((acc, s) => {
     const sel = phoneSelection[s.id];
-    if (sel?.phone1 && s.phone) acc++;
+    if (sel?.phone1 && s.phone)        acc++;
     if (sel?.phone2 && s.second_phone) acc++;
     return acc;
   }, 0);
@@ -116,7 +147,7 @@ export default function StudentsPage() {
     for (const s of students) {
       const sel = phoneSelection[s.id];
       const phones: string[] = [];
-      if (sel?.phone1 && s.phone) phones.push(s.phone);
+      if (sel?.phone1 && s.phone)        phones.push(s.phone);
       if (sel?.phone2 && s.second_phone) phones.push(s.second_phone);
       for (const phone of phones) {
         try {
@@ -130,12 +161,15 @@ export default function StudentsPage() {
     setSendingSms(false);
   }
 
+  // ── Form validation ────────────────────────────────────────────────────────
+
   const fieldErrors = {
-    first_name: !form.first_name ? 'Ism majburiy' : form.first_name.length < 2 ? 'Kamida 2 harf' : form.first_name.length > 50 ? "Ko'pi bilan 50 harf" : '',
-    last_name: !form.last_name ? 'Familiya majburiy' : form.last_name.length < 2 ? 'Kamida 2 harf' : form.last_name.length > 50 ? "Ko'pi bilan 50 harf" : '',
-    phone: form.phone.replace(/\D/g, '').length !== 9 ? "To'liq 9 raqam kiriting" : '', course_id: !form.course_id ? 'Kurs majburiy' : '',
-    birth_date: !form.birth_date ? "Tug'ilgan sana majburiy" : '',
+    first_name:  !form.first_name  ? 'Ism majburiy'        : form.first_name.length  < 2 ? 'Kamida 2 harf'  : form.first_name.length  > 50 ? "Ko'pi bilan 50 harf" : '',
+    last_name:   !form.last_name   ? 'Familiya majburiy'   : form.last_name.length   < 2 ? 'Kamida 2 harf'  : form.last_name.length   > 50 ? "Ko'pi bilan 50 harf" : '',
+    phone:       form.phone.replace(/\D/g, '').length !== 9 ? "To'liq 9 raqam kiriting" : '',
     second_phone: form.second_phone && form.second_phone.replace(/\D/g, '').length !== 9 ? '9 raqam kiriting' : '',
+    course_id:   !form.course_id   ? 'Kurs majburiy'       : '',
+    birth_date:  !form.birth_date  ? "Tug'ilgan sana majburiy" : '',
   };
   const hasFormErrors = Object.values(fieldErrors).some(Boolean);
 
@@ -147,25 +181,27 @@ export default function StudentsPage() {
     return touched[field] ? (fieldErrors as Record<string, string>)[field] ?? '' : '';
   }
 
+  // ── Add student ────────────────────────────────────────────────────────────
+
   async function handleAddStudent(e: React.FormEvent) {
     e.preventDefault();
-    setTouched({ first_name: true, last_name: true, phone: true, second_phone: true });
+    setTouched({ first_name: true, last_name: true, phone: true, second_phone: true, course_id: true, birth_date: true });
     if (hasFormErrors) return;
     setSaving(true);
     try {
-      const body: Record<string, string | null> = {
-        first_name: form.first_name,
-        last_name: form.last_name,
-        phone: '+998' + form.phone.replace(/\D/g, ''),
-        second_phone: form.second_phone ? '+998' + form.second_phone.replace(/\D/g, '') : null,
-        birth_date: form.birth_date || null,
-        course: form.course_id || null,
+      await api.post('/api/v1/students/', {
+        first_name:      form.first_name,
+        last_name:       form.last_name,
+        phone:           '+998' + form.phone.replace(/\D/g, ''),
+        second_phone:    form.second_phone ? '+998' + form.second_phone.replace(/\D/g, '') : null,
+        birth_date:      form.birth_date || null,
+        course:          form.course_id || null,
         referral_source: form.referral_source || null,
-      };
-      await api.post('/api/v1/students/', body);
-      toast.success('O\'quvchi muvaffaqiyatli qo\'shildi');
+      });
+      toast.success("O'quvchi muvaffaqiyatli qo'shildi");
       setShowAdd(false);
       setForm(EMPTY_FORM);
+      setTouched({});
       fetchStudents();
     } catch (err: any) {
       const detail = err?.response?.data;
@@ -180,7 +216,7 @@ export default function StudentsPage() {
     if (!archiveTarget) return;
     try {
       await api.post(`/api/v1/students/${archiveTarget.id}/archive/`);
-      toast.success('O\'quvchi arxivlandi');
+      toast.success("O'quvchi arxivlandi");
       setArchiveTarget(null);
       fetchStudents();
     } catch {
@@ -189,10 +225,12 @@ export default function StudentsPage() {
   }
 
   function rowBg(s: Student): string {
-    if (s.status === 'archived') return 'bg-[#FFFBEB]';
-    if (overdueIdsRef.current.has(s.id)) return 'bg-[#FEF2F2]';
+    if (s.status === 'archived')              return 'bg-[#FFFBEB]';
+    if (overdueIdsRef.current.has(s.id))     return 'bg-[#FEF2F2]';
     return '';
   }
+
+  // ── Render ─────────────────────────────────────────────────────────────────
 
   return (
     <div className="space-y-5">
@@ -212,7 +250,7 @@ export default function StudentsPage() {
             </button>
           )}
           <button
-            onClick={() => setShowAdd(true)}
+            onClick={() => { setShowAdd(true); setTimeout(() => firstNameRef.current?.focus(), 100); }}
             className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded hover:bg-blue-700 transition-colors"
           >
             <Plus className="w-4 h-4" /> Qo&apos;shish
@@ -224,8 +262,10 @@ export default function StudentsPage() {
       <div className="flex gap-3">
         <div className="relative flex-1 max-w-xs">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-          <input type="text" value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Qidirish..."
-            className="w-full pl-9 pr-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+          <input
+            type="text" value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Qidirish..."
+            className="w-full pl-9 pr-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+          />
         </div>
         <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}
           className="px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-700">
@@ -238,9 +278,7 @@ export default function StudentsPage() {
         <select value={courseFilter} onChange={(e) => setCourseFilter(e.target.value)}
           className="px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-700">
           <option value="">Barcha kurslar</option>
-          {courses.map((c) => (
-            <option key={c.id} value={c.id}>{c.name}</option>
-          ))}
+          {courses.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
         </select>
       </div>
 
@@ -273,52 +311,34 @@ export default function StudentsPage() {
                     <tr key={s.id} className={cn('transition-colors hover:brightness-95', rowBg(s))}>
                       <td className="px-4 py-3 text-gray-400 text-xs">{(page - 1) * pageSize + idx + 1}</td>
                       <td className="px-4 py-3 font-medium text-gray-900">{s.first_name} {s.last_name}</td>
-
-                      {/* Telefon + checkbox */}
                       <td className="px-4 py-3">
                         <label className="flex items-center gap-2 cursor-pointer select-none">
-                          <input
-                            type="checkbox"
-                            checked={phoneSelection[s.id]?.phone1 ?? false}
-                            onChange={() => togglePhone(s.id, 'phone1')}
-                            className="rounded border-gray-300 flex-shrink-0"
-                          />
+                          <input type="checkbox" checked={phoneSelection[s.id]?.phone1 ?? false}
+                            onChange={() => togglePhone(s.id, 'phone1')} className="rounded border-gray-300 flex-shrink-0" />
                           <span className="text-gray-500">{formatPhone(s.phone)}</span>
                         </label>
                       </td>
-
-                      {/* Ota-ona tel + checkbox */}
                       <td className="px-4 py-3">
                         {s.second_phone ? (
                           <label className="flex items-center gap-2 cursor-pointer select-none">
-                            <input
-                              type="checkbox"
-                              checked={phoneSelection[s.id]?.phone2 ?? false}
-                              onChange={() => togglePhone(s.id, 'phone2')}
-                              className="rounded border-gray-300 flex-shrink-0"
-                            />
+                            <input type="checkbox" checked={phoneSelection[s.id]?.phone2 ?? false}
+                              onChange={() => togglePhone(s.id, 'phone2')} className="rounded border-gray-300 flex-shrink-0" />
                             <span className="text-gray-500">{formatPhone(s.second_phone)}</span>
                           </label>
                         ) : <span className="text-gray-400 px-4">—</span>}
                       </td>
-
                       <td className="px-4 py-3 text-gray-600">{formatDMY(s.birth_date)}</td>
                       <td className="px-4 py-3 text-gray-600">{s.course_name || '—'}</td>
                       <td className="px-4 py-3">
                         <span className={cn('inline-flex items-center px-2 py-0.5 text-xs font-medium border rounded',
-                          STATUS_STYLES[s.status] ?? 'bg-gray-100 text-gray-600 border-gray-200'
-                        )}>
+                          STATUS_STYLES[s.status] ?? 'bg-gray-100 text-gray-600 border-gray-200')}>
                           {STATUS_LABELS[s.status] ?? s.status}
                         </span>
                       </td>
                       <td className="px-4 py-3">
                         {s.status !== 'archived' && (
-                          <button
-                            onClick={() => setArchiveTarget({ id: s.id, name: `${s.first_name} ${s.last_name}` })}
-                            className="text-xs text-red-500 hover:underline"
-                          >
-                            Arxivlash
-                          </button>
+                          <button onClick={() => setArchiveTarget({ id: s.id, name: `${s.first_name} ${s.last_name}` })}
+                            className="text-xs text-red-500 hover:underline">Arxivlash</button>
                         )}
                       </td>
                     </tr>
@@ -329,89 +349,121 @@ export default function StudentsPage() {
         )}
       </div>
 
-      {/* Pagination */}
-      {!loading && (
-        <Pagination
-          page={page}
-          pageSize={pageSize}
-          count={count}
-          onPageChange={setPage}
-          onPageSizeChange={(ps) => { setPageSize(ps); setPage(1); }}
-        />
-      )}
+      <Pagination page={page} pageSize={pageSize} count={count}
+        onPageChange={setPage} onPageSizeChange={(ps) => { setPageSize(ps); setPage(1); }} />
 
-      {/* Add student dialog */}
-      <Dialog open={showAdd} onOpenChange={(open) => { if (!open) setForm(EMPTY_FORM); setShowAdd(open); }}>
+      {/* ══ Add Student Dialog ══ */}
+      <Dialog open={showAdd} onOpenChange={(open) => { if (!open) { setForm(EMPTY_FORM); setTouched({}); } setShowAdd(open); }}>
         <DialogContent className="sm:max-w-md max-h-[90vh] overflow-y-auto">
           <DialogHeader><DialogTitle>Yangi o&apos;quvchi</DialogTitle></DialogHeader>
           <form onSubmit={handleAddStudent} className="space-y-4 mt-2">
+
+            {/* Ism + Familiya */}
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Ism <span className="text-red-500">*</span></label>
-                <input value={form.first_name}
+                <input
+                  ref={firstNameRef}
+                  value={form.first_name}
                   onChange={(e) => setForm((f) => ({ ...f, first_name: e.target.value }))}
                   onBlur={() => touch('first_name')}
-                  className={cn('w-full px-3 py-2 border rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500', showErr('first_name') ? 'border-red-400' : 'border-gray-300')} />
+                  onKeyDown={(e) => handleKey(e, lastNameRef)}
+                  className={cn('w-full px-3 py-2 border rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500',
+                    showErr('first_name') ? 'border-red-400' : 'border-gray-300')}
+                />
                 {showErr('first_name') && <p className="text-xs text-red-500 mt-0.5">{showErr('first_name')}</p>}
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Familiya <span className="text-red-500">*</span></label>
-                <input value={form.last_name}
+                <input
+                  ref={lastNameRef}
+                  value={form.last_name}
                   onChange={(e) => setForm((f) => ({ ...f, last_name: e.target.value }))}
                   onBlur={() => touch('last_name')}
-                  className={cn('w-full px-3 py-2 border rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500', showErr('last_name') ? 'border-red-400' : 'border-gray-300')} />
+                  onKeyDown={(e) => handleKey(e, phoneRef, firstNameRef)}
+                  className={cn('w-full px-3 py-2 border rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500',
+                    showErr('last_name') ? 'border-red-400' : 'border-gray-300')}
+                />
                 {showErr('last_name') && <p className="text-xs text-red-500 mt-0.5">{showErr('last_name')}</p>}
               </div>
             </div>
 
+            {/* Telefon */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Telefon <span className="text-red-500">*</span></label>
               <div className="flex">
                 <span className="inline-flex items-center px-3 border border-r-0 border-gray-300 bg-gray-50 text-gray-500 text-sm rounded-l">+998</span>
-                <input type="tel" value={form.phone}
+                <input
+                  ref={phoneRef}
+                  type="tel"
+                  value={form.phone}
                   onChange={(e) => setForm((f) => ({ ...f, phone: e.target.value.replace(/\D/g, '').slice(0, 9) }))}
                   onBlur={() => touch('phone')}
+                  onKeyDown={(e) => handleKey(e, phone2Ref, lastNameRef)}
                   placeholder="XX XXX XX XX"
-                  className={cn('flex-1 px-3 py-2 border rounded-r text-sm focus:outline-none focus:ring-2 focus:ring-blue-500', showErr('phone') ? 'border-red-400' : 'border-gray-300')} />
+                  className={cn('flex-1 px-3 py-2 border rounded-r text-sm focus:outline-none focus:ring-2 focus:ring-blue-500',
+                    showErr('phone') ? 'border-red-400' : 'border-gray-300')}
+                />
               </div>
               {showErr('phone') && <p className="text-xs text-red-500 mt-0.5">{showErr('phone')}</p>}
             </div>
 
+            {/* Ota-ona tel */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Ota-ona telefoni</label>
               <div className="flex">
                 <span className="inline-flex items-center px-3 border border-r-0 border-gray-300 bg-gray-50 text-gray-500 text-sm rounded-l">+998</span>
-                <input type="tel" value={form.second_phone}
+                <input
+                  ref={phone2Ref}
+                  type="tel"
+                  value={form.second_phone}
                   onChange={(e) => setForm((f) => ({ ...f, second_phone: e.target.value.replace(/\D/g, '').slice(0, 9) }))}
                   onBlur={() => touch('second_phone')}
+                  onKeyDown={(e) => handleKey(e, saveRef, phoneRef)}
                   placeholder="XX XXX XX XX"
-                  className={cn('flex-1 px-3 py-2 border rounded-r text-sm focus:outline-none focus:ring-2 focus:ring-blue-500', showErr('second_phone') ? 'border-red-400' : 'border-gray-300')} />
+                  className={cn('flex-1 px-3 py-2 border rounded-r text-sm focus:outline-none focus:ring-2 focus:ring-blue-500',
+                    showErr('second_phone') ? 'border-red-400' : 'border-gray-300')}
+                />
               </div>
               {showErr('second_phone') && <p className="text-xs text-red-500 mt-0.5">{showErr('second_phone')}</p>}
             </div>
 
+            {/* Tug'ilgan sana */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Tug&apos;ilgan sana</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Tug&apos;ilgan sana <span className="text-red-500">*</span>
+              </label>
               <DatePicker
                 value={form.birth_date}
-                onChange={(iso) => setForm((f) => ({ ...f, birth_date: iso }))}
+                onChange={(iso) => { setForm((f) => ({ ...f, birth_date: iso })); touch('birth_date'); }}
                 maxYear={new Date().getFullYear() - 5}
               />
+              {showErr('birth_date') && <p className="text-xs text-red-500 mt-0.5">{showErr('birth_date')}</p>}
             </div>
 
+            {/* Kurs */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Kurs <span className="text-red-500">*</span></label>
-              <select value={form.course_id} onChange={(e) => setForm((f) => ({ ...f, course_id: e.target.value }))}
-                className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+              <select
+                value={form.course_id}
+                onChange={(e) => { setForm((f) => ({ ...f, course_id: e.target.value })); touch('course_id'); }}
+                className={cn('w-full px-3 py-2 border rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500',
+                  showErr('course_id') ? 'border-red-400' : 'border-gray-300')}
+              >
                 <option value="">Tanlang</option>
                 {courses.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
               </select>
+              {showErr('course_id') && <p className="text-xs text-red-500 mt-0.5">{showErr('course_id')}</p>}
             </div>
 
+            {/* Qayerdan eshitdi */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Qayerdan eshitdi</label>
-              <select value={form.referral_source} onChange={(e) => setForm((f) => ({ ...f, referral_source: e.target.value }))}
-                className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+              <select
+                value={form.referral_source}
+                onChange={(e) => setForm((f) => ({ ...f, referral_source: e.target.value }))}
+                className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
                 <option value="">Tanlang</option>
                 <option value="banner">Banner</option>
                 <option value="friend">Tanish</option>
@@ -422,10 +474,19 @@ export default function StudentsPage() {
             </div>
 
             <div className="flex gap-3 pt-2">
-              <button type="button" onClick={() => { setShowAdd(false); setForm(EMPTY_FORM); }}
-                className="flex-1 px-4 py-2 border border-gray-300 text-sm font-medium rounded hover:bg-gray-50">Bekor qilish</button>
-              <button type="submit" disabled={saving || hasFormErrors}
-                className="flex-1 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded hover:bg-blue-700 disabled:opacity-60">
+              <button
+                type="button"
+                onClick={() => { setShowAdd(false); setForm(EMPTY_FORM); setTouched({}); }}
+                className="flex-1 px-4 py-2 border border-gray-300 text-sm font-medium rounded hover:bg-gray-50"
+              >
+                Bekor qilish
+              </button>
+              <button
+                ref={saveRef}
+                type="submit"
+                disabled={saving || hasFormErrors}
+                className="flex-1 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded hover:bg-blue-700 disabled:opacity-60"
+              >
                 {saving ? 'Saqlanmoqda...' : 'Saqlash'}
               </button>
             </div>
@@ -433,7 +494,7 @@ export default function StudentsPage() {
         </DialogContent>
       </Dialog>
 
-      {/* Archive dialog */}
+      {/* ══ Archive Dialog ══ */}
       <Dialog open={!!archiveTarget} onOpenChange={(open) => { if (!open) setArchiveTarget(null); }}>
         <DialogContent className="sm:max-w-sm">
           <DialogHeader><DialogTitle>Arxivlash</DialogTitle></DialogHeader>
@@ -453,7 +514,7 @@ export default function StudentsPage() {
         </DialogContent>
       </Dialog>
 
-      {/* SMS confirm dialog */}
+      {/* ══ SMS Confirm Dialog ══ */}
       <Dialog open={showSmsConfirm} onOpenChange={setShowSmsConfirm}>
         <DialogContent className="sm:max-w-sm">
           <DialogHeader><DialogTitle>SMS yuborish</DialogTitle></DialogHeader>

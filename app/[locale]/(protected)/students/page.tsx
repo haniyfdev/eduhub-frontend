@@ -433,19 +433,18 @@ export default function StudentsPage() {
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 Tug&apos;ilgan sana <span className="text-red-500">*</span>
               </label>
-              <DatePicker
+              <input
+                type="date"
                 value={form.birth_date}
-                onChange={(iso) => { 
-                  setForm((f) => ({ ...f, birth_date: iso })); 
-                  touch('birth_date'); 
-                }}
-                minYear={1955}
-                maxYear={2025}
-                className="max-h-[200px] overflow-y-auto" // Dropdown bo'yini 60% gacha qisqartirish uchun
+                onChange={(e) => { setForm((f) => ({ ...f, birth_date: e.target.value })); touch('birth_date'); }}
+                min="1960-01-01"
+                max={`${new Date().getFullYear() - 4}-12-31`}
+                className={cn(
+                  'w-full px-3 py-2 border rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500',
+                  showErr('birth_date') ? 'border-red-400' : 'border-gray-300'
+                )}
               />
-              {showErr('birth_date') && (
-                <p className="text-xs text-red-500 mt-0.5">{showErr('birth_date')}</p>
-              )}
+              {showErr('birth_date') && <p className="text-xs text-red-500 mt-0.5">{showErr('birth_date')}</p>}
             </div>
 
             {/* Kurs */}

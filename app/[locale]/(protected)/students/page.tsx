@@ -435,10 +435,17 @@ export default function StudentsPage() {
               </label>
               <DatePicker
                 value={form.birth_date}
-                onChange={(iso) => { setForm((f) => ({ ...f, birth_date: iso })); touch('birth_date'); }}
-                maxYear={new Date().getFullYear() - 5}
+                onChange={(iso) => { 
+                  setForm((f) => ({ ...f, birth_date: iso })); 
+                  touch('birth_date'); 
+                }}
+                minYear={1955}
+                maxYear={2025}
+                className="max-h-[200px] overflow-y-auto" // Dropdown bo'yini 60% gacha qisqartirish uchun
               />
-              {showErr('birth_date') && <p className="text-xs text-red-500 mt-0.5">{showErr('birth_date')}</p>}
+              {showErr('birth_date') && (
+                <p className="text-xs text-red-500 mt-0.5">{showErr('birth_date')}</p>
+              )}
             </div>
 
             {/* Kurs */}

@@ -118,7 +118,7 @@ export default function PaymentsPage() {
         last_name: s.last_name,
         birth_date: s.birth_date ?? null,
         course_name: s.course_name ?? '—',
-        course_id: s.course_id ?? '',
+        course_id: s.course_id ?? s.course ?? '',
         course_price: s.course_price ?? null,
         group_id: s.current_group_id ?? '',
         group_display: s.current_group ?? s.group_name ?? '—',

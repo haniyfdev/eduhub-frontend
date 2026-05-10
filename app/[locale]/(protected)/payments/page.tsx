@@ -166,11 +166,12 @@ export default function PaymentsPage() {
       await api.post('/api/v1/payments/', {
         student_id: selectedRow.id,
         group_id: selectedRow.group_id,
-        course_id: selectedRow.course_id,
+        course_id: selectedRow.course_id || selectedRow.course,
         requested_amount: parseFloat(form.amount),
         payment_type: form.payment_type,
         note: form.note || '',
       });
+
       toast.success("To'lov qo'shildi");
       setShowStep2(false);
       setSelectedRow(null);

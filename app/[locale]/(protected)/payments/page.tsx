@@ -317,7 +317,7 @@ export default function PaymentsPage() {
                     type="text"
                     value={studentSearch}
                     onChange={(e) => setStudentSearch(e.target.value)}
-                    placeholder="Ism yoki telefon bo'yicha qidirish..."
+                    placeholder="Ism yoki guruh nomi..."
                     className="w-full pl-9 pr-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                     autoFocus
                   />

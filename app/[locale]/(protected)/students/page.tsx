@@ -29,6 +29,8 @@ const EMPTY_FORM = {
   birth_date: '', course_id: '', referral_source: '',
 };
 
+type PhoneSelection = Record<string, { phone1: boolean; phone2: boolean }>;
+
 export default function StudentsPage() {
   const [students, setStudents] = useState<Student[]>([]);
   const [courses, setCourses] = useState<Course[]>([]);
@@ -44,10 +46,9 @@ export default function StudentsPage() {
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState(EMPTY_FORM);
   const [archiveTarget, setArchiveTarget] = useState<{ id: string; name: string } | null>(null);
-  // ✅ FIX: useState o'rniga useRef — race condition va ESLint xatosi yo'qoladi
   const overdueIdsRef = useRef<Set<string>>(new Set());
   const [touched, setTouched] = useState<Record<string, boolean>>({});
-  const [phoneSelection, setPhoneSelection] = useState<Record<string, { phone1: boolean; phone2: boolean }>>({});
+  const [phoneSelection, setPhoneSelection] = useState<PhoneSelection>({});
   const [showSmsConfirm, setShowSmsConfirm] = useState(false);
   const [sendingSms, setSendingSms] = useState(false);
 
@@ -75,7 +76,7 @@ export default function StudentsPage() {
       });
       setStudents(sorted);
       setCount(data.count);
-      const init: Record<string, { phone1: boolean; phone2: boolean }> = {};
+      const init: PhoneSelection = {};
       sorted.forEach((s) => { init[s.id] = { phone1: false, phone2: false }; });
       setPhoneSelection(init);
     } catch {
@@ -94,6 +95,40 @@ export default function StudentsPage() {
       .then(({ data }) => setCourses(data.results))
       .catch(() => {});
   }, []);
+
+  function togglePhone(id: string, key: 'phone1' | 'phone2') {
+    setPhoneSelection((prev) => ({
+      ...prev,
+      [id]: { ...prev[id], [key]: !prev[id]?.[key] },
+    }));
+  }
+
+  const selectedSmsCount = students.reduce((acc, s) => {
+    const sel = phoneSelection[s.id];
+    if (sel?.phone1 && s.phone) acc++;
+    if (sel?.phone2 && s.second_phone) acc++;
+    return acc;
+  }, 0);
+
+  async function handleSendSms() {
+    setSendingSms(true);
+    let success = 0;
+    for (const s of students) {
+      const sel = phoneSelection[s.id];
+      const phones: string[] = [];
+      if (sel?.phone1 && s.phone) phones.push(s.phone);
+      if (sel?.phone2 && s.second_phone) phones.push(s.second_phone);
+      for (const phone of phones) {
+        try {
+          await api.post(`/api/v1/students/${s.id}/send-sms/`, { phone });
+          success++;
+        } catch { /* skip */ }
+      }
+    }
+    toast.success(`${success} ta SMS yuborildi`);
+    setShowSmsConfirm(false);
+    setSendingSms(false);
+  }
 
   const fieldErrors = {
     first_name: !form.first_name ? 'Ism majburiy' : form.first_name.length < 2 ? 'Kamida 2 harf' : form.first_name.length > 50 ? "Ko'pi bilan 50 harf" : '',
@@ -158,60 +193,33 @@ export default function StudentsPage() {
     return '';
   }
 
-  const selectedSmsCount = students.reduce((acc, s) => {
-  const sel = phoneSelection[s.id];
-  if (sel?.phone1 && s.phone) acc++;
-  if (sel?.phone2 && s.second_phone) acc++;
-  return acc;
-}, 0);
-
-async function handleSendSms() {
-  setSendingSms(true);
-  let success = 0;
-  for (const s of students) {
-    const sel = phoneSelection[s.id];
-    const phones: string[] = [];
-    if (sel?.phone1 && s.phone) phones.push(s.phone);
-    if (sel?.phone2 && s.second_phone) phones.push(s.second_phone);
-    for (const phone of phones) {
-      try {
-        await api.post(`/api/v1/students/${s.id}/send-sms/`, { phone });
-        success++;
-      } catch { /* skip */ }
-    }
-  }
-  toast.success(`${success} ta SMS yuborildi`);
-  setShowSmsConfirm(false);
-  setSendingSms(false);
-}
-
   return (
     <div className="space-y-5">
       <Toaster position="top-right" />
-      <div className="flex items-center justify-between">
-        <h1 className="text-xl font-bold text-gray-900">O'quvchilar</h1>
-        <button onClick={() => setShowAdd(true)}
-          className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded hover:bg-blue-700 transition-colors">
-          <Plus className="w-4 h-4" /> Qo'shish
-        </button>
-      </div>
 
-      <div className="flex items-center gap-2">
-        {selectedSmsCount > 0 && (
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <h1 className="text-xl font-bold text-gray-900">O&apos;quvchilar</h1>
+        <div className="flex items-center gap-2">
+          {selectedSmsCount > 0 && (
+            <button
+              onClick={() => setShowSmsConfirm(true)}
+              className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded hover:bg-indigo-700 transition-colors"
+            >
+              <Send className="w-4 h-4" />
+              SMS yuborish ({selectedSmsCount})
+            </button>
+          )}
           <button
-            onClick={() => setShowSmsConfirm(true)}
+            onClick={() => setShowAdd(true)}
             className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded hover:bg-blue-700 transition-colors"
           >
-            <Send className="w-4 h-4" />
-            SMS yuborish ({selectedSmsCount})
+            <Plus className="w-4 h-4" /> Qo&apos;shish
           </button>
-        )}
-        <button onClick={() => setShowAdd(true)}
-          className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded hover:bg-blue-700 transition-colors">
-          <Plus className="w-4 h-4" /> Qo'shish
-        </button>
+        </div>
       </div>
 
+      {/* Filters */}
       <div className="flex gap-3">
         <div className="relative flex-1 max-w-xs">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
@@ -235,6 +243,7 @@ async function handleSendSms() {
         </select>
       </div>
 
+      {/* Table */}
       <div className="bg-white rounded border border-gray-200 shadow-sm overflow-hidden">
         {error ? (
           <div className="flex flex-col items-center justify-center py-16 text-gray-500">
@@ -245,7 +254,7 @@ async function handleSendSms() {
           <table className="w-full text-sm">
             <thead>
               <tr className="bg-gray-50 border-b border-gray-200">
-                {["#", "Ism", "Telefon", "Ota-ona tel", "Tug'ilgan sana", "Kurs", "Holat", "Amallar"].map((h) => (
+                {['#', 'Ism', 'Telefon', 'Ota-ona tel', "Tug'ilgan sana", 'Kurs', 'Holat', 'Amallar'].map((h) => (
                   <th key={h} className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">{h}</th>
                 ))}
               </tr>
@@ -263,8 +272,35 @@ async function handleSendSms() {
                     <tr key={s.id} className={cn('transition-colors hover:brightness-95', rowBg(s))}>
                       <td className="px-4 py-3 text-gray-400 text-xs">{(page - 1) * pageSize + idx + 1}</td>
                       <td className="px-4 py-3 font-medium text-gray-900">{s.first_name} {s.last_name}</td>
-                      <td className="px-4 py-3 text-gray-500">{formatPhone(s.phone)}</td>
-                      <td className="px-4 py-3 text-gray-500">{s.second_phone ? formatPhone(s.second_phone) : '—'}</td>
+
+                      {/* Telefon + checkbox */}
+                      <td className="px-4 py-3">
+                        <label className="flex items-center gap-2 cursor-pointer select-none">
+                          <input
+                            type="checkbox"
+                            checked={phoneSelection[s.id]?.phone1 ?? false}
+                            onChange={() => togglePhone(s.id, 'phone1')}
+                            className="rounded border-gray-300 flex-shrink-0"
+                          />
+                          <span className="text-gray-500">{formatPhone(s.phone)}</span>
+                        </label>
+                      </td>
+
+                      {/* Ota-ona tel + checkbox */}
+                      <td className="px-4 py-3">
+                        {s.second_phone ? (
+                          <label className="flex items-center gap-2 cursor-pointer select-none">
+                            <input
+                              type="checkbox"
+                              checked={phoneSelection[s.id]?.phone2 ?? false}
+                              onChange={() => togglePhone(s.id, 'phone2')}
+                              className="rounded border-gray-300 flex-shrink-0"
+                            />
+                            <span className="text-gray-500">{formatPhone(s.second_phone)}</span>
+                          </label>
+                        ) : <span className="text-gray-400 px-4">—</span>}
+                      </td>
+
                       <td className="px-4 py-3 text-gray-600">{formatDMY(s.birth_date)}</td>
                       <td className="px-4 py-3 text-gray-600">{s.course_name || '—'}</td>
                       <td className="px-4 py-3">
@@ -292,6 +328,7 @@ async function handleSendSms() {
         )}
       </div>
 
+      {/* Pagination */}
       {!loading && (
         <Pagination
           page={page}
@@ -302,9 +339,10 @@ async function handleSendSms() {
         />
       )}
 
+      {/* Add student dialog */}
       <Dialog open={showAdd} onOpenChange={(open) => { if (!open) setForm(EMPTY_FORM); setShowAdd(open); }}>
         <DialogContent className="sm:max-w-md max-h-[90vh] overflow-y-auto">
-          <DialogHeader><DialogTitle>Yangi o'quvchi</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle>Yangi o&apos;quvchi</DialogTitle></DialogHeader>
           <form onSubmit={handleAddStudent} className="space-y-4 mt-2">
             <div className="grid grid-cols-2 gap-3">
               <div>
@@ -352,7 +390,7 @@ async function handleSendSms() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Tug'ilgan sana</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Tug&apos;ilgan sana</label>
               <DatePicker
                 value={form.birth_date}
                 onChange={(iso) => setForm((f) => ({ ...f, birth_date: iso }))}
@@ -394,6 +432,7 @@ async function handleSendSms() {
         </DialogContent>
       </Dialog>
 
+      {/* Archive dialog */}
       <Dialog open={!!archiveTarget} onOpenChange={(open) => { if (!open) setArchiveTarget(null); }}>
         <DialogContent className="sm:max-w-sm">
           <DialogHeader><DialogTitle>Arxivlash</DialogTitle></DialogHeader>
@@ -408,6 +447,27 @@ async function handleSendSms() {
             <button onClick={confirmArchive}
               className="flex-1 px-4 py-2 bg-red-600 text-white text-sm font-medium rounded hover:bg-red-700">
               Ha, arxivlash
+            </button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* SMS confirm dialog */}
+      <Dialog open={showSmsConfirm} onOpenChange={setShowSmsConfirm}>
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader><DialogTitle>SMS yuborish</DialogTitle></DialogHeader>
+          <p className="text-sm text-gray-600 mt-1">
+            Tanlangan <span className="font-semibold">{selectedSmsCount} ta</span> raqamga SMS yuboriladi. Tasdiqlaysizmi?
+          </p>
+          <div className="flex gap-3 mt-4">
+            <button onClick={() => setShowSmsConfirm(false)}
+              className="flex-1 px-4 py-2 border border-gray-300 text-sm font-medium rounded hover:bg-gray-50">
+              Bekor
+            </button>
+            <button onClick={handleSendSms} disabled={sendingSms}
+              className="flex-1 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded hover:bg-blue-700 disabled:opacity-60 flex items-center justify-center gap-2">
+              <Send className="w-4 h-4" />
+              {sendingSms ? 'Yuborilmoqda...' : 'Yuborish'}
             </button>
           </div>
         </DialogContent>

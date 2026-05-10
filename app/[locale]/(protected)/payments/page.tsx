@@ -4,11 +4,12 @@ import { useEffect, useState, useCallback, useRef } from 'react';
 import { Plus, Search } from 'lucide-react';
 import toast, { Toaster } from 'react-hot-toast';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Pagination } from '@/components/pagination';
 import api from '@/lib/axios';
 import { cn, formatCurrency, formatDMY } from '@/lib/utils';
 import { PaginatedResponse } from '@/types';
+
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -344,9 +345,12 @@ export default function PaymentsPage() {
       {/* ══ Step 2: To'lov formasi ══ */}
       <Dialog open={showStep2} onOpenChange={(open) => { if (!open) { setShowStep2(false); setSelectedRow(null); } }}>
         <DialogContent className="sm:max-w-sm">
-          <DialogHeader>
-            <DialogTitle>To&apos;lov ma&apos;lumotlari</DialogTitle>
-          </DialogHeader>
+        <DialogHeader>
+          <DialogTitle>To&apos;lov ma&apos;lumotlari</DialogTitle>
+          <DialogDescription className="sr-only">
+            To'lov shaklini to'ldiring
+          </DialogDescription>
+        </DialogHeader>
 
           {selectedRow && (
             <div className="flex flex-wrap gap-1.5 mb-1">

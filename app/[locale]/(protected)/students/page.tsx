@@ -56,7 +56,9 @@ export default function StudentsPage() {
   const lastNameRef  = useRef<HTMLInputElement>(null);
   const phoneRef     = useRef<HTMLInputElement>(null);
   const phone2Ref    = useRef<HTMLInputElement>(null);
+  const courseRef    = useRef<HTMLSelectElement>(null);
   const saveRef      = useRef<HTMLButtonElement>(null);
+  
 
   function handleKey(
     e: React.KeyboardEvent,
@@ -439,6 +441,7 @@ export default function StudentsPage() {
                 placeholder="dd/mm/yyyy"
                 value={form.birth_date}
                 maxLength={10}
+                onKeyDown={(e) => handleKey(e, courseRef, phone2Ref)}
                 onChange={(e) => {
                   let val = e.target.value.replace(/\D/g, ''); // Faqat raqamlarni qoldirish
                   if (val.length > 8) val = val.slice(0, 8);
@@ -464,8 +467,12 @@ export default function StudentsPage() {
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Kurs <span className="text-red-500">*</span></label>
               <select
-                value={form.course_id}
-                onChange={(e) => { setForm((f) => ({ ...f, course_id: e.target.value })); touch('course_id'); }}
+                  value={form.course_id}
+                  onChange={(e) => { setForm((f) => ({ ...f, course_id: e.target.value })); touch('course_id'); }}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') { e.preventDefault(); saveRef.current?.focus(); }
+                    if (e.key === 'Escape') { setShowAdd(false); setForm(EMPTY_FORM); setTouched({}); }
+                  }}
                 className={cn('w-full px-3 py-2 border rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500',
                   showErr('course_id') ? 'border-red-400' : 'border-gray-300')}
               >
@@ -481,6 +488,10 @@ export default function StudentsPage() {
               <select
                 value={form.referral_source}
                 onChange={(e) => setForm((f) => ({ ...f, referral_source: e.target.value }))}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') { e.preventDefault(); saveRef.current?.focus(); }
+                  if (e.key === 'Escape') { setShowAdd(false); setForm(EMPTY_FORM); setTouched({}); }
+                }}
                 className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
                 <option value="">Tanlang</option>

@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useLocale } from 'next-intl';
-import { ArrowLeft, Plus, Search, UserMinus, RefreshCw } from 'lucide-react';
+import { ArrowLeft, Plus, Search, UserMinus } from 'lucide-react';
 import toast, { Toaster } from 'react-hot-toast';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -208,19 +208,6 @@ export default function GroupDetailPage() {
       fetchGroup();
     } catch {
       toast.error('Xatolik yuz berdi');
-    }
-  }
-
-  async function openChangeGroup(studentId: string, name: string) {
-    setChangeGroupTarget({ studentId, name });
-    setNewGroupId('');
-    try {
-      const { data } = await api.get<PaginatedResponse<GroupOption>>('/api/v1/groups/', {
-        params: { status: 'active', page_size: 100 },
-      });
-      setGroupOptions((data.results ?? []).filter((g) => g.id !== id));
-    } catch {
-      setGroupOptions([]);
     }
   }
 

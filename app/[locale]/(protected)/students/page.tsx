@@ -433,19 +433,31 @@ export default function StudentsPage() {
                 Tug&apos;ilgan sana <span className="text-red-500">*</span>
               </label>
               <input
-                type="date"
+                type="text"
+                placeholder="dd/mm/yyyy"
                 value={form.birth_date}
-                onChange={(e) => { setForm((f) => ({ ...f, birth_date: e.target.value })); touch('birth_date'); }}
-                min="1960-01-01"
-                max={`${new Date().getFullYear() - 4}-12-31`}
+                maxLength={10}
+                onChange={(e) => {
+                  let val = e.target.value.replace(/\D/g, ''); // Faqat raqamlarni qoldirish
+                  if (val.length > 8) val = val.slice(0, 8);
+                  
+                  // Avtomatik "/" belgilarini qo'shish (Maska: 12/05/2010)
+                  let masked = val;
+                  if (val.length > 2) masked = val.slice(0, 2) + '/' + val.slice(2);
+                  if (val.length > 4) masked = masked.slice(0, 5) + '/' + masked.slice(5);
+                  
+                  setForm((f) => ({ ...f, birth_date: masked }));
+                  touch('birth_date');
+                }}
                 className={cn(
-                  'w-full px-3 py-2 border rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500',
+                  'w-full px-3 py-2 border rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono',
                   showErr('birth_date') ? 'border-red-400' : 'border-gray-300'
                 )}
               />
-              {showErr('birth_date') && <p className="text-xs text-red-500 mt-0.5">{showErr('birth_date')}</p>}
+              {showErr('birth_date') && (
+                <p className="text-xs text-red-500 mt-0.5">{showErr('birth_date')}</p>
+              )}
             </div>
-
             {/* Kurs */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Kurs <span className="text-red-500">*</span></label>

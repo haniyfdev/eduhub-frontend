@@ -210,7 +210,7 @@ export default function GroupsPage() {
           <table className="w-full text-sm">
             <thead>
               <tr className="bg-gray-50 border-b border-gray-200">
-                {['#', "Guruh", "Kurs", "O'qituvchi", "O'quvchilar", 'Turi', 'Jadval', 'Holat', 'Amallar'].map((h) => (
+                {['№', "Guruh", "Kurs", "O'qituvchi", "O'quvchilar", 'Turi', 'Jadval', 'Holat', 'Amallar'].map((h) => (
                   <th key={h} className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">{h}</th>
                 ))}
               </tr>

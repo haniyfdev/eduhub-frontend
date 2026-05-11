@@ -54,7 +54,7 @@ interface GroupOption {
   name: string;
 }
 
-const GENDER_LABELS: Record<string, string> = { a: 'Erkaklar', b: 'Ayollar', c: 'Aralash' };
+const GENDER_LABELS: Record<string, string> = { a: 'Bolalar', b: 'Qizlar', c: 'Aralash' };
 
 const STATUS_BADGE: Record<string, string> = {
   active: 'bg-green-50 text-green-700 border-green-200',
@@ -394,21 +394,12 @@ export default function GroupDetailPage() {
                       </td>
                       <td className="px-4 py-3">
                         {canEdit && (
-                          <div className="flex items-center gap-2">
-                            <button
-                              onClick={() => openChangeGroup(s.id, `${s.first_name} ${s.last_name}`)}
-                              className="inline-flex items-center gap-1 text-xs text-blue-600 hover:underline"
-                            >
-                              <RefreshCw className="w-3 h-3" /> Guruh
-                            </button>
-                            <span className="text-gray-200">|</span>
-                            <button
-                              onClick={() => setRemoveTarget({ studentId: s.id, name: `${s.first_name} ${s.last_name}` })}
-                              className="inline-flex items-center gap-1 text-xs text-red-500 hover:underline"
-                            >
-                              <UserMinus className="w-3 h-3" /> Chiqarish
-                            </button>
-                          </div>
+                          <button
+                            onClick={() => setRemoveTarget({ studentId: s.id, name: `${s.first_name} ${s.last_name}` })}
+                            className="inline-flex items-center gap-1 text-xs text-red-500 hover:underline"
+                          >
+                            <UserMinus className="w-3 h-3" /> Chiqarish
+                          </button>
                         )}
                       </td>
                     </tr>

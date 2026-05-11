@@ -243,15 +243,19 @@ export default function GroupsPage() {
                         </span>
                       </td>
                       <td className="px-4 py-3">
-                        {g.status === 'active' && (
-                          <button
-                            onClick={(e) => { e.stopPropagation(); setArchiveTarget({ id: g.id, name: g.name }); }}
-                            className="text-xs text-red-500 hover:underline"
-                          >
-                            Arxivlash
-                          </button>
-                        )}
-                      </td>
+                      {g.status === 'active' ? (
+                        <button
+                          onClick={(e) => { e.stopPropagation(); setArchiveTarget({ id: g.id, name: g.name }); }}
+                          className="text-xs text-red-500 hover:underline"
+                        >
+                          Arxivlash
+                        </button>
+                      ) : (
+                        <span className="text-xs text-gray-400">
+                          {(g as any).archived_at ? new Date((g as any).archived_at).toLocaleDateString('uz-UZ', { day: '2-digit', month: '2-digit', year: 'numeric' }) : '—'}
+                        </span>
+                      )}
+                    </td>
                     </tr>
                   ))
               }
@@ -372,9 +376,16 @@ export default function GroupsPage() {
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Dars vaqti</label>
               <input
-                type="time"
+                type="text"
                 value={form.time}
-                onChange={(e) => setForm((f) => ({ ...f, time: e.target.value }))}
+                maxLength={5}
+                placeholder="HH:MM"
+                onChange={(e) => {
+                  let val = e.target.value.replace(/\D/g, '');
+                  if (val.length > 4) val = val.slice(0, 4);
+                  if (val.length > 2) val = val.slice(0, 2) + ':' + val.slice(2);
+                  setForm((f) => ({ ...f, time: val }));
+                }}
                 className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
             </div>
@@ -387,11 +398,12 @@ export default function GroupsPage() {
             )}
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Xona</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Xona <span className="text-red-500">*</span></label>
               <input
                 type="text"
                 value={form.room}
                 onChange={(e) => setForm((f) => ({ ...f, room: e.target.value }))}
+                required
                 className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
             </div>

@@ -101,7 +101,7 @@ export default function GroupDetailPage() {
   // Actions
   const [removeTarget, setRemoveTarget] = useState<{ studentId: string; name: string } | null>(null);
   const [changeGroupTarget, setChangeGroupTarget] = useState<{ studentId: string; name: string } | null>(null);
-  const [groupOptions, setGroupOptions] = useState<GroupOption[]>([]);
+  const [groupOptions] = useState<GroupOption[]>([]);
   const [newGroupId, setNewGroupId] = useState('');
   const [changingGroup, setChangingGroup] = useState(false);
 

@@ -34,13 +34,13 @@ const GENDER_STYLES: Record<string, string> = {
   c: 'bg-purple-50 text-purple-700 border-purple-200',
 };
 const GENDER_LABELS: Record<string, string> = {
-  a: 'Erkaklar', b: 'Ayollar', c: 'Aralash',
+  a: 'Bolalar', b: 'Qizlar', c: 'Aralash',
 };
 
 const DAYS = [
   { key: 'Du', label: 'Du' },
   { key: 'Se', label: 'Se' },
-  { key: 'Ch', label: 'Ch' },
+  { key: 'Cho', label: 'Cho' },
   { key: 'Pa', label: 'Pa' },
   { key: 'Ju', label: 'Ju' },
   { key: 'Sha', label: 'Sha' },
@@ -67,6 +67,8 @@ export default function GroupsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const [search, setSearch] = useState('');
+  const [statusFilter, setStatusFilter] = useState('active');
+  const [courseFilter, setCourseFilter] = useState('');
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(25);
   const [count, setCount] = useState(0);
@@ -81,6 +83,8 @@ export default function GroupsPage() {
     try {
       const params: Record<string, string | number> = { page, page_size: pageSize };
       if (search) params.search = search;
+      if (statusFilter) params.status = statusFilter;
+      if (courseFilter) params.course = courseFilter;
       const { data } = await api.get<PaginatedResponse<Group>>('/api/v1/groups/', { params });
       setGroups(data.results ?? []);
       setCount(data.count ?? 0);
@@ -90,10 +94,10 @@ export default function GroupsPage() {
     } finally {
       setLoading(false);
     }
-  }, [page, pageSize, search]);
+  }, [page, pageSize, search, statusFilter, courseFilter]);
 
   useEffect(() => { fetchGroups(); }, [fetchGroups]);
-  useEffect(() => { setPage(1); }, [search]);
+  useEffect(() => { setPage(1); }, [search, statusFilter, courseFilter]);
 
   useEffect(() => {
     api.get<PaginatedResponse<Course>>('/api/v1/courses/?status=active&page_size=100').then(({ data }) => setCourses(data.results ?? [])).catch(() => {});
@@ -159,15 +163,28 @@ export default function GroupsPage() {
         </button>
       </div>
 
-      <div className="relative max-w-xs">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-        <input
-          type="text"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          placeholder="Qidirish..."
-          className="w-full pl-9 pr-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-        />
+      <div className="flex gap-3 flex-wrap">
+        <div className="relative flex-1 max-w-xs">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+          <input
+            type="text"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="O'qituvchi yoki guruh..."
+            className="w-full pl-9 pr-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+          />
+        </div>
+        <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}
+          className="px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-700">
+          <option value="active">Faol</option>
+          <option value="archived">Arxivlangan</option>
+          <option value="">Barchasi</option>
+        </select>
+        <select value={courseFilter} onChange={(e) => setCourseFilter(e.target.value)}
+          className="px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-700">
+          <option value="">Barcha kurslar</option>
+          {courses.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+        </select>
       </div>
 
       <div className="bg-white rounded border border-gray-200 shadow-sm overflow-hidden">
@@ -310,8 +327,8 @@ export default function GroupsPage() {
               </label>
               <div className="flex gap-2">
                 {[
-                  { value: 'a', label: 'Erkaklar', style: 'border-blue-300 bg-blue-50 text-blue-700' },
-                  { value: 'b', label: 'Ayollar', style: 'border-pink-300 bg-pink-50 text-pink-700' },
+                  { value: 'a', label: 'Bolalar', style: 'border-blue-300 bg-blue-50 text-blue-700' },
+                  { value: 'b', label: 'Qizlar', style: 'border-pink-300 bg-pink-50 text-pink-700' },
                   { value: 'c', label: 'Aralash', style: 'border-purple-300 bg-purple-50 text-purple-700' },
                 ].map(({ value, label, style }) => (
                   <button
@@ -370,7 +387,7 @@ export default function GroupsPage() {
             )}
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Xona (ixtiyoriy)</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Xona</label>
               <input
                 type="text"
                 value={form.room}

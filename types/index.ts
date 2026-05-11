@@ -19,6 +19,7 @@ export interface Student {
   phone: string;
   second_phone: string | null;
   birth_date: string | null;
+  archived_at?: string | null;
   course_name: string | null;
   status: 'pending' | 'active' | 'trial' | 'archived';
   company_id: string;

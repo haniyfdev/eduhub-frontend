@@ -121,7 +121,7 @@ export default function StudentsPage() {
   useEffect(() => { setPage(1); }, [search, statusFilter, courseFilter]);
 
   useEffect(() => {
-    api.get<PaginatedResponse<Course>>('/api/v1/courses/?page_size=100')
+    api.get<PaginatedResponse<Course>>('/api/v1/courses/?page_size=100&status=active')
       .then(({ data }) => setCourses(data.results))
       .catch(() => {});
   }, []);
@@ -296,7 +296,7 @@ export default function StudentsPage() {
           <table className="w-full text-sm">
             <thead>
               <tr className="bg-gray-50 border-b border-gray-200">
-                {['#', 'Ism', 'Telefon', 'Ota-ona tel', "Tug'ilgan sana", 'Kurs', 'Holat', 'Amallar'].map((h) => (
+                {['№', 'Ism', 'Telefon', 'Ota-ona tel', "Tug'ilgan sana", 'Kurs', 'Holat', 'Amallar'].map((h) => (
                   <th key={h} className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">{h}</th>
                 ))}
               </tr>
@@ -339,9 +339,17 @@ export default function StudentsPage() {
                         </span>
                       </td>
                       <td className="px-4 py-3">
-                        {s.status !== 'archived' && (
-                          <button onClick={() => setArchiveTarget({ id: s.id, name: `${s.first_name} ${s.last_name}` })}
-                            className="text-xs text-red-500 hover:underline">Arxivlash</button>
+                        {s.status !== 'archived' ? (
+                          <button
+                            onClick={() => setArchiveTarget({ id: s.id, name: `${s.first_name} ${s.last_name}` })}
+                            className="text-xs text-red-500 hover:underline"
+                          >
+                            Arxivlash
+                          </button>
+                        ) : (
+                          <span className="text-xs text-gray-400">
+                            {s.archived_at ? formatDMY(s.archived_at) : '—'}
+                          </span>
                         )}
                       </td>
                     </tr>

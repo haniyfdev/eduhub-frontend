@@ -113,7 +113,20 @@ export default function GroupsPage() {
 
   async function handleAdd(e: React.FormEvent) {
     e.preventDefault();
+
     if (!form.gender_type) { toast.error('Guruh turini tanlang!'); return; }
+    if (!form.time) { toast.error('Dars vaqtini kiriting!'); return; }
+    if (!form.room) { toast.error('Xonani kiriting!'); return; }
+
+    // Vaqt validatsiyasi
+    const timeParts = form.time.split(':');
+    if (timeParts.length !== 2) { toast.error("Vaqt HH:MM formatida bo'lishi kerak!"); return; }
+    const hours = parseInt(timeParts[0], 10);
+    const minutes = parseInt(timeParts[1], 10);
+    if (isNaN(hours) || isNaN(minutes) || hours < 0 || hours > 23 || minutes < 0 || minutes > 59 || form.time.length !== 5) {
+      toast.error("Vaqt 00:00 — 23:59 oralig'ida bo'lishi kerak!"); return;
+    }
+    
     setSaving(true);
     try {
       const schedule = buildSchedule(form.days, form.time);

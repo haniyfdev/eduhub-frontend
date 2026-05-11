@@ -19,7 +19,7 @@ const STATUS_STYLES: Record<string, string> = {
 const STATUS_LABELS: Record<string, string> = {
   pending: 'Kutilmoqda', active: 'Faol', trial: 'Sinov', archived: 'Arxivlangan',
 };
-const STATUS_ORDER: Record<string, number> = { active: 0, trial: 1, pending: 2, archived: 4 };
+// const STATUS_ORDER: Record<string, number> = { active: 0, trial: 1, pending: 2, archived: 4 };
 
 interface Course { id: string; name: string; }
 

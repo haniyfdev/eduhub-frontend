@@ -99,15 +99,13 @@ export default function StudentsPage() {
       if (statusFilter) params.status = statusFilter;
       if (courseFilter) params.course = courseFilter;
       const { data } = await api.get<PaginatedResponse<Student>>('/api/v1/students/', { params });
-      const sorted = [...(data.results ?? [])].sort((a, b) => {
-        const wa = overdueIdsRef.current.has(a.id) && a.status !== 'archived' ? 3 : (STATUS_ORDER[a.status] ?? 5);
-        const wb = overdueIdsRef.current.has(b.id) && b.status !== 'archived' ? 3 : (STATUS_ORDER[b.status] ?? 5);
-        return wa - wb;
-      });
-      setStudents(sorted);
+
+      setStudents(data.results ?? []);
+
+      
       setCount(data.count);
       const init: PhoneSelection = {};
-      sorted.forEach((s) => { init[s.id] = { phone1: false, phone2: false }; });
+      (data.results ?? []).forEach((s: Student) => { init[s.id] = { phone1: false, phone2: false }; });
       setPhoneSelection(init);
     } catch {
       setError(true);

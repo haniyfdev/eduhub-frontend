@@ -168,7 +168,7 @@ export default function StudentsPage() {
     phone:       form.phone.replace(/\D/g, '').length !== 9 ? "To'liq 9 raqam kiriting" : '',
     second_phone: form.second_phone && form.second_phone.replace(/\D/g, '').length !== 9 ? '9 raqam kiriting' : '',
     course_id:   !form.course_id   ? 'Kurs majburiy'       : '',
-    birth_date:  !form.birth_date  ? "Tug'ilgan sana majburiy" : '',
+    birth_date: !form.birth_date ? "Tug'ilgan sana majburiy" : form.birth_date.length !== 10 ? "dd/mm/yyyy formatida kiriting" : '',
   };
   const hasFormErrors = Object.values(fieldErrors).some(Boolean);
 
@@ -193,7 +193,9 @@ export default function StudentsPage() {
         last_name:       form.last_name,
         phone:           '+998' + form.phone.replace(/\D/g, ''),
         second_phone:    form.second_phone ? '+998' + form.second_phone.replace(/\D/g, '') : null,
-        birth_date:      form.birth_date || null,
+        birth_date:      form.birth_date
+                         ? form.birth_date.split('/').reverse().join('-')
+                         : null,
         course:          form.course_id || null,
         referral_source: form.referral_source || null,
       });

@@ -239,7 +239,7 @@ export default function CoursesPage() {
           <table className="w-full text-sm">
             <thead>
               <tr className="bg-gray-50 border-b border-gray-200">
-                {['№', '', 'Nomi', 'Narxi', 'Muddati', "O'qituvchilar", 'Holat', 'Amallar'].map((h, i) => (
+                {['№', '', 'Nomi', 'Narxi', 'Muddati', "O'qituvchilar", 'Sana', 'Holat', 'Amallar'].map((h, i) => (
                   <th key={i} className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">{h}</th>
                 ))}
               </tr>
@@ -278,6 +278,7 @@ export default function CoursesPage() {
                           </div>
                         ) : '—'}
                       </td>
+                      <td className="px-4 py-3 text-gray-500 text-xs">{formatDMY((c as any).created_at) || '—'}</td>
                       <td className="px-4 py-3">
                         <span className={cn('inline-flex items-center px-2 py-0.5 text-xs font-medium border rounded',
                           c.status === 'active' ? 'bg-green-50 text-green-700 border-green-200' : 'bg-gray-100 text-gray-600 border-gray-200')}>

@@ -55,7 +55,7 @@ export default function DebtsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const [search, setSearch] = useState('');
-  const [statusFilter, setStatusFilter] = useState('unpaid,overdue');
+  const [statusFilter, setStatusFilter] = useState('unpaid,overdue,partial');
   const [page, setPage] = useState(1);
   const [count, setCount] = useState(0);
   const [totalAmount, setTotalAmount] = useState(0);
@@ -180,12 +180,11 @@ export default function DebtsPage() {
           onChange={(e) => setStatusFilter(e.target.value)}
           className="px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-700"
         >
-          <option value="unpaid,overdue">Faol qarzlar</option>
-          <option value="">Barchasi</option>
-          <option value="unpaid">To&apos;lanmagan</option>
-          <option value="overdue">Muddati o&apos;tgan</option>
-          <option value="partial">Qisman</option>
-          <option value="paid">To&apos;langan</option>
+                  
+        <option value="unpaid,overdue,partial">Barchasi</option>
+        <option value="unpaid">To&apos;lanmagan</option>
+        <option value="overdue">Muddati o&apos;tgan</option>
+        <option value="partial">Qisman</option>
         </select>
       </div>
 
@@ -200,7 +199,7 @@ export default function DebtsPage() {
           <table className="w-full text-sm">
             <thead>
               <tr className="bg-gray-50 border-b border-gray-200">
-                {['#', "O'quvchi", 'Guruh', 'Telefon', 'Ota-ona tel', 'Summa', 'Muddati', 'Holat'].map((h) => (
+                {['№', "O'quvchi", 'Guruh', 'Telefon', 'Ota-ona tel', 'Balans', 'Muddati', 'Holat'].map((h) => (
                   <th key={h} className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">{h}</th>
                 ))}
               </tr>
@@ -257,7 +256,7 @@ export default function DebtsPage() {
                           )}
                         </td>
 
-                        <td className="px-4 py-3 font-semibold text-red-600">{formatCurrency(d.amount)}</td>
+                        <td className="px-4 py-3 font-semibold text-red-600">-{formatCurrency(d.amount)}</td>
                         <td className="px-4 py-3 text-gray-600">
                           {new Date(d.due_date).toLocaleDateString('uz-UZ', { day: '2-digit', month: '2-digit', year: 'numeric' })}
                         </td>

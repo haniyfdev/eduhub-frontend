@@ -5,7 +5,7 @@ import {
   XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   BarChart, Bar, Cell,
 } from 'recharts';
-import { Plus, X, TrendingUp, TrendingDown, DollarSign, Award, ChevronDown, ChevronUp, Check } from 'lucide-react';
+import { Plus, TrendingUp, TrendingDown, DollarSign, Award, ChevronDown, ChevronUp, Check } from 'lucide-react';
 import toast, { Toaster } from 'react-hot-toast';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';

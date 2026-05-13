@@ -120,7 +120,7 @@ export default function ReportsPage() {
           setTeacherSalaries(tRes.data.results ?? []);
           setManualExpenses(eRes.data.results ?? []);
         }
-      } catch (err) {
+      } catch (_) {
         toast.error("Ma'lumotlarni yangilashda xatolik");
       } finally {
         setLoading(false);

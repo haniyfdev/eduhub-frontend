@@ -10,7 +10,7 @@ import toast, { Toaster } from 'react-hot-toast';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import api from '@/lib/axios';
-import { cn, formatCurrency, formatDMY } from '@/lib/utils';
+import { cn, formatCurrency } from '@/lib/utils';
 import { PaginatedResponse } from '@/types';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -18,10 +18,7 @@ import { PaginatedResponse } from '@/types';
 interface PnLData {
   period: string;
   income: { total: number; breakdown: Array<{ course: string | null; amount: number }> };
-  expenses: {
-    total: number;
-    breakdown: Record<string, number>;
-  };
+  expenses: { total: number; breakdown: Record<string, number> };
   profit: number;
   margin: string;
 }
@@ -31,8 +28,8 @@ interface TeacherSalary {
   base_amount: number; kpi_amount: number; total_amount: number; paid_at: string | null;
 }
 
-interface Expense {
-  id: string; category: string; source: string;
+interface ManualExpense {
+  id: string; category: string;
   amount: number; description: string; expense_date: string;
 }
 
@@ -42,19 +39,14 @@ const EXPENSE_LABELS: Record<string, string> = {
   rent: 'Ijara', utility: 'Kommunal', tax: 'Soliq',
   fine: 'Jarima', staff_salary: 'Xodim maoshi', other: 'Boshqa',
 };
-
 const MANUAL_CATEGORIES = ['rent', 'utility', 'tax', 'fine', 'staff_salary', 'other'];
-
 const EXPENSE_COLORS: Record<string, string> = {
   rent: '#6366f1', utility: '#8b5cf6', tax: '#a855f7',
   fine: '#ec4899', staff_salary: '#3b82f6', other: '#6b7280',
 };
-
 const CHART_COLORS = ['#10b981', '#ef4444', '#3b82f6'];
 
 type FilterMode = 'month' | 'year' | 'range';
-
-// ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function todayStr() { return new Date().toISOString().slice(0, 10); }
 function currentMonth() {
@@ -66,41 +58,37 @@ function currentYear() { return String(new Date().getFullYear()); }
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function ReportsPage() {
-  // Filter state
   const [filterMode, setFilterMode] = useState<FilterMode>('month');
   const [month, setMonth]           = useState(currentMonth);
   const [year, setYear]             = useState(currentYear);
   const [dateFrom, setDateFrom]     = useState(todayStr);
   const [dateTo, setDateTo]         = useState(todayStr);
 
-  // Data
   const [data, setData]             = useState<PnLData | null>(null);
   const [loading, setLoading]       = useState(true);
   const [teacherSalaries, setTeacherSalaries] = useState<TeacherSalary[]>([]);
-  const [expenses, setExpenses]     = useState<Expense[]>([]);
+  const [manualExpenses, setManualExpenses]   = useState<ManualExpense[]>([]);
   const [loadingSub, setLoadingSub] = useState(false);
   const [markingPaid, setMarkingPaid] = useState<string | null>(null);
 
   // Expense modal
   const [showExpenseModal, setShowExpenseModal] = useState(false);
-  const [editExpense, setEditExpense]           = useState<Expense | null>(null);
-  const [expenseForm, setExpenseForm]           = useState({
+  const [editingExpense, setEditingExpense]     = useState<ManualExpense | null>(null);
+  const [expenseForm, setExpenseForm] = useState({
     category: 'rent', amount: '', description: '', expense_date: todayStr(),
   });
   const [savingExpense, setSavingExpense] = useState(false);
 
   // Collapsible
   const [showTeachers, setShowTeachers] = useState(true);
-  const [showExpenses, setShowExpenses] = useState(true);
 
-  // ── Build query params ──────────────────────────────────────────────────────
+  // ── buildParams ─────────────────────────────────────────────────────────────
 
-  function buildParams(): string {
-    if (filterMode === 'month')  return `month=${month}`;
-    if (filterMode === 'year')   return `year=${year}`;
-    if (filterMode === 'range')  return `date_from=${dateFrom}&date_to=${dateTo}`;
-    return `month=${month}`;
-  }
+  const buildParams = useCallback((): string => {
+    if (filterMode === 'month') return `month=${month}`;
+    if (filterMode === 'year')  return `year=${year}`;
+    return `date_from=${dateFrom}&date_to=${dateTo}`;
+  }, [filterMode, month, year, dateFrom, dateTo]);
 
   // ── Fetch PnL ───────────────────────────────────────────────────────────────
 
@@ -114,25 +102,25 @@ export default function ReportsPage() {
     } finally {
       setLoading(false);
     }
-  }, [filterMode, month, year, dateFrom, dateTo]);
+  }, [buildParams]);
 
   useEffect(() => { fetchPnL(); }, [fetchPnL]);
 
-  // ── Fetch sub data ──────────────────────────────────────────────────────────
+  // ── Fetch sub ───────────────────────────────────────────────────────────────
 
   const fetchSub = useCallback(async () => {
     setLoadingSub(true);
     try {
       const [t, e] = await Promise.allSettled([
         api.get<PaginatedResponse<TeacherSalary>>(`/api/v1/teacher-salaries/?month=${month}`),
-        api.get<PaginatedResponse<Expense>>(`/api/v1/expenses/?${buildParams()}&source=manual`),
+        api.get<PaginatedResponse<ManualExpense>>(`/api/v1/expenses/?${buildParams()}&source=manual`),
       ]);
       if (t.status === 'fulfilled') setTeacherSalaries(t.value.data.results ?? []);
-      if (e.status === 'fulfilled') setExpenses(e.value.data.results ?? []);
+      if (e.status === 'fulfilled') setManualExpenses(e.value.data.results ?? []);
     } finally {
       setLoadingSub(false);
     }
-  }, [filterMode, month, year, dateFrom, dateTo]);
+  }, [buildParams, month]);
 
   useEffect(() => { fetchSub(); }, [fetchSub]);
 
@@ -154,13 +142,13 @@ export default function ReportsPage() {
   // ── Expense CRUD ────────────────────────────────────────────────────────────
 
   function openAddExpense() {
-    setEditExpense(null);
+    setEditingExpense(null);
     setExpenseForm({ category: 'rent', amount: '', description: '', expense_date: todayStr() });
     setShowExpenseModal(true);
   }
 
-  function openEditExpense(e: Expense) {
-    setEditExpense(e);
+  function openEditExpense(e: ManualExpense) {
+    setEditingExpense(e);
     setExpenseForm({ category: e.category, amount: String(e.amount), description: e.description, expense_date: e.expense_date });
     setShowExpenseModal(true);
   }
@@ -176,13 +164,13 @@ export default function ReportsPage() {
         description:  expenseForm.description || '',
         expense_date: expenseForm.expense_date,
       };
-      if (editExpense) {
-        const { data: updated } = await api.patch<Expense>(`/api/v1/expenses/${editExpense.id}/`, body);
-        setExpenses((prev) => prev.map((e) => e.id === editExpense.id ? updated : e));
+      if (editingExpense) {
+        const { data: updated } = await api.patch<ManualExpense>(`/api/v1/expenses/${editingExpense.id}/`, body);
+        setManualExpenses((prev) => prev.map((e) => e.id === editingExpense.id ? updated : e));
         toast.success('Xarajat yangilandi');
       } else {
-        const { data: created } = await api.post<Expense>('/api/v1/expenses/', body);
-        setExpenses((prev) => [created, ...prev]);
+        const { data: created } = await api.post<ManualExpense>('/api/v1/expenses/', body);
+        setManualExpenses((prev) => [created, ...prev]);
         toast.success("Xarajat qo'shildi");
       }
       setShowExpenseModal(false);
@@ -194,7 +182,7 @@ export default function ReportsPage() {
     }
   }
 
-  // ── Chart data ──────────────────────────────────────────────────────────────
+  // ── Chart ───────────────────────────────────────────────────────────────────
 
   const incomeTotal   = data?.income?.total   ?? 0;
   const expensesTotal = data?.expenses?.total ?? 0;
@@ -219,38 +207,26 @@ export default function ReportsPage() {
     <div className="space-y-6 pb-10">
       <Toaster position="top-right" />
 
-      {/* ── Header + Filter ── */}
+      {/* Header + Filter */}
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Hisobotlar</h1>
           <p className="text-sm text-gray-500 mt-0.5">Daromad &amp; Xarajat tahlili</p>
         </div>
-
-        {/* Filter controls */}
         <div className="flex flex-wrap items-center gap-2">
-          {/* Mode switcher */}
           <div className="flex rounded-lg border border-gray-200 overflow-hidden text-xs font-medium">
             {([['month', 'Oylik'], ['year', 'Yillik'], ['range', 'Davr']] as [FilterMode, string][]).map(([mode, label]) => (
-              <button
-                key={mode}
-                onClick={() => setFilterMode(mode)}
-                className={cn(
-                  'px-3 py-2 transition-colors',
-                  filterMode === mode ? 'bg-blue-600 text-white' : 'bg-white text-gray-600 hover:bg-gray-50'
-                )}
-              >
+              <button key={mode} onClick={() => setFilterMode(mode)}
+                className={cn('px-3 py-2 transition-colors',
+                  filterMode === mode ? 'bg-blue-600 text-white' : 'bg-white text-gray-600 hover:bg-gray-50')}>
                 {label}
               </button>
             ))}
           </div>
-
-          {/* Month picker */}
           {filterMode === 'month' && (
             <input type="month" value={month} onChange={(e) => setMonth(e.target.value)}
               className="px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white" />
           )}
-
-          {/* Year picker */}
           {filterMode === 'year' && (
             <select value={year} onChange={(e) => setYear(e.target.value)}
               className="px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white">
@@ -259,8 +235,6 @@ export default function ReportsPage() {
               ))}
             </select>
           )}
-
-          {/* Date range */}
           {filterMode === 'range' && (
             <div className="flex items-center gap-2">
               <input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)}
@@ -273,17 +247,15 @@ export default function ReportsPage() {
         </div>
       </div>
 
-      {/* ── KPI Cards ── */}
+      {/* KPI Cards */}
       <div className="grid grid-cols-3 gap-4">
         {[
           { label: 'Daromad',   value: incomeTotal,   icon: TrendingUp,   color: 'text-emerald-600', bg: 'bg-emerald-50', border: 'border-emerald-200' },
           { label: 'Xarajat',   value: expensesTotal, icon: TrendingDown, color: 'text-red-600',     bg: 'bg-red-50',     border: 'border-red-200' },
-          {
-            label: 'Sof foyda', value: profit, icon: DollarSign,
-            color:  profit >= 0 ? 'text-blue-600'  : 'text-red-600',
-            bg:     profit >= 0 ? 'bg-blue-50'     : 'bg-red-50',
-            border: profit >= 0 ? 'border-blue-200': 'border-red-200',
-          },
+          { label: 'Sof foyda', value: profit, icon: DollarSign,
+            color:  profit >= 0 ? 'text-blue-600'   : 'text-red-600',
+            bg:     profit >= 0 ? 'bg-blue-50'      : 'bg-red-50',
+            border: profit >= 0 ? 'border-blue-200' : 'border-red-200' },
         ].map(({ label, value, icon: Icon, color, bg, border }) => (
           <div key={label} className={cn('rounded-xl border p-5 flex items-center gap-4', bg, border)}>
             <div className={cn('p-2.5 rounded-lg bg-white shadow-sm', color)}>
@@ -301,14 +273,11 @@ export default function ReportsPage() {
       </div>
 
       {data?.margin && !loading && (
-        <p className="text-sm text-gray-500">
-          Foyda marjasi: <span className="font-semibold text-gray-800">{data.margin}</span>
-        </p>
+        <p className="text-sm text-gray-500">Foyda marjasi: <span className="font-semibold text-gray-800">{data.margin}</span></p>
       )}
 
-      {/* ── Charts ── */}
+      {/* Charts */}
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
-        {/* Bar chart */}
         <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-5">
           <h2 className="text-sm font-semibold text-gray-900 mb-4">Umumiy ko&apos;rsatkichlar</h2>
           {loading ? <Skeleton className="h-52 w-full" /> : (
@@ -317,11 +286,9 @@ export default function ReportsPage() {
                 <CartesianGrid strokeDasharray="3 3" stroke="#F3F4F6" vertical={false} />
                 <XAxis dataKey="name" tick={{ fontSize: 12, fill: '#6B7280' }} axisLine={false} tickLine={false} />
                 <YAxis tick={{ fontSize: 11, fill: '#9CA3AF' }} axisLine={false} tickLine={false} />
-                <Tooltip
-                  contentStyle={{ border: '1px solid #E5E7EB', borderRadius: 8, fontSize: 12 }}
+                <Tooltip contentStyle={{ border: '1px solid #E5E7EB', borderRadius: 8, fontSize: 12 }}
                   // @ts-expect-error recharts
-                  formatter={(v: number) => formatCurrency(v)}
-                />
+                  formatter={(v: number) => formatCurrency(v)} />
                 <Bar dataKey="value" radius={[6, 6, 0, 0]}>
                   {chartData.map((_, i) => <Cell key={i} fill={CHART_COLORS[i]} />)}
                 </Bar>
@@ -330,7 +297,6 @@ export default function ReportsPage() {
           )}
         </div>
 
-        {/* Xarajat breakdown + qo'shish */}
         <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-5">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-sm font-semibold text-gray-900">Xarajatlar tafsiloti</h2>
@@ -344,9 +310,7 @@ export default function ReportsPage() {
           ) : breakdownData.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-10 text-gray-400">
               <p className="text-sm">Bu davr uchun xarajat yo&apos;q</p>
-              <button onClick={openAddExpense} className="mt-2 text-sm text-blue-600 hover:underline">
-                + Xarajat qo&apos;shish
-              </button>
+              <button onClick={openAddExpense} className="mt-2 text-sm text-blue-600 hover:underline">+ Xarajat qo&apos;shish</button>
             </div>
           ) : (
             <div className="space-y-3">
@@ -370,7 +334,7 @@ export default function ReportsPage() {
         </div>
       </div>
 
-      {/* ── Kurslar bo'yicha daromad ── */}
+      {/* Kurslar bo'yicha daromad */}
       {!loading && (data?.income?.breakdown?.length ?? 0) > 0 && (
         <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-5">
           <h2 className="text-sm font-semibold text-gray-900 mb-4">Kurslar bo&apos;yicha daromad</h2>
@@ -388,7 +352,7 @@ export default function ReportsPage() {
         </div>
       )}
 
-      {/* ── O'qituvchilar maoshi ── */}
+      {/* O'qituvchilar maoshi */}
       <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
         <button onClick={() => setShowTeachers((v) => !v)}
           className="w-full flex items-center justify-between px-5 py-4 border-b border-gray-100 hover:bg-gray-50 transition-colors">
@@ -443,11 +407,48 @@ export default function ReportsPage() {
         )}
       </div>
 
-      {/* ══ Expense Modal ══ */}
+      {/* Kiritilgan xarajatlar jadvali */}
+      {manualExpenses.length > 0 && (
+        <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+          <div className="px-5 py-4 border-b border-gray-100">
+            <h2 className="text-sm font-semibold text-gray-900">Kiritilgan xarajatlar</h2>
+          </div>
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="bg-gray-50 border-b border-gray-200">
+                {['Kategoriya', 'Tavsif', 'Sana', 'Summa', ''].map((h) => (
+                  <th key={h} className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-100">
+              {manualExpenses.map((e) => (
+                <tr key={e.id} className="hover:bg-gray-50 transition-colors">
+                  <td className="px-4 py-3">
+                    <span className="inline-flex items-center px-2 py-0.5 text-xs font-medium rounded-full bg-gray-100 text-gray-700">
+                      {EXPENSE_LABELS[e.category] ?? e.category}
+                    </span>
+                  </td>
+                  <td className="px-4 py-3 text-gray-600">{e.description || '—'}</td>
+                  <td className="px-4 py-3 text-gray-500 text-xs">{e.expense_date}</td>
+                  <td className="px-4 py-3 font-semibold text-red-600">−{formatCurrency(e.amount)}</td>
+                  <td className="px-4 py-3">
+                    <button onClick={() => openEditExpense(e)} className="text-xs text-blue-600 hover:underline">
+                      Tahrirlash
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {/* Expense Modal */}
       <Dialog open={showExpenseModal} onOpenChange={(open) => { if (!open) setShowExpenseModal(false); }}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>{editExpense ? 'Xarajatni tahrirlash' : "Yangi xarajat qo'shish"}</DialogTitle>
+            <DialogTitle>{editingExpense ? 'Xarajatni tahrirlash' : "Yangi xarajat qo'shish"}</DialogTitle>
             <DialogDescription className="sr-only">Xarajat shakli</DialogDescription>
           </DialogHeader>
           <form onSubmit={handleSaveExpense} className="space-y-4 mt-2">
@@ -465,24 +466,21 @@ export default function ReportsPage() {
               <input type="number" value={expenseForm.amount}
                 onChange={(e) => setExpenseForm((f) => ({ ...f, amount: e.target.value }))}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                placeholder="0" required autoFocus
-              />
+                placeholder="0" required autoFocus />
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Tavsif</label>
               <input type="text" value={expenseForm.description}
                 onChange={(e) => setExpenseForm((f) => ({ ...f, description: e.target.value }))}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                placeholder="..."
-              />
+                placeholder="..." />
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Sana <span className="text-red-500">*</span></label>
               <input type="date" value={expenseForm.expense_date}
                 onChange={(e) => setExpenseForm((f) => ({ ...f, expense_date: e.target.value }))}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                required
-              />
+                required />
             </div>
             <div className="flex gap-3 pt-1">
               <button type="button" onClick={() => setShowExpenseModal(false)}

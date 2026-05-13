@@ -84,11 +84,52 @@ export default function ReportsPage() {
 
   // ── buildParams ─────────────────────────────────────────────────────────────
 
-  const buildParams = useCallback((): string => {
-    if (filterMode === 'month') return `month=${month}`;
-    if (filterMode === 'year')  return `year=${year}`;
-    return `date_from=${dateFrom}&date_to=${dateTo}`;
+// 1. buildParams funksiyasini yangilang (URLSearchParams xavfsizroq)
+  const buildParams = useCallback(() => {
+    const p = new URLSearchParams();
+    if (filterMode === 'month') p.append('month', month);
+    else if (filterMode === 'year') p.append('year', year);
+    else {
+      p.append('date_from', dateFrom);
+      p.append('date_to', dateTo);
+    }
+    return p.toString();
   }, [filterMode, month, year, dateFrom, dateTo]);
+
+  // 2. Ikkita useEffect o'rniga bitta yagona yuklovchi useEffect
+  useEffect(() => {
+    const loadAllReports = async () => {
+      setLoading(true);
+      setLoadingSub(true);
+      const query = buildParams();
+      
+      try {
+        const [pnlRes, subRes] = await Promise.allSettled([
+          api.get<PnLData>(`/api/v1/profit-loss/?${query}`),
+          // Sub ma'lumotlar (maosh va xarajat) uchun ham bir xil query ishlating
+          Promise.all([
+            api.get<PaginatedResponse<TeacherSalary>>(`/api/v1/teacher-salaries/?${query}`),
+            api.get<PaginatedResponse<ManualExpense>>(`/api/v1/expenses/?${query}&source=manual`)
+          ])
+        ]);
+
+        if (pnlRes.status === 'fulfilled') setData(pnlRes.value.data);
+        
+        if (subRes.status === 'fulfilled') {
+          const [tRes, eRes] = subRes.value;
+          setTeacherSalaries(tRes.data.results ?? []);
+          setManualExpenses(eRes.data.results ?? []);
+        }
+      } catch (err) {
+        toast.error("Ma'lumotlarni yangilashda xatolik");
+      } finally {
+        setLoading(false);
+        setLoadingSub(false);
+      }
+    };
+
+    loadAllReports();
+  }, [buildParams]); // buildParams o'zgarganda (ya'ni filtr o'zgarganda) hammasi birga yangilanadi
 
   // ── Fetch PnL ───────────────────────────────────────────────────────────────
 

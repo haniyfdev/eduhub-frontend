@@ -120,13 +120,14 @@ export default function ReportsPage() {
           setTeacherSalaries(tRes.data.results ?? []);
           setManualExpenses(eRes.data.results ?? []);
         }
-      } catch (_) {
-        toast.error("Ma'lumotlarni yangilashda xatolik");
-      } finally {
-        setLoading(false);
-        setLoadingSub(false);
-      }
-    };
+                
+        } catch {
+              toast.error("Ma'lumotlarni yangilashda xatolik");
+            } finally {
+              setLoading(false);
+              setLoadingSub(false);
+            }
+          };
 
     loadAllReports();
   }, [buildParams]); // buildParams o'zgarganda (ya'ni filtr o'zgarganda) hammasi birga yangilanadi

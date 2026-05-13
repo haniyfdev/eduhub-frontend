@@ -5,7 +5,7 @@ import {
   XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   BarChart, Bar, Cell,
 } from 'recharts';
-import { Plus, TrendingUp, TrendingDown, DollarSign, Award, ChevronDown, ChevronUp, Check } from 'lucide-react';
+import { Plus, TrendingUp, TrendingDown, DollarSign, Check, ChevronDown, ChevronUp } from 'lucide-react';
 import toast, { Toaster } from 'react-hot-toast';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
@@ -20,10 +20,7 @@ interface PnLData {
   income: { total: number; breakdown: Array<{ course: string | null; amount: number }> };
   expenses: {
     total: number;
-    breakdown: {
-      rent: number; utility: number; tax: number; fine: number;
-      discount: number; teacher_salary: number; staff_salary: number; other: number;
-    };
+    breakdown: Record<string, number>;
   };
   profit: number;
   margin: string;
@@ -39,101 +36,107 @@ interface Expense {
   amount: number; description: string; expense_date: string;
 }
 
-interface Award {
-  id: string; title: string; description: string;
-  student_name: string; issued_to: string; issued_at: string;
-}
-
-interface Student { id: string; first_name: string; last_name: string; }
+// ─── Constants ────────────────────────────────────────────────────────────────
 
 const EXPENSE_LABELS: Record<string, string> = {
-  rent: 'Ijara', utility: 'Kommunal', tax: 'Soliq', fine: 'Jarima',
-  staff_salary: 'Xodim maoshi', other: 'Boshqa',
+  rent: 'Ijara', utility: 'Kommunal', tax: 'Soliq',
+  fine: 'Jarima', staff_salary: 'Xodim maoshi', other: 'Boshqa',
 };
 
+const MANUAL_CATEGORIES = ['rent', 'utility', 'tax', 'fine', 'staff_salary', 'other'];
+
 const EXPENSE_COLORS: Record<string, string> = {
-  rent: '#6366f1', utility: '#8b5cf6', tax: '#a855f7', fine: '#ec4899',
-  discount: '#f59e0b', teacher_salary: '#10b981', staff_salary: '#3b82f6', other: '#6b7280',
+  rent: '#6366f1', utility: '#8b5cf6', tax: '#a855f7',
+  fine: '#ec4899', staff_salary: '#3b82f6', other: '#6b7280',
 };
 
 const CHART_COLORS = ['#10b981', '#ef4444', '#3b82f6'];
 
+type FilterMode = 'month' | 'year' | 'range';
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+
+function todayStr() { return new Date().toISOString().slice(0, 10); }
+function currentMonth() {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+}
+function currentYear() { return String(new Date().getFullYear()); }
+
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function ReportsPage() {
-  const [month, setMonth] = useState(() => {
-    const d = new Date();
-    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
-  });
+  // Filter state
+  const [filterMode, setFilterMode] = useState<FilterMode>('month');
+  const [month, setMonth]           = useState(currentMonth);
+  const [year, setYear]             = useState(currentYear);
+  const [dateFrom, setDateFrom]     = useState(todayStr);
+  const [dateTo, setDateTo]         = useState(todayStr);
 
-  const [data, setData]           = useState<PnLData | null>(null);
-  const [loading, setLoading]     = useState(true);
-
+  // Data
+  const [data, setData]             = useState<PnLData | null>(null);
+  const [loading, setLoading]       = useState(true);
   const [teacherSalaries, setTeacherSalaries] = useState<TeacherSalary[]>([]);
-  const [expenses, setExpenses]               = useState<Expense[]>([]);
-  const [awards, setAwards]                   = useState<Award[]>([]);
-  const [students, setStudents]               = useState<Student[]>([]);
-  const [loadingSub, setLoadingSub]           = useState(false);
-  const [markingPaid, setMarkingPaid]         = useState<string | null>(null);
+  const [expenses, setExpenses]     = useState<Expense[]>([]);
+  const [loadingSub, setLoadingSub] = useState(false);
+  const [markingPaid, setMarkingPaid] = useState<string | null>(null);
 
   // Expense modal
   const [showExpenseModal, setShowExpenseModal] = useState(false);
   const [editExpense, setEditExpense]           = useState<Expense | null>(null);
   const [expenseForm, setExpenseForm]           = useState({
-    category: 'rent', amount: '', description: '', expense_date: '',
+    category: 'rent', amount: '', description: '', expense_date: todayStr(),
   });
   const [savingExpense, setSavingExpense] = useState(false);
 
-  // Award modal
-  const [showAwardModal, setShowAwardModal] = useState(false);
-  const [awardForm, setAwardForm]           = useState({
-    title: '', description: '', issued_to: '', issued_at: '',
-  });
-  const [savingAward, setSavingAward]   = useState(false);
-  const [deletingAward, setDeletingAward] = useState<string | null>(null);
-
-  // Collapsible sections
+  // Collapsible
   const [showTeachers, setShowTeachers] = useState(true);
   const [showExpenses, setShowExpenses] = useState(true);
-  const [showAwards, setShowAwards]     = useState(true);
+
+  // ── Build query params ──────────────────────────────────────────────────────
+
+  function buildParams(): string {
+    if (filterMode === 'month')  return `month=${month}`;
+    if (filterMode === 'year')   return `year=${year}`;
+    if (filterMode === 'range')  return `date_from=${dateFrom}&date_to=${dateTo}`;
+    return `month=${month}`;
+  }
 
   // ── Fetch PnL ───────────────────────────────────────────────────────────────
 
-  useEffect(() => {
+  const fetchPnL = useCallback(async () => {
     setLoading(true);
-    api.get<PnLData>(`/api/v1/profit-loss/?month=${month}`)
-      .then(({ data }) => setData(data))
-      .catch(() => toast.error('Hisobotni yuklashda xatolik'))
-      .finally(() => setLoading(false));
-  }, [month]);
+    try {
+      const { data: d } = await api.get<PnLData>(`/api/v1/profit-loss/?${buildParams()}`);
+      setData(d);
+    } catch {
+      toast.error('Hisobotni yuklashda xatolik');
+    } finally {
+      setLoading(false);
+    }
+  }, [filterMode, month, year, dateFrom, dateTo]);
+
+  useEffect(() => { fetchPnL(); }, [fetchPnL]);
 
   // ── Fetch sub data ──────────────────────────────────────────────────────────
 
   const fetchSub = useCallback(async () => {
     setLoadingSub(true);
     try {
-      const [t, e, a] = await Promise.allSettled([
+      const [t, e] = await Promise.allSettled([
         api.get<PaginatedResponse<TeacherSalary>>(`/api/v1/teacher-salaries/?month=${month}`),
-        api.get<PaginatedResponse<Expense>>(`/api/v1/expenses/?month=${month}&source=manual`),
-        api.get<PaginatedResponse<Award>>(`/api/v1/awards/`),
+        api.get<PaginatedResponse<Expense>>(`/api/v1/expenses/?${buildParams()}&source=manual`),
       ]);
       if (t.status === 'fulfilled') setTeacherSalaries(t.value.data.results ?? []);
       if (e.status === 'fulfilled') setExpenses(e.value.data.results ?? []);
-      if (a.status === 'fulfilled') setAwards(a.value.data.results ?? []);
     } finally {
       setLoadingSub(false);
     }
-  }, [month]);
+  }, [filterMode, month, year, dateFrom, dateTo]);
 
   useEffect(() => { fetchSub(); }, [fetchSub]);
 
-  useEffect(() => {
-    api.get<PaginatedResponse<Student>>('/api/v1/students/?status=active&page_size=200')
-      .then(({ data }) => setStudents(data.results ?? []))
-      .catch(() => {});
-  }, []);
-
-  // ── Teacher salary mark paid ────────────────────────────────────────────────
+  // ── Teacher salary ──────────────────────────────────────────────────────────
 
   async function handleMarkPaid(id: string) {
     setMarkingPaid(id);
@@ -152,33 +155,25 @@ export default function ReportsPage() {
 
   function openAddExpense() {
     setEditExpense(null);
-    const today = new Date().toISOString().slice(0, 10);
-    setExpenseForm({ category: 'rent', amount: '', description: '', expense_date: today });
+    setExpenseForm({ category: 'rent', amount: '', description: '', expense_date: todayStr() });
     setShowExpenseModal(true);
   }
 
   function openEditExpense(e: Expense) {
     setEditExpense(e);
-    setExpenseForm({
-      category: e.category,
-      amount: String(e.amount),
-      description: e.description,
-      expense_date: e.expense_date,
-    });
+    setExpenseForm({ category: e.category, amount: String(e.amount), description: e.description, expense_date: e.expense_date });
     setShowExpenseModal(true);
   }
 
   async function handleSaveExpense(ev: React.FormEvent) {
     ev.preventDefault();
-    if (!expenseForm.amount || parseFloat(expenseForm.amount) <= 0) {
-      toast.error('Summani kiriting'); return;
-    }
+    if (!expenseForm.amount || parseFloat(expenseForm.amount) <= 0) { toast.error('Summani kiriting'); return; }
     setSavingExpense(true);
     try {
       const body = {
         category:     expenseForm.category,
         amount:       parseFloat(expenseForm.amount),
-        description:  expenseForm.description,
+        description:  expenseForm.description || '',
         expense_date: expenseForm.expense_date,
       };
       if (editExpense) {
@@ -191,53 +186,11 @@ export default function ReportsPage() {
         toast.success("Xarajat qo'shildi");
       }
       setShowExpenseModal(false);
-      // Refresh PnL
-      api.get<PnLData>(`/api/v1/profit-loss/?month=${month}`).then(({ data }) => setData(data)).catch(() => {});
+      fetchPnL();
     } catch (err: any) {
       toast.error(err?.response?.data?.detail || 'Xatolik yuz berdi');
     } finally {
       setSavingExpense(false);
-    }
-  }
-
-  // ── Award CRUD ──────────────────────────────────────────────────────────────
-
-  function openAddAward() {
-    setAwardForm({ title: '', description: '', issued_to: '', issued_at: new Date().toISOString().slice(0, 10) });
-    setShowAwardModal(true);
-  }
-
-  async function handleSaveAward(ev: React.FormEvent) {
-    ev.preventDefault();
-    if (!awardForm.title || !awardForm.issued_to) { toast.error("Maydonlarni to'ldiring"); return; }
-    setSavingAward(true);
-    try {
-      const { data: created } = await api.post<Award>('/api/v1/awards/', {
-        title:       awardForm.title,
-        description: awardForm.description,
-        issued_to:   awardForm.issued_to,
-        issued_at:   awardForm.issued_at,
-      });
-      setAwards((prev) => [created, ...prev]);
-      toast.success("Mukofot qo'shildi");
-      setShowAwardModal(false);
-    } catch (err: any) {
-      toast.error(err?.response?.data?.detail || 'Xatolik yuz berdi');
-    } finally {
-      setSavingAward(false);
-    }
-  }
-
-  async function handleDeleteAward(id: string) {
-    setDeletingAward(id);
-    try {
-      await api.delete(`/api/v1/awards/${id}/`);
-      setAwards((prev) => prev.filter((a) => a.id !== id));
-      toast.success("Mukofot o'chirildi");
-    } catch {
-      toast.error('Xatolik yuz berdi');
-    } finally {
-      setDeletingAward(null);
     }
   }
 
@@ -255,7 +208,8 @@ export default function ReportsPage() {
 
   const breakdownData = data?.expenses?.breakdown
     ? Object.entries(data.expenses.breakdown)
-        .map(([key, val]) => ({ key, name: EXPENSE_LABELS[key] ?? key, value: typeof val === 'number' ? val : 0 }))
+        .filter(([key]) => EXPENSE_LABELS[key])
+        .map(([key, val]) => ({ key, name: EXPENSE_LABELS[key], value: typeof val === 'number' ? val : 0 }))
         .filter((d) => d.value > 0)
     : [];
 
@@ -265,27 +219,71 @@ export default function ReportsPage() {
     <div className="space-y-6 pb-10">
       <Toaster position="top-right" />
 
-      {/* ── Header ── */}
-      <div className="flex items-center justify-between">
+      {/* ── Header + Filter ── */}
+      <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Hisobotlar</h1>
-          <p className="text-sm text-gray-500 mt-0.5">Daromad & Xarajat tahlili</p>
+          <p className="text-sm text-gray-500 mt-0.5">Daromad &amp; Xarajat tahlili</p>
         </div>
-        <input
-          type="month" value={month} onChange={(e) => setMonth(e.target.value)}
-          className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
-        />
+
+        {/* Filter controls */}
+        <div className="flex flex-wrap items-center gap-2">
+          {/* Mode switcher */}
+          <div className="flex rounded-lg border border-gray-200 overflow-hidden text-xs font-medium">
+            {([['month', 'Oylik'], ['year', 'Yillik'], ['range', 'Davr']] as [FilterMode, string][]).map(([mode, label]) => (
+              <button
+                key={mode}
+                onClick={() => setFilterMode(mode)}
+                className={cn(
+                  'px-3 py-2 transition-colors',
+                  filterMode === mode ? 'bg-blue-600 text-white' : 'bg-white text-gray-600 hover:bg-gray-50'
+                )}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+
+          {/* Month picker */}
+          {filterMode === 'month' && (
+            <input type="month" value={month} onChange={(e) => setMonth(e.target.value)}
+              className="px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white" />
+          )}
+
+          {/* Year picker */}
+          {filterMode === 'year' && (
+            <select value={year} onChange={(e) => setYear(e.target.value)}
+              className="px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white">
+              {Array.from({ length: 5 }, (_, i) => String(new Date().getFullYear() - i)).map((y) => (
+                <option key={y} value={y}>{y}</option>
+              ))}
+            </select>
+          )}
+
+          {/* Date range */}
+          {filterMode === 'range' && (
+            <div className="flex items-center gap-2">
+              <input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)}
+                className="px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white" />
+              <span className="text-gray-400 text-sm">—</span>
+              <input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)}
+                className="px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white" />
+            </div>
+          )}
+        </div>
       </div>
 
       {/* ── KPI Cards ── */}
       <div className="grid grid-cols-3 gap-4">
         {[
-          { label: 'Daromad', value: incomeTotal, icon: TrendingUp, color: 'text-emerald-600', bg: 'bg-emerald-50', border: 'border-emerald-200' },
-          { label: 'Xarajat', value: expensesTotal, icon: TrendingDown, color: 'text-red-600', bg: 'bg-red-50', border: 'border-red-200' },
-          { label: 'Sof foyda', value: profit, icon: DollarSign,
-            color: profit >= 0 ? 'text-blue-600' : 'text-red-600',
-            bg: profit >= 0 ? 'bg-blue-50' : 'bg-red-50',
-            border: profit >= 0 ? 'border-blue-200' : 'border-red-200' },
+          { label: 'Daromad',   value: incomeTotal,   icon: TrendingUp,   color: 'text-emerald-600', bg: 'bg-emerald-50', border: 'border-emerald-200' },
+          { label: 'Xarajat',   value: expensesTotal, icon: TrendingDown, color: 'text-red-600',     bg: 'bg-red-50',     border: 'border-red-200' },
+          {
+            label: 'Sof foyda', value: profit, icon: DollarSign,
+            color:  profit >= 0 ? 'text-blue-600'  : 'text-red-600',
+            bg:     profit >= 0 ? 'bg-blue-50'     : 'bg-red-50',
+            border: profit >= 0 ? 'border-blue-200': 'border-red-200',
+          },
         ].map(({ label, value, icon: Icon, color, bg, border }) => (
           <div key={label} className={cn('rounded-xl border p-5 flex items-center gap-4', bg, border)}>
             <div className={cn('p-2.5 rounded-lg bg-white shadow-sm', color)}>
@@ -310,6 +308,7 @@ export default function ReportsPage() {
 
       {/* ── Charts ── */}
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
+        {/* Bar chart */}
         <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-5">
           <h2 className="text-sm font-semibold text-gray-900 mb-4">Umumiy ko&apos;rsatkichlar</h2>
           {loading ? <Skeleton className="h-52 w-full" /> : (
@@ -319,7 +318,7 @@ export default function ReportsPage() {
                 <XAxis dataKey="name" tick={{ fontSize: 12, fill: '#6B7280' }} axisLine={false} tickLine={false} />
                 <YAxis tick={{ fontSize: 11, fill: '#9CA3AF' }} axisLine={false} tickLine={false} />
                 <Tooltip
-                  contentStyle={{ border: '1px solid #E5E7EB', borderRadius: 8, fontSize: 12, boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
+                  contentStyle={{ border: '1px solid #E5E7EB', borderRadius: 8, fontSize: 12 }}
                   // @ts-expect-error recharts
                   formatter={(v: number) => formatCurrency(v)}
                 />
@@ -331,13 +330,23 @@ export default function ReportsPage() {
           )}
         </div>
 
+        {/* Xarajat breakdown + qo'shish */}
         <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-5">
-          <h2 className="text-sm font-semibold text-gray-900 mb-4">Xarajatlar tafsiloti</h2>
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-sm font-semibold text-gray-900">Xarajatlar tafsiloti</h2>
+            <button onClick={openAddExpense}
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 text-white text-xs font-medium rounded-lg hover:bg-blue-700 transition-colors">
+              <Plus className="w-3.5 h-3.5" /> Qo&apos;shish
+            </button>
+          </div>
           {loading ? (
             <div className="space-y-2">{Array(5).fill(0).map((_, i) => <Skeleton key={i} className="h-8 w-full" />)}</div>
           ) : breakdownData.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-10 text-gray-400">
-              <p className="text-sm">Bu oy xarajat yo&apos;q</p>
+              <p className="text-sm">Bu davr uchun xarajat yo&apos;q</p>
+              <button onClick={openAddExpense} className="mt-2 text-sm text-blue-600 hover:underline">
+                + Xarajat qo&apos;shish
+              </button>
             </div>
           ) : (
             <div className="space-y-3">
@@ -350,10 +359,8 @@ export default function ReportsPage() {
                       <span className="text-xs font-semibold text-gray-900">{formatCurrency(value)}</span>
                     </div>
                     <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
-                      <div
-                        className="h-full rounded-full transition-all duration-500"
-                        style={{ width: `${pct}%`, backgroundColor: EXPENSE_COLORS[key] ?? '#6b7280' }}
-                      />
+                      <div className="h-full rounded-full transition-all duration-500"
+                        style={{ width: `${pct}%`, backgroundColor: EXPENSE_COLORS[key] ?? '#6b7280' }} />
                     </div>
                   </div>
                 );
@@ -383,10 +390,8 @@ export default function ReportsPage() {
 
       {/* ── O'qituvchilar maoshi ── */}
       <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
-        <button
-          onClick={() => setShowTeachers((v) => !v)}
-          className="w-full flex items-center justify-between px-5 py-4 border-b border-gray-100 hover:bg-gray-50 transition-colors"
-        >
+        <button onClick={() => setShowTeachers((v) => !v)}
+          className="w-full flex items-center justify-between px-5 py-4 border-b border-gray-100 hover:bg-gray-50 transition-colors">
           <h2 className="text-sm font-semibold text-gray-900">O&apos;qituvchilar maoshi</h2>
           {showTeachers ? <ChevronUp className="w-4 h-4 text-gray-400" /> : <ChevronDown className="w-4 h-4 text-gray-400" />}
         </button>
@@ -438,25 +443,22 @@ export default function ReportsPage() {
         )}
       </div>
 
-      {/* ── Xarajatlar ── */}
+      {/* ── Qo'lda kiritilgan xarajatlar ── */}
       <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
-        <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
-          <button onClick={() => setShowExpenses((v) => !v)} className="flex items-center gap-2 hover:opacity-70 transition-opacity">
-            <h2 className="text-sm font-semibold text-gray-900">Qo&apos;lda kiritilgan xarajatlar</h2>
-            {showExpenses ? <ChevronUp className="w-4 h-4 text-gray-400" /> : <ChevronDown className="w-4 h-4 text-gray-400" />}
-          </button>
-          <button onClick={openAddExpense}
-            className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 text-white text-xs font-medium rounded-lg hover:bg-blue-700 transition-colors">
-            <Plus className="w-3.5 h-3.5" /> Qo&apos;shish
-          </button>
-        </div>
+        <button onClick={() => setShowExpenses((v) => !v)}
+          className="w-full flex items-center justify-between px-5 py-4 border-b border-gray-100 hover:bg-gray-50 transition-colors">
+          <h2 className="text-sm font-semibold text-gray-900">Qo&apos;lda kiritilgan xarajatlar</h2>
+          {showExpenses ? <ChevronUp className="w-4 h-4 text-gray-400" /> : <ChevronDown className="w-4 h-4 text-gray-400" />}
+        </button>
         {showExpenses && (
           loadingSub ? (
             <div className="p-4 space-y-2">{Array(3).fill(0).map((_, i) => <Skeleton key={i} className="h-10 w-full" />)}</div>
           ) : expenses.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-10 text-gray-400">
-              <p className="text-sm">Bu oy xarajat kiritilmagan</p>
-              <button onClick={openAddExpense} className="mt-2 text-sm text-blue-600 hover:underline">+ Xarajat qo&apos;shish</button>
+              <p className="text-sm">Bu davr uchun xarajat kiritilmagan</p>
+              <button onClick={openAddExpense} className="mt-2 text-sm text-blue-600 hover:underline">
+                + Xarajat qo&apos;shish
+              </button>
             </div>
           ) : (
             <table className="w-full text-sm">
@@ -491,61 +493,6 @@ export default function ReportsPage() {
         )}
       </div>
 
-      {/* ── Awards ── */}
-      <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
-        <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
-          <button onClick={() => setShowAwards((v) => !v)} className="flex items-center gap-2 hover:opacity-70 transition-opacity">
-            <Award className="w-4 h-4 text-amber-500" />
-            <h2 className="text-sm font-semibold text-gray-900">Mukofotlar</h2>
-            {showAwards ? <ChevronUp className="w-4 h-4 text-gray-400" /> : <ChevronDown className="w-4 h-4 text-gray-400" />}
-          </button>
-          <button onClick={openAddAward}
-            className="flex items-center gap-1.5 px-3 py-1.5 bg-amber-500 text-white text-xs font-medium rounded-lg hover:bg-amber-600 transition-colors">
-            <Plus className="w-3.5 h-3.5" /> Mukofot berish
-          </button>
-        </div>
-        {showAwards && (
-          loadingSub ? (
-            <div className="p-4 space-y-2">{Array(3).fill(0).map((_, i) => <Skeleton key={i} className="h-10 w-full" />)}</div>
-          ) : awards.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-10 text-gray-400">
-              <Award className="w-8 h-8 mb-2 text-gray-300" />
-              <p className="text-sm">Hali mukofot berilmagan</p>
-            </div>
-          ) : (
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="bg-gray-50 border-b border-gray-200">
-                  {['O\'quvchi', 'Mukofot', 'Tavsif', 'Sana', ''].map((h) => (
-                    <th key={h} className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">{h}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-100">
-                {awards.map((a) => (
-                  <tr key={a.id} className="hover:bg-amber-50 transition-colors">
-                    <td className="px-4 py-3 font-medium text-gray-900">{a.student_name}</td>
-                    <td className="px-4 py-3">
-                      <span className="inline-flex items-center gap-1 text-amber-700 font-medium">
-                        <Award className="w-3.5 h-3.5" /> {a.title}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3 text-gray-500 text-xs">{a.description || '—'}</td>
-                    <td className="px-4 py-3 text-gray-500 text-xs">{formatDMY(a.issued_at)}</td>
-                    <td className="px-4 py-3">
-                      <button onClick={() => handleDeleteAward(a.id)} disabled={deletingAward === a.id}
-                        className="text-xs text-red-500 hover:underline disabled:opacity-50">
-                        {deletingAward === a.id ? '...' : "O'chirish"}
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          )
-        )}
-      </div>
-
       {/* ══ Expense Modal ══ */}
       <Dialog open={showExpenseModal} onOpenChange={(open) => { if (!open) setShowExpenseModal(false); }}>
         <DialogContent className="sm:max-w-md">
@@ -558,8 +505,8 @@ export default function ReportsPage() {
               <label className="block text-sm font-medium text-gray-700 mb-1">Kategoriya <span className="text-red-500">*</span></label>
               <select value={expenseForm.category} onChange={(e) => setExpenseForm((f) => ({ ...f, category: e.target.value }))}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
-                {Object.entries(EXPENSE_LABELS).map(([key, label]) => (
-                  <option key={key} value={key}>{label}</option>
+                {MANUAL_CATEGORIES.map((key) => (
+                  <option key={key} value={key}>{EXPENSE_LABELS[key]}</option>
                 ))}
               </select>
             </div>
@@ -595,63 +542,6 @@ export default function ReportsPage() {
               <button type="submit" disabled={savingExpense}
                 className="flex-1 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 disabled:opacity-60">
                 {savingExpense ? 'Saqlanmoqda...' : 'Saqlash'}
-              </button>
-            </div>
-          </form>
-        </DialogContent>
-      </Dialog>
-
-      {/* ══ Award Modal ══ */}
-      <Dialog open={showAwardModal} onOpenChange={(open) => { if (!open) setShowAwardModal(false); }}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>Mukofot berish</DialogTitle>
-            <DialogDescription className="sr-only">Mukofot shakli</DialogDescription>
-          </DialogHeader>
-          <form onSubmit={handleSaveAward} className="space-y-4 mt-2">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">O&apos;quvchi <span className="text-red-500">*</span></label>
-              <select value={awardForm.issued_to} onChange={(e) => setAwardForm((f) => ({ ...f, issued_to: e.target.value }))}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                required>
-                <option value="">Tanlang</option>
-                {students.map((s) => (
-                  <option key={s.id} value={s.id}>{s.first_name} {s.last_name}</option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Mukofot nomi <span className="text-red-500">*</span></label>
-              <input type="text" value={awardForm.title}
-                onChange={(e) => setAwardForm((f) => ({ ...f, title: e.target.value }))}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                placeholder="Masalan: Oy o'quvchisi" required autoFocus
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Tavsif</label>
-              <input type="text" value={awardForm.description}
-                onChange={(e) => setAwardForm((f) => ({ ...f, description: e.target.value }))}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                placeholder="..."
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Sana <span className="text-red-500">*</span></label>
-              <input type="date" value={awardForm.issued_at}
-                onChange={(e) => setAwardForm((f) => ({ ...f, issued_at: e.target.value }))}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                required
-              />
-            </div>
-            <div className="flex gap-3 pt-1">
-              <button type="button" onClick={() => setShowAwardModal(false)}
-                className="flex-1 px-4 py-2 border border-gray-300 text-sm font-medium rounded-lg hover:bg-gray-50">
-                Bekor qilish
-              </button>
-              <button type="submit" disabled={savingAward}
-                className="flex-1 px-4 py-2 bg-amber-500 text-white text-sm font-medium rounded-lg hover:bg-amber-600 disabled:opacity-60">
-                {savingAward ? 'Saqlanmoqda...' : 'Berish'}
               </button>
             </div>
           </form>

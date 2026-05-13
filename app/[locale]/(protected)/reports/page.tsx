@@ -80,11 +80,8 @@ export default function ReportsPage() {
   const [savingExpense, setSavingExpense] = useState(false);
 
   // Collapsible
-  const [showTeachers, setShowTeachers] = useState(true);
+  const [showTeachers, setShowTeachers] = useState(true);// ── Data Fetching Logic ─────────────────────────────────────────────────────
 
-  // ── buildParams ─────────────────────────────────────────────────────────────
-
-// 1. buildParams funksiyasini yangilang (URLSearchParams xavfsizroq)
   const buildParams = useCallback(() => {
     const p = new URLSearchParams();
     if (filterMode === 'month') p.append('month', month);
@@ -96,41 +93,34 @@ export default function ReportsPage() {
     return p.toString();
   }, [filterMode, month, year, dateFrom, dateTo]);
 
-  // 2. Ikkita useEffect o'rniga bitta yagona yuklovchi useEffect
+  const loadAllData = useCallback(async () => {
+    setLoading(true);
+    setLoadingSub(true);
+    const query = buildParams();
+
+    try {
+      const [pnlRes, salariesRes, expensesRes] = await Promise.all([
+        api.get<PnLData>(`/api/v1/profit-loss/?${query}`),
+        api.get<PaginatedResponse<TeacherSalary>>(`/api/v1/teacher-salaries/?${query}`),
+        api.get<PaginatedResponse<ManualExpense>>(`/api/v1/expenses/?${query}&source=manual`)
+      ]);
+
+      setData(pnlRes.data);
+      setTeacherSalaries(salariesRes.data.results ?? []);
+      setManualExpenses(expensesRes.data.results ?? []);
+    } catch (error) {
+      console.error(error);
+      toast.error("Ma'lumotlarni yuklashda xatolik yuz berdi");
+    } finally {
+      setLoading(false);
+      setLoadingSub(false);
+    }
+  }, [buildParams]);
+
+  // Filtrlar o'zgarganda avtomatik yuklash
   useEffect(() => {
-    const loadAllReports = async () => {
-      setLoading(true);
-      setLoadingSub(true);
-      const query = buildParams();
-      
-      try {
-        const [pnlRes, subRes] = await Promise.allSettled([
-          api.get<PnLData>(`/api/v1/profit-loss/?${query}`),
-          // Sub ma'lumotlar (maosh va xarajat) uchun ham bir xil query ishlating
-          Promise.all([
-            api.get<PaginatedResponse<TeacherSalary>>(`/api/v1/teacher-salaries/?${query}`),
-            api.get<PaginatedResponse<ManualExpense>>(`/api/v1/expenses/?${query}&source=manual`)
-          ])
-        ]);
-
-        if (pnlRes.status === 'fulfilled') setData(pnlRes.value.data);
-        
-        if (subRes.status === 'fulfilled') {
-          const [tRes, eRes] = subRes.value;
-          setTeacherSalaries(tRes.data.results ?? []);
-          setManualExpenses(eRes.data.results ?? []);
-        }
-                
-        } catch {
-              toast.error("Ma'lumotlarni yangilashda xatolik");
-            } finally {
-              setLoading(false);
-              setLoadingSub(false);
-            }
-          };
-
-    loadAllReports();
-  }, [buildParams]); // buildParams o'zgarganda (ya'ni filtr o'zgarganda) hammasi birga yangilanadi
+    loadAllData();
+  }, [loadAllData]);
 
   // ── Fetch PnL ───────────────────────────────────────────────────────────────
 

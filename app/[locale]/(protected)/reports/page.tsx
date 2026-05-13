@@ -443,56 +443,6 @@ export default function ReportsPage() {
         )}
       </div>
 
-      {/* ── Qo'lda kiritilgan xarajatlar ── */}
-      <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
-        <button onClick={() => setShowExpenses((v) => !v)}
-          className="w-full flex items-center justify-between px-5 py-4 border-b border-gray-100 hover:bg-gray-50 transition-colors">
-          <h2 className="text-sm font-semibold text-gray-900">Qo&apos;lda kiritilgan xarajatlar</h2>
-          {showExpenses ? <ChevronUp className="w-4 h-4 text-gray-400" /> : <ChevronDown className="w-4 h-4 text-gray-400" />}
-        </button>
-        {showExpenses && (
-          loadingSub ? (
-            <div className="p-4 space-y-2">{Array(3).fill(0).map((_, i) => <Skeleton key={i} className="h-10 w-full" />)}</div>
-          ) : expenses.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-10 text-gray-400">
-              <p className="text-sm">Bu davr uchun xarajat kiritilmagan</p>
-              <button onClick={openAddExpense} className="mt-2 text-sm text-blue-600 hover:underline">
-                + Xarajat qo&apos;shish
-              </button>
-            </div>
-          ) : (
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="bg-gray-50 border-b border-gray-200">
-                  {['Kategoriya', 'Tavsif', 'Sana', 'Summa', ''].map((h) => (
-                    <th key={h} className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">{h}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-100">
-                {expenses.map((e) => (
-                  <tr key={e.id} className="hover:bg-gray-50 transition-colors">
-                    <td className="px-4 py-3">
-                      <span className="inline-flex items-center px-2 py-0.5 text-xs font-medium rounded-full bg-gray-100 text-gray-700">
-                        {EXPENSE_LABELS[e.category] ?? e.category}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3 text-gray-600">{e.description || '—'}</td>
-                    <td className="px-4 py-3 text-gray-500 text-xs">{formatDMY(e.expense_date)}</td>
-                    <td className="px-4 py-3 font-semibold text-red-600">−{formatCurrency(e.amount)}</td>
-                    <td className="px-4 py-3">
-                      <button onClick={() => openEditExpense(e)} className="text-xs text-blue-600 hover:underline">
-                        Tahrirlash
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          )
-        )}
-      </div>
-
       {/* ══ Expense Modal ══ */}
       <Dialog open={showExpenseModal} onOpenChange={(open) => { if (!open) setShowExpenseModal(false); }}>
         <DialogContent className="sm:max-w-md">

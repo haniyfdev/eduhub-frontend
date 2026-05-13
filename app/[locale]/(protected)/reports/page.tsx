@@ -48,7 +48,6 @@ interface Student { id: string; first_name: string; last_name: string; }
 
 const EXPENSE_LABELS: Record<string, string> = {
   rent: 'Ijara', utility: 'Kommunal', tax: 'Soliq', fine: 'Jarima',
-  discount: 'Chegirma', teacher_salary: "O'qituvchi maoshi",
   staff_salary: 'Xodim maoshi', other: 'Boshqa',
 };
 

@@ -8,7 +8,7 @@ import {
 import { Plus, TrendingUp, TrendingDown, DollarSign, Check, ChevronDown, ChevronUp } from 'lucide-react';
 import toast, { Toaster } from 'react-hot-toast';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import api from '@/lib/axios';
 import { cn, formatCurrency } from '@/lib/utils';
 import { PaginatedResponse } from '@/types';

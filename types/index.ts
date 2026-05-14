@@ -23,7 +23,7 @@ export interface Student {
   course_name: string | null;
   current_group: string | null;
   current_group_id: string | null;
-  status: 'pending' | 'active' | 'trial' | 'archived';
+  status: 'pending' | 'active' | 'trial' | 'archived' | 'ignored';
   company_id: string;
   created_at: string;
 }

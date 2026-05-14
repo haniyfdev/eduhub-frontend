@@ -343,13 +343,6 @@ export default function LeadsPage() {
                       <td className="px-4 py-3 text-xs text-gray-400">{formatDMY(s.created_at)}</td>
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-1">
-                          <button
-                            onClick={() => setArchiveTarget({ id: s.id, name: `${s.first_name} ${s.last_name}` })}
-                            className="p-1 rounded text-red-400 hover:bg-red-50 hover:text-red-600 transition-colors"
-                            title="Arxivlash"
-                          >
-                            <Minus className="w-4 h-4" />
-                          </button>
                           {s.status !== 'ignored' && (
                             <button
                               onClick={() => setIgnoreTarget({ id: s.id, name: `${s.first_name} ${s.last_name}` })}

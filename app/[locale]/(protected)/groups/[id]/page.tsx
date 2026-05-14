@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useLocale } from 'next-intl';
-import { ArrowLeft, Plus, Search, UserMinus } from 'lucide-react';
+import { ArrowLeft, Plus, Search, Minus, ArrowLeftRight } from 'lucide-react';
 import toast, { Toaster } from 'react-hot-toast';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -100,7 +100,7 @@ export default function GroupDetailPage() {
   // Actions
   const [removeTarget, setRemoveTarget] = useState<{ studentId: string; name: string } | null>(null);
   const [changeGroupTarget, setChangeGroupTarget] = useState<{ studentId: string; name: string } | null>(null);
-  const [groupOptions] = useState<GroupOption[]>([]);
+  const [groupOptions, setGroupOptions] = useState<GroupOption[]>([]);
   const [newGroupId, setNewGroupId] = useState('');
   const [changingGroup, setChangingGroup] = useState(false);
 
@@ -150,6 +150,13 @@ export default function GroupDetailPage() {
       .then(({ data }) => setCourses(data.results ?? []))
       .catch(() => {});
   }, []);
+
+  useEffect(() => {
+    if (!changeGroupTarget) return;
+    api.get<PaginatedResponse<GroupOption>>('/api/v1/groups/?status=active&page_size=100')
+      .then(({ data }) => setGroupOptions((data.results ?? []).filter((g) => g.id !== id)))
+      .catch(() => {});
+  }, [changeGroupTarget, id]);
 
   // Student search
   useEffect(() => {
@@ -379,12 +386,22 @@ export default function GroupDetailPage() {
                       </td>
                       <td className="px-4 py-3">
                         {canEdit && (
-                          <button
-                            onClick={() => setRemoveTarget({ studentId: s.id, name: `${s.first_name} ${s.last_name}` })}
-                            className="inline-flex items-center gap-1 text-xs text-red-500 hover:underline"
-                          >
-                            <UserMinus className="w-3 h-3" /> Chiqarish
-                          </button>
+                          <div className="flex items-center gap-1">
+                            <button
+                              onClick={() => setRemoveTarget({ studentId: s.id, name: `${s.first_name} ${s.last_name}` })}
+                              className="p-1 rounded text-red-400 hover:bg-red-50 hover:text-red-600 transition-colors"
+                              title="Chiqarish"
+                            >
+                              <Minus className="w-4 h-4" />
+                            </button>
+                            <button
+                              onClick={() => { setNewGroupId(''); setChangeGroupTarget({ studentId: s.id, name: `${s.first_name} ${s.last_name}` }); }}
+                              className="p-1 rounded text-blue-400 hover:bg-blue-50 hover:text-blue-600 transition-colors"
+                              title="Guruh o'zgartirish"
+                            >
+                              <ArrowLeftRight className="w-4 h-4" />
+                            </button>
+                          </div>
                         )}
                       </td>
                     </tr>
@@ -412,7 +429,7 @@ export default function GroupDetailPage() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="bg-gray-50 border-b border-gray-200">
-                  {['#', 'Sana', 'Hafta kuni', 'Mavzu', 'Dars vaqti'].map((h) => (
+                  {['№', 'Sana', 'Hafta kuni', 'Mavzu', 'Dars vaqti'].map((h) => (
                     <th key={h} className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">{h}</th>
                   ))}
                 </tr>

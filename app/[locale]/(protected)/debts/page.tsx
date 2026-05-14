@@ -155,8 +155,6 @@ export default function DebtsPage() {
     const amt = parseFloat(paymentForm.amount);
     if (!amt || amt <= 0) { toast.error("Summani kiriting"); return; }
     if (amt > paymentTarget.amount) { toast.error("To'lov summasi qarzdan oshib ketdi"); return; }
-    if (!paymentTarget.group_id)  { toast.error("Guruh topilmadi"); return; }
-    if (!paymentTarget.course_id) { toast.error("Kurs topilmadi"); return; }
     setPaymentSaving(true);
     try {
       await api.post('/api/v1/payments/', {

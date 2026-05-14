@@ -21,8 +21,8 @@ const sections = [
   {
     label: "Ta'lim",
     items: [
-      { key: 'students', icon: Users, href: '/students', roles: null },
       { key: 'leads', icon: UserPlus, href: '/leads', roles: ['boss', 'manager', 'admin'] },
+      { key: 'students', icon: Users, href: '/students', roles: null },
       { key: 'groups', icon: Users2, href: '/groups', roles: null },
       { key: 'teachers', icon: GraduationCap, href: '/teachers', roles: null },
       { key: 'courses', icon: BookOpen, href: '/courses', roles: null },

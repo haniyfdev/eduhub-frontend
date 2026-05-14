@@ -164,7 +164,7 @@ export default function StudentsPage() {
         <div className="relative flex-1 max-w-xs">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
           <input
-            type="text" value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Qidirish..."
+            type="text" value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Ism yoki guruh raqami..."
             className="w-full pl-9 pr-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
         </div>
@@ -192,7 +192,7 @@ export default function StudentsPage() {
           <table className="w-full text-sm">
             <thead>
               <tr className="bg-gray-50 border-b border-gray-200">
-                {['№', 'Ism', 'Telefon', 'Guruh', 'Kurs', 'Ota-ona tel', "Tug'ilgan", 'Holat', 'Amal'].map((h) => (
+                {['№', 'Ism', 'Telefon', 'Guruh', 'Ota-ona tel', 'Kurs', "Tug'ilgan", 'Holat', 'Amal'].map((h) => (
                   <th key={h} className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">{h}</th>
                 ))}
               </tr>

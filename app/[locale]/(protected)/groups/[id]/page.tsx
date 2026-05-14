@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useLocale } from 'next-intl';
-import { ArrowLeft, Plus, Search, Minus, ArrowLeftRight } from 'lucide-react';
+import { ArrowLeft, Plus, Search, Minus, ArrowLeftRight, Snowflake, Play } from 'lucide-react';
 import toast, { Toaster } from 'react-hot-toast';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -22,7 +22,7 @@ interface GroupDetail {
   students_count: number;
   schedule: string;
   room: string;
-  status: 'active' | 'archived';
+  status: 'active' | 'archived' | 'frozen';
   created_at: string;
   students?: Student[];
 }
@@ -298,9 +298,11 @@ export default function GroupDetailPage() {
               <h1 className="text-2xl font-bold text-gray-900">{group.name}</h1>
               <span className={cn(
                 'inline-flex items-center px-2.5 py-0.5 text-xs font-medium border rounded-full',
-                group.status === 'active' ? 'bg-green-50 text-green-700 border-green-200' : 'bg-gray-100 text-gray-600 border-gray-200',
+                group.status === 'active' ? 'bg-green-50 text-green-700 border-green-200'
+                : group.status === 'frozen' ? 'bg-sky-100 text-sky-700 border-sky-300'
+                : 'bg-gray-100 text-gray-600 border-gray-200',
               )}>
-                {group.status === 'active' ? 'Faol' : 'Arxivlangan'}
+                {group.status === 'active' ? 'Faol' : group.status === 'frozen' ? 'Muzlatilgan' : 'Arxivlangan'}
               </span>
             </div>
             <p className="text-sm text-gray-500 mt-0.5">
@@ -323,6 +325,32 @@ export default function GroupDetailPage() {
           )}
         </div>
     </div>
+
+      {/* Frozen banner */}
+      {group.status === 'frozen' && (
+        <div className="flex items-center justify-between gap-3 px-4 py-3 bg-sky-50 border border-sky-200 rounded-lg">
+          <div className="flex items-center gap-2 text-sky-700">
+            <Snowflake className="w-4 h-4 flex-shrink-0" />
+            <span className="text-sm font-medium">Bu guruh hozir muzlatilgan. Oylik qarz hisoblanmaydi.</span>
+          </div>
+          {canEdit && (
+            <button
+              onClick={async () => {
+                try {
+                  await api.post(`/api/v1/groups/${id}/unfreeze/`);
+                  toast.success('Guruh faollashtirildi');
+                  fetchGroup();
+                } catch {
+                  toast.error('Xatolik yuz berdi');
+                }
+              }}
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-sky-600 text-white text-xs font-medium rounded hover:bg-sky-700 transition-colors flex-shrink-0"
+            >
+              <Play className="w-3 h-3" /> Faollashtirish
+            </button>
+          )}
+        </div>
+      )}
 
       {/* Tabs */}
       <div className="border-b border-gray-200">

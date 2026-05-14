@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState, useCallback, useRef } from 'react';
-import { Search, Send, Minus } from 'lucide-react';
+import { Search, Send, Minus, Snowflake } from 'lucide-react';
 import toast, { Toaster } from 'react-hot-toast';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -15,9 +15,10 @@ const STATUS_STYLES: Record<string, string> = {
   active:   'bg-green-50 text-green-700 border-green-200',
   trial:    'bg-blue-50 text-blue-700 border-blue-200',
   archived: 'bg-gray-100 text-gray-600 border-gray-200',
+  frozen:   'bg-sky-100 text-sky-700 border-sky-300',
 };
 const STATUS_LABELS: Record<string, string> = {
-  pending: 'Kutilmoqda', active: 'Faol', trial: 'Sinov', archived: 'Arxivlangan',
+  pending: 'Kutilmoqda', active: 'Faol', trial: 'Sinov', archived: 'Arxivlangan', frozen: 'Muzlatilgan',
 };
 
 interface Course { id: string; name: string; }
@@ -134,6 +135,7 @@ export default function StudentsPage() {
   }
 
   function rowBg(s: Student): string {
+    if (s.status === 'frozen')                return 'bg-[#F0F9FF]';
     if (s.status === 'archived')              return 'bg-[#FFFBEB]';
     if (overdueIdsRef.current.has(s.id))     return 'bg-[#FEF2F2]';
     return '';
@@ -172,6 +174,7 @@ export default function StudentsPage() {
           className="px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-700">
           <option value="">Barchasi</option>
           <option value="active">Faol</option>
+          <option value="frozen">Muzlatilgan</option>
           <option value="archived">Arxivlangan</option>
         </select>
         <select value={courseFilter} onChange={(e) => setCourseFilter(e.target.value)}
@@ -212,7 +215,12 @@ export default function StudentsPage() {
                       <td className="px-4 py-3 text-gray-400 text-xs">{(page - 1) * pageSize + idx + 1}</td>
                       
                       {/* 2. Ism */}
-                      <td className="px-4 py-3 font-medium text-gray-900">{s.first_name} {s.last_name}</td>
+                      <td className="px-4 py-3 font-medium text-gray-900">
+                        <span className="flex items-center gap-1.5">
+                          {s.first_name} {s.last_name}
+                          {s.status === 'frozen' && <Snowflake className="w-3.5 h-3.5 text-sky-500 flex-shrink-0" />}
+                        </span>
+                      </td>
                       
                       {/* 3. Telefon */}
                       <td className="px-4 py-3">

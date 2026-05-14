@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { useLocale } from 'next-intl';
-import { Plus, Search, Minus } from 'lucide-react';
+import { Plus, Search, Minus, Snowflake, Play } from 'lucide-react';
 import toast, { Toaster } from 'react-hot-toast';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -22,7 +22,7 @@ interface Group {
   students_count: number;
   schedule: string;
   room: string;
-  status: 'active' | 'archived';
+  status: 'active' | 'archived' | 'frozen';
 }
 
 interface Course { id: string; name: string; }
@@ -76,6 +76,8 @@ export default function GroupsPage() {
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState(EMPTY_FORM);
   const [archiveTarget, setArchiveTarget] = useState<{ id: string; name: string } | null>(null);
+  const [freezeTarget, setFreezeTarget] = useState<{ id: string; name: string } | null>(null);
+  const [unfreezeTarget, setUnfreezeTarget] = useState<{ id: string; name: string } | null>(null);
 
   const fetchGroups = useCallback(async () => {
     setLoading(true);
@@ -162,6 +164,30 @@ export default function GroupsPage() {
     }
   }
 
+  async function confirmFreeze() {
+    if (!freezeTarget) return;
+    try {
+      await api.post(`/api/v1/groups/${freezeTarget.id}/freeze/`);
+      toast.success('Guruh muzlatildi');
+      setFreezeTarget(null);
+      fetchGroups();
+    } catch {
+      toast.error('Xatolik yuz berdi');
+    }
+  }
+
+  async function confirmUnfreeze() {
+    if (!unfreezeTarget) return;
+    try {
+      await api.post(`/api/v1/groups/${unfreezeTarget.id}/unfreeze/`);
+      toast.success('Guruh faollashtirildi');
+      setUnfreezeTarget(null);
+      fetchGroups();
+    } catch {
+      toast.error('Xatolik yuz berdi');
+    }
+  }
+
 
   return (
     <div className="space-y-5">
@@ -190,6 +216,7 @@ export default function GroupsPage() {
         <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}
           className="px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-700">
           <option value="active">Faol</option>
+          <option value="frozen">Muzlatilgan</option>
           <option value="archived">Arxivlangan</option>
           <option value="">Barchasi</option>
         </select>
@@ -230,9 +257,9 @@ export default function GroupsPage() {
                         onClick={() => router.push(`/${locale}/groups/${g.id}`)}
                         className={cn(
                           "cursor-pointer transition-colors",
-                          g.status === 'archived'
-                            ? "bg-yellow-50 hover:bg-yellow-100"
-                            : "hover:bg-gray-50"
+                          g.status === 'archived' ? "bg-yellow-50 hover:bg-yellow-100"
+                          : g.status === 'frozen' ? "bg-sky-50 hover:bg-sky-100"
+                          : "hover:bg-gray-50"
                         )}
                         >
                       <td className="px-4 py-3 text-gray-400 text-xs">{(page - 1) * pageSize + idx + 1}</td>
@@ -250,25 +277,48 @@ export default function GroupsPage() {
                       <td className="px-4 py-3 text-gray-500 text-xs">{g.schedule || '—'}</td>
                       <td className="px-4 py-3">
                         <span className={cn('inline-flex items-center px-2 py-0.5 text-xs font-medium border rounded',
-                          g.status === 'active' ? 'bg-green-50 text-green-700 border-green-200' : 'bg-gray-100 text-gray-600 border-gray-200'
+                          g.status === 'active' ? 'bg-green-50 text-green-700 border-green-200'
+                          : g.status === 'frozen' ? 'bg-sky-100 text-sky-700 border-sky-300'
+                          : 'bg-gray-100 text-gray-600 border-gray-200'
                         )}>
-                          {g.status === 'active' ? 'Faol' : 'Arxivlangan'}
+                          {g.status === 'active' ? 'Faol' : g.status === 'frozen' ? 'Muzlatilgan' : 'Arxivlangan'}
                         </span>
                       </td>
                       <td className="px-4 py-3">
-                      {g.status === 'active' ? (
-                        <button
-                          onClick={(e) => { e.stopPropagation(); setArchiveTarget({ id: g.id, name: g.name }); }}
-                          className="p-1 rounded text-red-400 hover:bg-red-50 hover:text-red-600 transition-colors"
-                          title="Arxivlash"
-                        >
-                          <Minus className="w-4 h-4" />
-                        </button>
-                      ) : (
-                        <span className="text-xs text-gray-400">
-                          {(g as any).archived_at ? new Date((g as any).archived_at).toLocaleDateString('uz-UZ', { day: '2-digit', month: '2-digit', year: 'numeric' }) : '—'}
-                        </span>
-                      )}
+                        <div className="flex items-center gap-1">
+                          {g.status === 'active' && (
+                            <>
+                              <button
+                                onClick={(e) => { e.stopPropagation(); setFreezeTarget({ id: g.id, name: g.name }); }}
+                                className="p-1 rounded text-sky-400 hover:bg-sky-50 hover:text-sky-600 transition-colors"
+                                title="Muzlatish"
+                              >
+                                <Snowflake className="w-4 h-4" />
+                              </button>
+                              <button
+                                onClick={(e) => { e.stopPropagation(); setArchiveTarget({ id: g.id, name: g.name }); }}
+                                className="p-1 rounded text-red-400 hover:bg-red-50 hover:text-red-600 transition-colors"
+                                title="Arxivlash"
+                              >
+                                <Minus className="w-4 h-4" />
+                              </button>
+                            </>
+                          )}
+                          {g.status === 'frozen' && (
+                            <button
+                              onClick={(e) => { e.stopPropagation(); setUnfreezeTarget({ id: g.id, name: g.name }); }}
+                              className="p-1 rounded text-green-500 hover:bg-green-50 hover:text-green-700 transition-colors"
+                              title="Faollashtirish"
+                            >
+                              <Play className="w-4 h-4" />
+                            </button>
+                          )}
+                          {g.status === 'archived' && (
+                            <span className="text-xs text-gray-400">
+                              {(g as any).archived_at ? new Date((g as any).archived_at).toLocaleDateString('uz-UZ', { day: '2-digit', month: '2-digit', year: 'numeric' }) : '—'}
+                            </span>
+                          )}
+                        </div>
                     </td>
                     </tr>
                   ))
@@ -303,6 +353,46 @@ export default function GroupsPage() {
             <button onClick={confirmArchive}
               className="flex-1 px-4 py-2 bg-red-600 text-white text-sm font-medium rounded hover:bg-red-700">
               Ha, arxivlash
+            </button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Freeze confirmation dialog */}
+      <Dialog open={!!freezeTarget} onOpenChange={(open) => { if (!open) setFreezeTarget(null); }}>
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader><DialogTitle>Guruhni muzlatish</DialogTitle></DialogHeader>
+          <p className="text-sm text-gray-600 mt-1">
+            <span className="font-medium">{freezeTarget?.name}</span> guruhini muzlatmoqchimisiz? Muzlatilgan guruh uchun oylik qarz hisoblanmaydi.
+          </p>
+          <div className="flex gap-3 mt-4">
+            <button onClick={() => setFreezeTarget(null)}
+              className="flex-1 px-4 py-2 border border-gray-300 text-sm font-medium rounded hover:bg-gray-50">
+              Bekor qilish
+            </button>
+            <button onClick={confirmFreeze}
+              className="flex-1 px-4 py-2 bg-sky-600 text-white text-sm font-medium rounded hover:bg-sky-700">
+              Ha, muzlatish
+            </button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Unfreeze confirmation dialog */}
+      <Dialog open={!!unfreezeTarget} onOpenChange={(open) => { if (!open) setUnfreezeTarget(null); }}>
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader><DialogTitle>Guruhni faollashtirish</DialogTitle></DialogHeader>
+          <p className="text-sm text-gray-600 mt-1">
+            <span className="font-medium">{unfreezeTarget?.name}</span> guruhini faollashtirishni istaysizmi?
+          </p>
+          <div className="flex gap-3 mt-4">
+            <button onClick={() => setUnfreezeTarget(null)}
+              className="flex-1 px-4 py-2 border border-gray-300 text-sm font-medium rounded hover:bg-gray-50">
+              Bekor qilish
+            </button>
+            <button onClick={confirmUnfreeze}
+              className="flex-1 px-4 py-2 bg-green-600 text-white text-sm font-medium rounded hover:bg-green-700">
+              Ha, faollashtirish
             </button>
           </div>
         </DialogContent>

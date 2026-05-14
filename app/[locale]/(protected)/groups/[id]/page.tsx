@@ -90,7 +90,6 @@ export default function GroupDetailPage() {
   // Add student modal
   const [showAddStudent, setShowAddStudent] = useState(false);
   const [studentSearch, setStudentSearch] = useState('');
-  const statusFilter = 'pending';
   const [courseFilter, setCourseFilter] = useState('');
   const [courses, setCourses] = useState<{ id: string; name: string }[]>([]);
   const [searchResults, setSearchResults] = useState<Student[]>([]);
@@ -159,9 +158,8 @@ export default function GroupDetailPage() {
       try {
         const params: Record<string, string | number> = { page_size: 50 };
         if (studentSearch.trim()) params.search = studentSearch.trim();
-        if (statusFilter) params.status = statusFilter;
         if (courseFilter) params.course = courseFilter;
-        const { data } = await api.get<PaginatedResponse<Student>>('/api/v1/students/', { params });
+        const { data } = await api.get<PaginatedResponse<Student>>('/api/v1/leads/', { params });
         const currentIds = new Set(students.map((s) => s.id));
         setSearchResults((data.results ?? []).filter((s) => !currentIds.has(s.id)));
       } catch {
@@ -171,7 +169,7 @@ export default function GroupDetailPage() {
       }
     }, 350);
     return () => clearTimeout(timer);
-  }, [studentSearch, statusFilter, courseFilter, students]);
+  }, [studentSearch, courseFilter, students]);
 
   function toggleSelect(sid: string) {
     setSelectedIds((prev) => {

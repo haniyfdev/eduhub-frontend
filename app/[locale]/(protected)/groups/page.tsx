@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { useLocale } from 'next-intl';
-import { Plus, Search } from 'lucide-react';
+import { Plus, Search, Minus } from 'lucide-react';
 import toast, { Toaster } from 'react-hot-toast';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -259,9 +259,10 @@ export default function GroupsPage() {
                       {g.status === 'active' ? (
                         <button
                           onClick={(e) => { e.stopPropagation(); setArchiveTarget({ id: g.id, name: g.name }); }}
-                          className="text-xs text-red-500 hover:underline"
+                          className="p-1 rounded text-red-400 hover:bg-red-50 hover:text-red-600 transition-colors"
+                          title="Arxivlash"
                         >
-                          Arxivlash
+                          <Minus className="w-4 h-4" />
                         </button>
                       ) : (
                         <span className="text-xs text-gray-400">

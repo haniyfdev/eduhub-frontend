@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState, useCallback, useRef } from 'react';
-import { Plus, Search } from 'lucide-react';
+import { Plus, Search, Minus } from 'lucide-react';
 import toast, { Toaster } from 'react-hot-toast';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -279,7 +279,10 @@ export default function TeachersPage() {
                       <td className="px-4 py-3">
                         {t.status === 'active' && (
                           <button onClick={() => setArchiveTarget({ id: t.id, name: `${t.first_name} ${t.last_name}` })}
-                            className="text-xs text-red-500 hover:underline">Arxivlash</button>
+                            className="p-1 rounded text-red-400 hover:bg-red-50 hover:text-red-600 transition-colors"
+                            title="Arxivlash">
+                            <Minus className="w-4 h-4" />
+                          </button>
                         )}
                       </td>
                     </tr>

@@ -21,6 +21,8 @@ export interface Student {
   birth_date: string | null;
   archived_at?: string | null;
   course_name: string | null;
+  current_group: string | null;
+  current_group_id: string | null;
   status: 'pending' | 'active' | 'trial' | 'archived';
   company_id: string;
   created_at: string;

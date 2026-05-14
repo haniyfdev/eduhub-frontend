@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState, useCallback, useRef } from 'react';
-import { Plus, Search, Send } from 'lucide-react';
+import { Plus, Search, Send, Minus } from 'lucide-react';
 import toast, { Toaster } from 'react-hot-toast';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -43,8 +43,8 @@ export default function LeadsPage() {
   const [showAdd, setShowAdd]           = useState(false);
   const [saving, setSaving]             = useState(false);
   const [form, setForm]                 = useState(EMPTY_FORM);
-  const [promoteTarget, setPromoteTarget] = useState<{ id: string; name: string; status: string } | null>(null);
-  const [promoting, setPromoting]       = useState(false);
+  const [archiveTarget, setArchiveTarget] = useState<{ id: string; name: string } | null>(null);
+  const [archiving, setArchiving]       = useState(false);
   const [touched, setTouched]           = useState<Record<string, boolean>>({});
   const [phoneSelection, setPhoneSelection] = useState<PhoneSelection>({});
   const [showSmsConfirm, setShowSmsConfirm] = useState(false);
@@ -201,19 +201,18 @@ export default function LeadsPage() {
     }
   }
 
-  async function confirmPromote() {
-    if (!promoteTarget) return;
-    setPromoting(true);
+  async function confirmArchive() {
+    if (!archiveTarget) return;
+    setArchiving(true);
     try {
-      await api.post(`/api/v1/leads/${promoteTarget.id}/promote/`);
-      const next = promoteTarget.status === 'pending' ? 'Sinov' : 'Faol talaba';
-      toast.success(`${promoteTarget.name} → ${next}`);
-      setPromoteTarget(null);
+      await api.post(`/api/v1/students/${archiveTarget.id}/archive/`);
+      toast.success('Lead arxivlandi');
+      setArchiveTarget(null);
       fetchLeads();
     } catch {
       toast.error('Xatolik yuz berdi');
     } finally {
-      setPromoting(false);
+      setArchiving(false);
     }
   }
 
@@ -278,7 +277,7 @@ export default function LeadsPage() {
           <table className="w-full text-sm">
             <thead>
               <tr className="bg-gray-50 border-b border-gray-200">
-                {['№', 'Ism', 'Telefon', 'Ota-ona tel', "Tug'ilgan sana", 'Kurs', 'Holat', 'Yozilgan sana'].map((h) => (
+                {['№', 'Ism', 'Telefon', 'Ota-ona tel', "Tug'ilgan sana", 'Kurs', 'Holat', 'Yozilgan sana', 'Amal'].map((h) => (
                   <th key={h} className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">{h}</th>
                 ))}
               </tr>
@@ -286,12 +285,12 @@ export default function LeadsPage() {
             <tbody className="divide-y divide-gray-100">
               {loading
                 ? Array(8).fill(0).map((_, i) => (
-                  <tr key={i}>{Array(8).fill(0).map((_, j) => (
+                  <tr key={i}>{Array(9).fill(0).map((_, j) => (
                     <td key={j} className="px-4 py-3"><Skeleton className="h-4 w-full" /></td>
                   ))}</tr>
                 ))
                 : students.length === 0
-                  ? <tr><td colSpan={8} className="px-4 py-16 text-center text-gray-400">Natija topilmadi</td></tr>
+                  ? <tr><td colSpan={9} className="px-4 py-16 text-center text-gray-400">Natija topilmadi</td></tr>
                   : students.map((s, idx) => (
                     <tr key={s.id} className="transition-colors hover:brightness-95">
                       <td className="px-4 py-3 text-gray-400 text-xs">{(page - 1) * pageSize + idx + 1}</td>
@@ -320,16 +319,15 @@ export default function LeadsPage() {
                           {STATUS_LABELS[s.status] ?? s.status}
                         </span>
                       </td>
+                      <td className="px-4 py-3 text-xs text-gray-400">{formatDMY(s.created_at)}</td>
                       <td className="px-4 py-3">
-                        <div className="flex flex-col gap-1">
-                          <span className="text-xs text-gray-400">{formatDMY(s.created_at)}</span>
-                          <button
-                            onClick={() => setPromoteTarget({ id: s.id, name: `${s.first_name} ${s.last_name}`, status: s.status })}
-                            className="text-xs text-green-600 hover:underline text-left"
-                          >
-                            Talabaga o&apos;tkazish
-                          </button>
-                        </div>
+                        <button
+                          onClick={() => setArchiveTarget({ id: s.id, name: `${s.first_name} ${s.last_name}` })}
+                          className="p-1 rounded text-red-400 hover:bg-red-50 hover:text-red-600 transition-colors"
+                          title="Arxivlash"
+                        >
+                          <Minus className="w-4 h-4" />
+                        </button>
                       </td>
                     </tr>
                   ))
@@ -510,27 +508,21 @@ export default function LeadsPage() {
         </DialogContent>
       </Dialog>
 
-      {/* ══ Promote Dialog ══ */}
-      <Dialog open={!!promoteTarget} onOpenChange={(open) => { if (!open) setPromoteTarget(null); }}>
+      {/* ══ Archive Dialog ══ */}
+      <Dialog open={!!archiveTarget} onOpenChange={(open) => { if (!open) setArchiveTarget(null); }}>
         <DialogContent className="sm:max-w-sm">
-          <DialogHeader>
-            <DialogTitle>Talabaga o&apos;tkazish</DialogTitle>
-          </DialogHeader>
+          <DialogHeader><DialogTitle>Arxivlash</DialogTitle></DialogHeader>
           <p className="text-sm text-gray-600 mt-1">
-            <span className="font-medium">{promoteTarget?.name}</span>ni{' '}
-            {promoteTarget?.status === 'pending'
-              ? <><span className="font-medium text-blue-600">Sinov</span> holatiga</>
-              : <><span className="font-medium text-green-600">Faol talaba</span> holatiga</>
-            }{' '}o&apos;tkazishni istaysizmi?
+            <span className="font-medium">{archiveTarget?.name}</span>ni arxivlashni istaysizmi?
           </p>
           <div className="flex gap-3 mt-4">
-            <button onClick={() => setPromoteTarget(null)}
+            <button onClick={() => setArchiveTarget(null)}
               className="flex-1 px-4 py-2 border border-gray-300 text-sm font-medium rounded hover:bg-gray-50">
               Bekor qilish
             </button>
-            <button onClick={confirmPromote} disabled={promoting}
-              className="flex-1 px-4 py-2 bg-green-600 text-white text-sm font-medium rounded hover:bg-green-700 disabled:opacity-60">
-              {promoting ? '...' : "Ha, o'tkazish"}
+            <button onClick={confirmArchive} disabled={archiving}
+              className="flex-1 px-4 py-2 bg-red-600 text-white text-sm font-medium rounded hover:bg-red-700 disabled:opacity-60">
+              {archiving ? '...' : 'Ha, arxivlash'}
             </button>
           </div>
         </DialogContent>

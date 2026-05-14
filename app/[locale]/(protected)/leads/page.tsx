@@ -1,210 +1,223 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
-import { UserPlus, Search, ArrowUp, ArrowDown } from 'lucide-react';
+import { useEffect, useState, useCallback, useRef } from 'react';
+import { Plus, Search, Send } from 'lucide-react';
 import toast, { Toaster } from 'react-hot-toast';
+import { Skeleton } from '@/components/ui/skeleton';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { UserTable, ColumnDef } from '@/components/user-table';
+import { Pagination } from '@/components/pagination';
 import api from '@/lib/axios';
-import { cn, formatPhone } from '@/lib/utils';
-import { getUser } from '@/lib/auth';
-
-interface Lead {
-  id: string;
-  first_name: string;
-  last_name: string;
-  phone: string;
-  course: string | null;
-  course_name: string | null;
-  status: 'pending' | 'trial' | 'active';
-  current_group: string | null;
-  created_at: string;
-}
+import { cn, formatPhone, formatDMY } from '@/lib/utils';
+import { Student, PaginatedResponse } from '@/types';
 
 const STATUS_STYLES: Record<string, string> = {
-  pending: 'bg-yellow-50 text-yellow-700 border-yellow-200',
-  trial:   'bg-blue-50 text-blue-700 border-blue-200',
-  active:  'bg-green-50 text-green-700 border-green-200',
+  pending:  'bg-yellow-50 text-yellow-700 border-yellow-200',
+  active:   'bg-green-50 text-green-700 border-green-200',
+  trial:    'bg-blue-50 text-blue-700 border-blue-200',
+  archived: 'bg-gray-100 text-gray-600 border-gray-200',
 };
 const STATUS_LABELS: Record<string, string> = {
-  pending: 'Kutilmoqda',
-  trial:   'Sinov',
-  active:  'Faol',
+  pending: 'Kutilmoqda', active: 'Faol', trial: 'Sinov', archived: 'Arxivlangan',
 };
-
-const EMPTY_FORM = { first_name: '', last_name: '', phone: '', course_id: '' };
 
 interface Course { id: string; name: string; }
 
-export default function LeadsPage() {
-  const [leads, setLeads]         = useState<Lead[]>([]);
-  const [filtered, setFiltered]   = useState<Lead[]>([]);
-  const [loading, setLoading]     = useState(true);
-  const [search, setSearch]       = useState('');
-  const [statusFilter, setStatus] = useState('');
-  const [showAdd, setShowAdd]     = useState(false);
-  const [saving, setSaving]       = useState(false);
-  const [form, setForm]           = useState(EMPTY_FORM);
-  const [courses, setCourses]     = useState<Course[]>([]);
-  const [actionTarget, setActionTarget] = useState<{ lead: Lead; action: 'promote' | 'demote' } | null>(null);
-  const [acting, setActing]       = useState(false);
+const EMPTY_FORM = {
+  first_name: '', last_name: '', phone: '', second_phone: '',
+  birth_date: '', course_id: '', referral_source: '',
+};
 
-  const canEdit = ['boss', 'manager', 'admin'].includes(getUser()?.role ?? '');
+type PhoneSelection = Record<string, { phone1: boolean; phone2: boolean }>;
+
+export default function LeadsPage() {
+  const [students, setStudents]         = useState<Student[]>([]);
+  const [courses, setCourses]           = useState<Course[]>([]);
+  const [loading, setLoading]           = useState(true);
+  const [error, setError]               = useState(false);
+  const [search, setSearch]             = useState('');
+  const [statusFilter, setStatusFilter] = useState('');
+  const [courseFilter, setCourseFilter] = useState('');
+  const [page, setPage]                 = useState(1);
+  const [pageSize, setPageSize]         = useState(25);
+  const [count, setCount]               = useState(0);
+  const [showAdd, setShowAdd]           = useState(false);
+  const [saving, setSaving]             = useState(false);
+  const [form, setForm]                 = useState(EMPTY_FORM);
+  const [promoteTarget, setPromoteTarget] = useState<{ id: string; name: string; status: string } | null>(null);
+  const [promoting, setPromoting]       = useState(false);
+  const [touched, setTouched]           = useState<Record<string, boolean>>({});
+  const [phoneSelection, setPhoneSelection] = useState<PhoneSelection>({});
+  const [showSmsConfirm, setShowSmsConfirm] = useState(false);
+  const [sendingSms, setSendingSms]     = useState(false);
+
+  // ── Keyboard refs ──────────────────────────────────────────────────────────
+  const firstNameRef = useRef<HTMLInputElement>(null);
+  const lastNameRef  = useRef<HTMLInputElement>(null);
+  const phoneRef     = useRef<HTMLInputElement>(null);
+  const phone2Ref    = useRef<HTMLInputElement>(null);
+  const courseRef    = useRef<HTMLSelectElement>(null);
+  const saveRef      = useRef<HTMLButtonElement>(null);
+
+  function handleKey(
+    e: React.KeyboardEvent,
+    next?: React.RefObject<HTMLElement>,
+    prev?: React.RefObject<HTMLElement>,
+  ) {
+    if (e.key === 'Escape') {
+      setShowAdd(false);
+      setForm(EMPTY_FORM);
+      setTouched({});
+    }
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      next?.current?.focus();
+    }
+    if (e.key === 'Backspace' && (e.target as HTMLInputElement).value === '') {
+      e.preventDefault();
+      prev?.current?.focus();
+    }
+  }
+
+  // ── Data fetching ──────────────────────────────────────────────────────────
 
   const fetchLeads = useCallback(async () => {
     setLoading(true);
+    setError(false);
     try {
-      const params: Record<string, string> = { page_size: '200' };
+      const params: Record<string, string | number> = { page, page_size: pageSize };
+      if (search)       params.search = search;
       if (statusFilter) params.status = statusFilter;
-      const { data } = await api.get('/api/v1/leads/', { params });
-      const list: Lead[] = Array.isArray(data) ? data : (data.results ?? []);
-      setLeads(list);
+      if (courseFilter) params.course = courseFilter;
+      const { data } = await api.get<PaginatedResponse<Student>>('/api/v1/leads/', { params });
+
+      setStudents(data.results ?? []);
+      setCount(data.count);
+      const init: PhoneSelection = {};
+      (data.results ?? []).forEach((s: Student) => { init[s.id] = { phone1: false, phone2: false }; });
+      setPhoneSelection(init);
     } catch {
-      toast.error('Leadlarni yuklashda xatolik');
+      setError(true);
+      toast.error("Ma'lumotlarni yuklashda xatolik");
     } finally {
       setLoading(false);
     }
-  }, [statusFilter]);
+  }, [page, pageSize, search, statusFilter, courseFilter]);
 
   useEffect(() => { fetchLeads(); }, [fetchLeads]);
+  useEffect(() => { setPage(1); }, [search, statusFilter, courseFilter]);
 
   useEffect(() => {
-    const q = search.toLowerCase();
-    setFiltered(
-      q
-        ? leads.filter(
-            (l) =>
-              `${l.first_name} ${l.last_name}`.toLowerCase().includes(q) ||
-              l.phone.includes(q),
-          )
-        : leads,
-    );
-  }, [search, leads]);
+    api.get<PaginatedResponse<Course>>('/api/v1/courses/?page_size=100&status=active')
+      .then(({ data }) => setCourses(data.results))
+      .catch(() => {});
+  }, []);
 
-  async function fetchCourses() {
-    try {
-      const { data } = await api.get('/api/v1/courses/?page_size=100');
-      setCourses(Array.isArray(data) ? data : (data.results ?? []));
-    } catch {}
+  // ── SMS ────────────────────────────────────────────────────────────────────
+
+  function togglePhone(id: string, key: 'phone1' | 'phone2') {
+    setPhoneSelection((prev) => ({
+      ...prev,
+      [id]: { ...prev[id], [key]: !prev[id]?.[key] },
+    }));
   }
 
-  useEffect(() => { fetchCourses(); }, []);
+  const selectedSmsCount = students.reduce((acc, s) => {
+    const sel = phoneSelection[s.id];
+    if (sel?.phone1 && s.phone)        acc++;
+    if (sel?.phone2 && s.second_phone) acc++;
+    return acc;
+  }, 0);
 
-  async function handleAdd(e: React.FormEvent) {
-    e.preventDefault();
-    if (!form.first_name.trim() || !form.last_name.trim() || !form.phone.trim()) {
-      toast.error('Ism, familiya va telefon majburiy');
-      return;
+  async function handleSendSms() {
+    setSendingSms(true);
+    let success = 0;
+    for (const s of students) {
+      const sel = phoneSelection[s.id];
+      const phones: string[] = [];
+      if (sel?.phone1 && s.phone)        phones.push(s.phone);
+      if (sel?.phone2 && s.second_phone) phones.push(s.second_phone);
+      for (const phone of phones) {
+        try {
+          await api.post(`/api/v1/students/${s.id}/send-sms/`, { phone });
+          success++;
+        } catch { /* skip */ }
+      }
     }
+    toast.success(`${success} ta SMS yuborildi`);
+    setShowSmsConfirm(false);
+    setSendingSms(false);
+  }
+
+  // ── Form validation ────────────────────────────────────────────────────────
+
+  const fieldErrors = {
+    first_name:  !form.first_name  ? 'Ism majburiy'        : form.first_name.length  < 2 ? 'Kamida 2 harf'  : form.first_name.length  > 50 ? "Ko'pi bilan 50 harf" : '',
+    last_name:   !form.last_name   ? 'Familiya majburiy'   : form.last_name.length   < 2 ? 'Kamida 2 harf'  : form.last_name.length   > 50 ? "Ko'pi bilan 50 harf" : '',
+    phone:       form.phone.replace(/\D/g, '').length !== 9 ? "To'liq 9 raqam kiriting" : '',
+    second_phone: form.second_phone && form.second_phone.replace(/\D/g, '').length !== 9 ? '9 raqam kiriting' : '',
+    course_id:   !form.course_id   ? 'Kurs majburiy'       : '',
+    birth_date: !form.birth_date ? "Tug'ilgan sana majburiy" : form.birth_date.length !== 10 ? "dd/mm/yyyy formatida kiriting" : '',
+  };
+  const hasFormErrors = Object.values(fieldErrors).some(Boolean);
+
+  function touch(field: string) {
+    setTouched((t) => ({ ...t, [field]: true }));
+  }
+
+  function showErr(field: string) {
+    return touched[field] ? (fieldErrors as Record<string, string>)[field] ?? '' : '';
+  }
+
+  // ── Add lead ───────────────────────────────────────────────────────────────
+
+  async function handleAddLead(e: React.FormEvent) {
+    e.preventDefault();
+    setTouched({ first_name: true, last_name: true, phone: true, second_phone: true, course_id: true, birth_date: true });
+    if (hasFormErrors) return;
     setSaving(true);
     try {
       await api.post('/api/v1/leads/', {
-        first_name: form.first_name.trim(),
-        last_name: form.last_name.trim(),
-        phone: form.phone.trim(),
-        course: form.course_id || null,
+        first_name:      form.first_name,
+        last_name:       form.last_name,
+        phone:           '+998' + form.phone.replace(/\D/g, ''),
+        second_phone:    form.second_phone ? '+998' + form.second_phone.replace(/\D/g, '') : null,
+        birth_date:      form.birth_date
+                         ? form.birth_date.split('/').reverse().join('-')
+                         : null,
+        course:          form.course_id || null,
+        referral_source: form.referral_source || null,
       });
-      toast.success('Lead qo\'shildi');
+      toast.success("Lead muvaffaqiyatli qo'shildi");
       setShowAdd(false);
       setForm(EMPTY_FORM);
+      setTouched({});
       fetchLeads();
-    } catch {
-      toast.error('Xatolik yuz berdi');
+    } catch (err: unknown) {
+      const detail = (err as { response?: { data?: unknown } })?.response?.data;
+      const msg = typeof detail === 'string' ? detail : (detail as Record<string, unknown>)?.detail || Object.values((detail as Record<string, unknown>) ?? {})[0] || 'Xatolik yuz berdi';
+      toast.error(String(msg));
     } finally {
       setSaving(false);
     }
   }
 
-  async function handleAction() {
-    if (!actionTarget) return;
-    setActing(true);
+  async function confirmPromote() {
+    if (!promoteTarget) return;
+    setPromoting(true);
     try {
-      await api.post(`/api/v1/leads/${actionTarget.lead.id}/${actionTarget.action}/`);
-      toast.success(
-        actionTarget.action === 'promote'
-          ? 'Muvaffaqiyatli ko\'tarildi'
-          : 'Muvaffaqiyatli tushirildi',
-      );
-      setActionTarget(null);
+      await api.post(`/api/v1/leads/${promoteTarget.id}/promote/`);
+      const next = promoteTarget.status === 'pending' ? 'Sinov' : 'Faol talaba';
+      toast.success(`${promoteTarget.name} → ${next}`);
+      setPromoteTarget(null);
       fetchLeads();
     } catch {
       toast.error('Xatolik yuz berdi');
     } finally {
-      setActing(false);
+      setPromoting(false);
     }
   }
 
-  // Counts
-  const pendingCount = leads.filter((l) => l.status === 'pending').length;
-  const trialCount   = leads.filter((l) => l.status === 'trial').length;
-  const activeCount  = leads.filter((l) => l.status === 'active').length;
-
-  const columns: ColumnDef<Lead>[] = [
-    {
-      key: 'name',
-      header: "O'quvchi",
-      render: (row) => (
-        <div>
-          <p className="font-medium text-gray-900">{row.first_name} {row.last_name}</p>
-          <p className="text-xs text-gray-400">{formatPhone(row.phone)}</p>
-        </div>
-      ),
-    },
-    {
-      key: 'course',
-      header: 'Kurs',
-      render: (row) => <span className="text-gray-600">{row.course_name ?? '—'}</span>,
-    },
-    {
-      key: 'group',
-      header: 'Guruh',
-      render: (row) => <span className="text-gray-600">{row.current_group ?? '—'}</span>,
-    },
-    {
-      key: 'status',
-      header: 'Holat',
-      render: (row) => (
-        <span className={cn('inline-flex items-center px-2 py-0.5 rounded text-xs font-medium border', STATUS_STYLES[row.status])}>
-          {STATUS_LABELS[row.status]}
-        </span>
-      ),
-    },
-    {
-      key: 'date',
-      header: 'Qo\'shilgan',
-      render: (row) => (
-        <span className="text-xs text-gray-400">
-          {new Date(row.created_at).toLocaleDateString('uz-UZ')}
-        </span>
-      ),
-    },
-    ...(canEdit ? [{
-      key: 'actions',
-      header: '',
-      render: (row: Lead) => (
-        <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
-          {row.status !== 'active' && (
-            <button
-              onClick={() => setActionTarget({ lead: row, action: 'promote' })}
-              title="Ko'tarish"
-              className="p-1.5 rounded text-green-600 hover:bg-green-50 transition-colors"
-            >
-              <ArrowUp className="w-4 h-4" />
-            </button>
-          )}
-          {row.status !== 'pending' && (
-            <button
-              onClick={() => setActionTarget({ lead: row, action: 'demote' })}
-              title="Tushirish"
-              className="p-1.5 rounded text-orange-500 hover:bg-orange-50 transition-colors"
-            >
-              <ArrowDown className="w-4 h-4" />
-            </button>
-          )}
-        </div>
-      ),
-    }] : []),
-  ];
+  // ── Render ─────────────────────────────────────────────────────────────────
 
   return (
     <div className="space-y-5">
@@ -212,129 +225,282 @@ export default function LeadsPage() {
 
       {/* Header */}
       <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <UserPlus className="w-6 h-6 text-blue-600" />
-          <div>
-            <h1 className="text-xl font-bold text-gray-900">Leadlar</h1>
-            <p className="text-xs text-gray-500">Potentsial va sinov o&apos;quvchilar</p>
-          </div>
-        </div>
-        {canEdit && (
+        <h1 className="text-xl font-bold text-gray-900">Leadlar</h1>
+        <div className="flex items-center gap-2">
+          {selectedSmsCount > 0 && (
+            <button
+              onClick={() => setShowSmsConfirm(true)}
+              className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded hover:bg-indigo-700 transition-colors"
+            >
+              <Send className="w-4 h-4" />
+              SMS yuborish ({selectedSmsCount})
+            </button>
+          )}
           <button
-            onClick={() => setShowAdd(true)}
-            className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors"
+            onClick={() => { setShowAdd(true); setTimeout(() => firstNameRef.current?.focus(), 100); }}
+            className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded hover:bg-blue-700 transition-colors"
           >
-            <UserPlus className="w-4 h-4" />
-            Qo&apos;shish
+            <Plus className="w-4 h-4" /> Qo&apos;shish
           </button>
-        )}
-      </div>
-
-      {/* Funnel stats */}
-      <div className="grid grid-cols-3 gap-4">
-        {[
-          { label: 'Kutilmoqda', count: pendingCount, color: 'text-yellow-600', bg: 'bg-yellow-50 border-yellow-200' },
-          { label: 'Sinov', count: trialCount, color: 'text-blue-600', bg: 'bg-blue-50 border-blue-200' },
-          { label: 'Faol', count: activeCount, color: 'text-green-600', bg: 'bg-green-50 border-green-200' },
-        ].map(({ label, count, color, bg }) => (
-          <div key={label} className={cn('rounded-lg border p-4 text-center', bg)}>
-            <p className={cn('text-3xl font-bold', color)}>{count}</p>
-            <p className="text-xs text-gray-500 mt-1">{label}</p>
-          </div>
-        ))}
+        </div>
       </div>
 
       {/* Filters */}
-      <div className="flex items-center gap-3">
+      <div className="flex gap-3">
         <div className="relative flex-1 max-w-xs">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
           <input
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Qidirish..."
-            className="w-full pl-9 pr-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            type="text" value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Qidirish..."
+            className="w-full pl-9 pr-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
         </div>
-        <select
-          value={statusFilter}
-          onChange={(e) => setStatus(e.target.value)}
-          className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-        >
-          <option value="">Barcha holat</option>
+        <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}
+          className="px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-700">
+          <option value="">Barchasi</option>
           <option value="pending">Kutilmoqda</option>
           <option value="trial">Sinov</option>
+        </select>
+        <select value={courseFilter} onChange={(e) => setCourseFilter(e.target.value)}
+          className="px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-700">
+          <option value="">Barcha kurslar</option>
+          {courses.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
         </select>
       </div>
 
       {/* Table */}
-      <div className="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden">
-        <UserTable
-          columns={columns}
-          rows={filtered}
-          loading={loading}
-          skeletonRows={6}
-          emptyMessage="Leadlar topilmadi"
-          keyExtractor={(row) => row.id}
-        />
+      <div className="bg-white rounded border border-gray-200 shadow-sm overflow-hidden">
+        {error ? (
+          <div className="flex flex-col items-center justify-center py-16 text-gray-500">
+            <p className="mb-3 text-sm">Xatolik yuz berdi</p>
+            <button onClick={fetchLeads} className="text-sm text-blue-600 underline">Qayta urinish</button>
+          </div>
+        ) : (
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="bg-gray-50 border-b border-gray-200">
+                {['№', 'Ism', 'Telefon', 'Ota-ona tel', "Tug'ilgan sana", 'Kurs', 'Holat', 'Yozilgan sana'].map((h) => (
+                  <th key={h} className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-100">
+              {loading
+                ? Array(8).fill(0).map((_, i) => (
+                  <tr key={i}>{Array(8).fill(0).map((_, j) => (
+                    <td key={j} className="px-4 py-3"><Skeleton className="h-4 w-full" /></td>
+                  ))}</tr>
+                ))
+                : students.length === 0
+                  ? <tr><td colSpan={8} className="px-4 py-16 text-center text-gray-400">Natija topilmadi</td></tr>
+                  : students.map((s, idx) => (
+                    <tr key={s.id} className="transition-colors hover:brightness-95">
+                      <td className="px-4 py-3 text-gray-400 text-xs">{(page - 1) * pageSize + idx + 1}</td>
+                      <td className="px-4 py-3 font-medium text-gray-900">{s.first_name} {s.last_name}</td>
+                      <td className="px-4 py-3">
+                        <label className="flex items-center gap-2 cursor-pointer select-none">
+                          <input type="checkbox" checked={phoneSelection[s.id]?.phone1 ?? false}
+                            onChange={() => togglePhone(s.id, 'phone1')} className="rounded border-gray-300 flex-shrink-0" />
+                          <span className="text-gray-500">{formatPhone(s.phone)}</span>
+                        </label>
+                      </td>
+                      <td className="px-4 py-3">
+                        {s.second_phone ? (
+                          <label className="flex items-center gap-2 cursor-pointer select-none">
+                            <input type="checkbox" checked={phoneSelection[s.id]?.phone2 ?? false}
+                              onChange={() => togglePhone(s.id, 'phone2')} className="rounded border-gray-300 flex-shrink-0" />
+                            <span className="text-gray-500">{formatPhone(s.second_phone)}</span>
+                          </label>
+                        ) : <span className="text-gray-400 px-4">—</span>}
+                      </td>
+                      <td className="px-4 py-3 text-gray-600">{formatDMY(s.birth_date)}</td>
+                      <td className="px-4 py-3 text-gray-600">{s.course_name || '—'}</td>
+                      <td className="px-4 py-3">
+                        <span className={cn('inline-flex items-center px-2 py-0.5 text-xs font-medium border rounded',
+                          STATUS_STYLES[s.status] ?? 'bg-gray-100 text-gray-600 border-gray-200')}>
+                          {STATUS_LABELS[s.status] ?? s.status}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3">
+                        <div className="flex flex-col gap-1">
+                          <span className="text-xs text-gray-400">{formatDMY(s.created_at)}</span>
+                          <button
+                            onClick={() => setPromoteTarget({ id: s.id, name: `${s.first_name} ${s.last_name}`, status: s.status })}
+                            className="text-xs text-green-600 hover:underline text-left"
+                          >
+                            Talabaga o&apos;tkazish
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))
+              }
+            </tbody>
+          </table>
+        )}
       </div>
 
-      {/* Add Lead Dialog */}
-      <Dialog open={showAdd} onOpenChange={setShowAdd}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader><DialogTitle>Yangi lead qo&apos;shish</DialogTitle></DialogHeader>
-          <form onSubmit={handleAdd} className="space-y-4 mt-2">
+      <Pagination page={page} pageSize={pageSize} count={count}
+        onPageChange={setPage} onPageSizeChange={(ps) => { setPageSize(ps); setPage(1); }} />
+
+      {/* ══ Add Lead Dialog ══ */}
+      <Dialog open={showAdd} onOpenChange={(open) => { if (!open) { setForm(EMPTY_FORM); setTouched({}); } setShowAdd(open); }}>
+        <DialogContent className="sm:max-w-md max-h-[90vh] overflow-y-auto">
+          <DialogHeader><DialogTitle>Yangi lead</DialogTitle></DialogHeader>
+          <form onSubmit={handleAddLead} className="space-y-4 mt-2">
+
+            {/* Ism + Familiya */}
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Ism <span className="text-red-500">*</span></label>
                 <input
+                  ref={firstNameRef}
                   value={form.first_name}
                   onChange={(e) => setForm((f) => ({ ...f, first_name: e.target.value }))}
-                  className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  required
+                  onBlur={() => touch('first_name')}
+                  onKeyDown={(e) => handleKey(e, lastNameRef)}
+                  className={cn('w-full px-3 py-2 border rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500',
+                    showErr('first_name') ? 'border-red-400' : 'border-gray-300')}
                 />
+                {showErr('first_name') && <p className="text-xs text-red-500 mt-0.5">{showErr('first_name')}</p>}
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Familiya <span className="text-red-500">*</span></label>
                 <input
+                  ref={lastNameRef}
                   value={form.last_name}
                   onChange={(e) => setForm((f) => ({ ...f, last_name: e.target.value }))}
-                  className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  required
+                  onBlur={() => touch('last_name')}
+                  onKeyDown={(e) => handleKey(e, phoneRef, firstNameRef)}
+                  className={cn('w-full px-3 py-2 border rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500',
+                    showErr('last_name') ? 'border-red-400' : 'border-gray-300')}
                 />
+                {showErr('last_name') && <p className="text-xs text-red-500 mt-0.5">{showErr('last_name')}</p>}
               </div>
             </div>
+
+            {/* Telefon */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Telefon <span className="text-red-500">*</span></label>
-              <input
-                value={form.phone}
-                onChange={(e) => setForm((f) => ({ ...f, phone: e.target.value }))}
-                placeholder="+998XXXXXXXXX"
-                className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                required
-              />
+              <div className="flex">
+                <span className="inline-flex items-center px-3 border border-r-0 border-gray-300 bg-gray-50 text-gray-500 text-sm rounded-l">+998</span>
+                <input
+                  ref={phoneRef}
+                  type="tel"
+                  value={form.phone}
+                  onChange={(e) => setForm((f) => ({ ...f, phone: e.target.value.replace(/\D/g, '').slice(0, 9) }))}
+                  onBlur={() => touch('phone')}
+                  onKeyDown={(e) => handleKey(e, phone2Ref, lastNameRef)}
+                  placeholder="XX XXX XX XX"
+                  className={cn('flex-1 px-3 py-2 border rounded-r text-sm focus:outline-none focus:ring-2 focus:ring-blue-500',
+                    showErr('phone') ? 'border-red-400' : 'border-gray-300')}
+                />
+              </div>
+              {showErr('phone') && <p className="text-xs text-red-500 mt-0.5">{showErr('phone')}</p>}
             </div>
+
+            {/* Ota-ona tel */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Kurs</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Ota-ona telefoni</label>
+              <div className="flex">
+                <span className="inline-flex items-center px-3 border border-r-0 border-gray-300 bg-gray-50 text-gray-500 text-sm rounded-l">+998</span>
+                <input
+                  ref={phone2Ref}
+                  type="tel"
+                  value={form.second_phone}
+                  onChange={(e) => setForm((f) => ({ ...f, second_phone: e.target.value.replace(/\D/g, '').slice(0, 9) }))}
+                  onBlur={() => touch('second_phone')}
+                  onKeyDown={(e) => handleKey(e, saveRef, phoneRef)}
+                  placeholder="XX XXX XX XX"
+                  className={cn('flex-1 px-3 py-2 border rounded-r text-sm focus:outline-none focus:ring-2 focus:ring-blue-500',
+                    showErr('second_phone') ? 'border-red-400' : 'border-gray-300')}
+                />
+              </div>
+              {showErr('second_phone') && <p className="text-xs text-red-500 mt-0.5">{showErr('second_phone')}</p>}
+            </div>
+
+            {/* Tug'ilgan sana */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Tug&apos;ilgan sana <span className="text-red-500">*</span>
+              </label>
+              <input
+                type="text"
+                placeholder="dd/mm/yyyy"
+                value={form.birth_date}
+                maxLength={10}
+                onKeyDown={(e) => handleKey(e, courseRef, phone2Ref)}
+                onChange={(e) => {
+                  let val = e.target.value.replace(/\D/g, '');
+                  if (val.length > 8) val = val.slice(0, 8);
+                  let masked = val;
+                  if (val.length > 2) masked = val.slice(0, 2) + '/' + val.slice(2);
+                  if (val.length > 4) masked = masked.slice(0, 5) + '/' + masked.slice(5);
+                  setForm((f) => ({ ...f, birth_date: masked }));
+                  touch('birth_date');
+                }}
+                className={cn(
+                  'w-full px-3 py-2 border rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500',
+                  showErr('birth_date') ? 'border-red-400' : 'border-gray-300'
+                )}
+              />
+              {showErr('birth_date') && (
+                <p className="text-xs text-red-500 mt-0.5">{showErr('birth_date')}</p>
+              )}
+            </div>
+
+            {/* Kurs */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Kurs <span className="text-red-500">*</span></label>
               <select
+                ref={courseRef}
                 value={form.course_id}
-                onChange={(e) => setForm((f) => ({ ...f, course_id: e.target.value }))}
-                className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                onChange={(e) => { setForm((f) => ({ ...f, course_id: e.target.value })); touch('course_id'); }}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') { e.preventDefault(); saveRef.current?.focus(); }
+                  if (e.key === 'Escape') { setShowAdd(false); setForm(EMPTY_FORM); setTouched({}); }
+                }}
+                className={cn('w-full px-3 py-2 border rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500',
+                  showErr('course_id') ? 'border-red-400' : 'border-gray-300')}
               >
                 <option value="">Tanlang</option>
                 {courses.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
               </select>
+              {showErr('course_id') && <p className="text-xs text-red-500 mt-0.5">{showErr('course_id')}</p>}
             </div>
+
+            {/* Qayerdan eshitdi */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Qayerdan eshitdi</label>
+              <select
+                value={form.referral_source}
+                onChange={(e) => setForm((f) => ({ ...f, referral_source: e.target.value }))}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') { e.preventDefault(); saveRef.current?.focus(); }
+                  if (e.key === 'Escape') { setShowAdd(false); setForm(EMPTY_FORM); setTouched({}); }
+                }}
+                className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="">Tanlang</option>
+                <option value="banner">Banner</option>
+                <option value="friend">Tanish</option>
+                <option value="parent">Ota-ona</option>
+                <option value="social_media">Ijtimoiy tarmoq</option>
+                <option value="other">Boshqa</option>
+              </select>
+            </div>
+
             <div className="flex gap-3 pt-2">
               <button
                 type="button"
-                onClick={() => { setShowAdd(false); setForm(EMPTY_FORM); }}
+                onClick={() => { setShowAdd(false); setForm(EMPTY_FORM); setTouched({}); }}
                 className="flex-1 px-4 py-2 border border-gray-300 text-sm font-medium rounded hover:bg-gray-50"
               >
                 Bekor qilish
               </button>
               <button
+                ref={saveRef}
                 type="submit"
-                disabled={saving}
+                disabled={saving || hasFormErrors}
                 className="flex-1 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded hover:bg-blue-700 disabled:opacity-60"
               >
                 {saving ? 'Saqlanmoqda...' : 'Saqlash'}
@@ -344,36 +510,48 @@ export default function LeadsPage() {
         </DialogContent>
       </Dialog>
 
-      {/* Promote/Demote Confirm */}
-      <Dialog open={!!actionTarget} onOpenChange={() => setActionTarget(null)}>
+      {/* ══ Promote Dialog ══ */}
+      <Dialog open={!!promoteTarget} onOpenChange={(open) => { if (!open) setPromoteTarget(null); }}>
         <DialogContent className="sm:max-w-sm">
           <DialogHeader>
-            <DialogTitle>
-              {actionTarget?.action === 'promote' ? 'Ko\'tarishni tasdiqlang' : 'Tushirishni tasdiqlang'}
-            </DialogTitle>
+            <DialogTitle>Talabaga o&apos;tkazish</DialogTitle>
           </DialogHeader>
-          <p className="text-sm text-gray-600 mt-2">
-            <span className="font-medium">{actionTarget?.lead.first_name} {actionTarget?.lead.last_name}</span>
-            {actionTarget?.action === 'promote'
-              ? ` — ${STATUS_LABELS[actionTarget.lead.status]} → ${STATUS_LABELS[actionTarget.lead.status === 'pending' ? 'trial' : 'active']}`
-              : ` — ${STATUS_LABELS[actionTarget?.lead.status ?? '']} → ${STATUS_LABELS[actionTarget?.lead.status === 'trial' ? 'pending' : 'trial']}`}
+          <p className="text-sm text-gray-600 mt-1">
+            <span className="font-medium">{promoteTarget?.name}</span>ni{' '}
+            {promoteTarget?.status === 'pending'
+              ? <><span className="font-medium text-blue-600">Sinov</span> holatiga</>
+              : <><span className="font-medium text-green-600">Faol talaba</span> holatiga</>
+            }{' '}o&apos;tkazishni istaysizmi?
           </p>
           <div className="flex gap-3 mt-4">
-            <button
-              onClick={() => setActionTarget(null)}
-              className="flex-1 px-4 py-2 border border-gray-300 text-sm font-medium rounded hover:bg-gray-50"
-            >
+            <button onClick={() => setPromoteTarget(null)}
+              className="flex-1 px-4 py-2 border border-gray-300 text-sm font-medium rounded hover:bg-gray-50">
+              Bekor qilish
+            </button>
+            <button onClick={confirmPromote} disabled={promoting}
+              className="flex-1 px-4 py-2 bg-green-600 text-white text-sm font-medium rounded hover:bg-green-700 disabled:opacity-60">
+              {promoting ? '...' : "Ha, o'tkazish"}
+            </button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* ══ SMS Confirm Dialog ══ */}
+      <Dialog open={showSmsConfirm} onOpenChange={setShowSmsConfirm}>
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader><DialogTitle>SMS yuborish</DialogTitle></DialogHeader>
+          <p className="text-sm text-gray-600 mt-1">
+            Tanlangan <span className="font-semibold">{selectedSmsCount} ta</span> raqamga SMS yuboriladi. Tasdiqlaysizmi?
+          </p>
+          <div className="flex gap-3 mt-4">
+            <button onClick={() => setShowSmsConfirm(false)}
+              className="flex-1 px-4 py-2 border border-gray-300 text-sm font-medium rounded hover:bg-gray-50">
               Bekor
             </button>
-            <button
-              onClick={handleAction}
-              disabled={acting}
-              className={cn(
-                'flex-1 px-4 py-2 text-white text-sm font-medium rounded disabled:opacity-60',
-                actionTarget?.action === 'promote' ? 'bg-green-600 hover:bg-green-700' : 'bg-orange-500 hover:bg-orange-600',
-              )}
-            >
-              {acting ? '...' : actionTarget?.action === 'promote' ? "Ko'tarish" : 'Tushirish'}
+            <button onClick={handleSendSms} disabled={sendingSms}
+              className="flex-1 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded hover:bg-blue-700 disabled:opacity-60 flex items-center justify-center gap-2">
+              <Send className="w-4 h-4" />
+              {sendingSms ? 'Yuborilmoqda...' : 'Yuborish'}
             </button>
           </div>
         </DialogContent>

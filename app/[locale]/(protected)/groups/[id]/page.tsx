@@ -353,7 +353,7 @@ export default function GroupDetailPage() {
           <table className="w-full text-sm">
             <thead>
               <tr className="bg-gray-50 border-b border-gray-200">
-                {['#', 'Ism', 'Telefon', 'Ota-ona tel', "Tug'ilgan sana", 'Holat', 'Amallar'].map((h) => (
+                {['№', 'Ism', 'Telefon', 'Ota-ona tel', "Tug'ilgan sana", 'Holat', 'Amallar'].map((h) => (
                   <th key={h} className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">{h}</th>
                 ))}
               </tr>

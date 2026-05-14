@@ -197,66 +197,72 @@ export default function StudentsPage() {
                 ))}
               </tr>
             </thead>
+
+            {/* Table Body - td'larni header tartibiga moslaymiz */}
             <tbody className="divide-y divide-gray-100">
-              {loading
-                ? Array(8).fill(0).map((_, i) => (
-                  <tr key={i}>{Array(9).fill(0).map((_, j) => (
-                    <td key={j} className="px-4 py-3"><Skeleton className="h-4 w-full" /></td>
-                  ))}</tr>
-                ))
-                : students.length === 0
-                  ? <tr><td colSpan={9} className="px-4 py-16 text-center text-gray-400">Natija topilmadi</td></tr>
-                  : students.map((s, idx) => (
-                    <tr key={s.id} className={cn('transition-colors hover:brightness-95', rowBg(s))}>
-                      <td className="px-4 py-3 text-gray-400 text-xs">{(page - 1) * pageSize + idx + 1}</td>
-                      <td className="px-4 py-3 font-medium text-gray-900">{s.first_name} {s.last_name}</td>
-                      <td className="px-4 py-3">
-                        <label className="flex items-center gap-2 cursor-pointer select-none">
-                          <input type="checkbox" checked={phoneSelection[s.id]?.phone1 ?? false}
-                            onChange={() => togglePhone(s.id, 'phone1')} className="rounded border-gray-300 flex-shrink-0" />
-                          <span className="text-gray-500">{formatPhone(s.phone)}</span>
-                        </label>
+              {students.map((s, idx) => (
+                <tr key={s.id} className={cn('transition-colors hover:brightness-95', rowBg(s))}>
+                  {/* 1. № */}
+                  <td className="px-4 py-3 text-gray-400 text-xs">{(page - 1) * pageSize + idx + 1}</td>
+                  
+                  {/* 2. Ism */}
+                  <td className="px-4 py-3 font-medium text-gray-900">{s.first_name} {s.last_name}</td>
+                  
+                  {/* 3. Telefon (O'quvchiniki) */}
+                  <td className="px-4 py-3">
+                    <label className="flex items-center gap-2 cursor-pointer select-none">
+                      <input type="checkbox" checked={phoneSelection[s.id]?.phone1 ?? false}
+                        onChange={() => togglePhone(s.id, 'phone1')} className="rounded border-gray-300 flex-shrink-0" />
+                      <span className="text-gray-500">{formatPhone(s.phone)}</span>
+                    </label>
+                  </td>
 
-                      
-                        {s.second_phone ? (
-                          <label className="flex items-center gap-2 cursor-pointer select-none">
-                            <input type="checkbox" checked={phoneSelection[s.id]?.phone2 ?? false}
-                             onChange={() => togglePhone(s.id, 'phone2')} className="rounded border-gray-300 flex-shrink-0" />
-                            <span className="text-gray-500">{formatPhone(s.second_phone)}</span>
-                          </label>
-                        ) : <span className="text-gray-400 px-4">—</span>}
-                        
-                      </td>
-                      <td className="px-4 py-3 font-medium text-gray-700">{s.current_group || '—'}</td>
-                      <td className="px-4 py-3 text-gray-600">{s.course_name || '—'}</td>
-                      <td className="px-4 py-3">
+                  {/* 4. Ota-ona tel (Avval bu yerda guruh edi, endi to'g'irlandi) */}
+                  <td className="px-4 py-3">
+                    {s.second_phone ? (
+                      <label className="flex items-center gap-2 cursor-pointer select-none">
+                        <input type="checkbox" checked={phoneSelection[s.id]?.phone2 ?? false}
+                          onChange={() => togglePhone(s.id, 'phone2')} className="rounded border-gray-300 flex-shrink-0" />
+                        <span className="text-gray-500">{formatPhone(s.second_phone)}</span>
+                      </label>
+                    ) : <span className="text-gray-400">—</span>}
+                  </td>
 
-                      </td>
-                      <td className="px-4 py-3 text-gray-600">{formatDMY(s.birth_date)}</td>
-                      <td className="px-4 py-3">
-                        <span className={cn('inline-flex items-center px-2 py-0.5 text-xs font-medium border rounded',
-                          STATUS_STYLES[s.status] ?? 'bg-gray-100 text-gray-600 border-gray-200')}>
-                          {STATUS_LABELS[s.status] ?? s.status}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3">
-                        {s.status !== 'archived' ? (
-                          <button
-                            onClick={() => setArchiveTarget({ id: s.id, name: `${s.first_name} ${s.last_name}` })}
-                            className="p-1 rounded text-red-400 hover:bg-red-50 hover:text-red-600 transition-colors"
-                            title="Arxivlash"
-                          >
-                            <Minus className="w-4 h-4" />
-                          </button>
-                        ) : (
-                          <span className="text-xs text-gray-400">
-                            {s.archived_at ? formatDMY(s.archived_at) : '—'}
-                          </span>
-                        )}
-                      </td>
-                    </tr>
-                  ))
-              }
+                  {/* 5. Guruh */}
+                  <td className="px-4 py-3 font-medium text-gray-700">{s.current_group || '—'}</td>
+                  
+                  {/* 6. Kurs */}
+                  <td className="px-4 py-3 text-gray-600">{s.course_name || '—'}</td>
+
+                  {/* 7. Tug'ilgan kun */}
+                  <td className="px-4 py-3 text-gray-600">{formatDMY(s.birth_date)}</td>
+                  
+                  {/* 8. Holat */}
+                  <td className="px-4 py-3">
+                    <span className={cn('inline-flex items-center px-2 py-0.5 text-xs font-medium border rounded',
+                      STATUS_STYLES[s.status] ?? 'bg-gray-100 text-gray-600 border-gray-200')}>
+                      {STATUS_LABELS[s.status] ?? s.status}
+                    </span>
+                  </td>
+
+                  {/* 9. Amal */}
+                  <td className="px-4 py-3">
+                    {s.status !== 'archived' ? (
+                      <button
+                        onClick={() => setArchiveTarget({ id: s.id, name: `${s.first_name} ${s.last_name}` })}
+                        className="p-1 rounded text-red-400 hover:bg-red-50 hover:text-red-600 transition-colors"
+                        title="Arxivlash"
+                      >
+                        <Minus className="w-4 h-4" />
+                      </button>
+                    ) : (
+                      <span className="text-xs text-gray-400">
+                        {s.archived_at ? formatDMY(s.archived_at) : '—'}
+                      </span>
+                    )}
+                  </td>
+                </tr>
+              ))}
             </tbody>
           </table>
         )}

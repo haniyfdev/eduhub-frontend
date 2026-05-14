@@ -401,7 +401,7 @@ export default function GroupDetailPage() {
                 : students.length === 0
                   ? <tr><td colSpan={7} className="px-4 py-14 text-center text-gray-400 text-sm">O&apos;quvchilar yo&apos;q</td></tr>
                   : students.map((s, idx) => (
-                    <tr key={s.id} className="hover:bg-gray-50 transition-colors">
+                    <tr key={s.id} className={cn('transition-colors', s.status === 'frozen' ? 'bg-[#F0F9FF] hover:bg-sky-100' : 'hover:bg-gray-50')}>
                       <td className="px-4 py-3 text-gray-500">{idx + 1}</td>
                       <td className="px-4 py-3 font-medium text-gray-900">{s.first_name} {s.last_name}</td>
                       <td className="px-4 py-3 text-gray-600">{formatPhone(s.phone)}</td>

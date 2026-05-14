@@ -581,7 +581,7 @@ export default function LeadsPage() {
               Bekor qilish
             </button>
             <button onClick={handleIgnore} disabled={ignoring}
-              className="flex-1 px-4 py-2 bg-red-600 text-white text-sm font-medium rounded hover:bg-red-700 disabled:opacity-60">
+              className="flex-1 px-4 py-2 bg-red-800 text-white text-sm font-medium rounded hover:bg-red-700 disabled:opacity-60">
               {ignoring ? '...' : 'Tasdiqlash'}
             </button>
           </div>

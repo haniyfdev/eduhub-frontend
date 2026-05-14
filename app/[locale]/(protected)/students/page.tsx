@@ -216,17 +216,21 @@ export default function StudentsPage() {
                             onChange={() => togglePhone(s.id, 'phone1')} className="rounded border-gray-300 flex-shrink-0" />
                           <span className="text-gray-500">{formatPhone(s.phone)}</span>
                         </label>
+
+                      
+                        {s.second_phone ? (
+                          <label className="flex items-center gap-2 cursor-pointer select-none">
+                            <input type="checkbox" checked={phoneSelection[s.id]?.phone2 ?? false}
+                             onChange={() => togglePhone(s.id, 'phone2')} className="rounded border-gray-300 flex-shrink-0" />
+                            <span className="text-gray-500">{formatPhone(s.second_phone)}</span>
+                          </label>
+                        ) : <span className="text-gray-400 px-4">—</span>}
+                        
                       </td>
                       <td className="px-4 py-3 font-medium text-gray-700">{s.current_group || '—'}</td>
                       <td className="px-4 py-3 text-gray-600">{s.course_name || '—'}</td>
                       <td className="px-4 py-3">
-                        {s.second_phone ? (
-                          <label className="flex items-center gap-2 cursor-pointer select-none">
-                            <input type="checkbox" checked={phoneSelection[s.id]?.phone2 ?? false}
-                              onChange={() => togglePhone(s.id, 'phone2')} className="rounded border-gray-300 flex-shrink-0" />
-                            <span className="text-gray-500">{formatPhone(s.second_phone)}</span>
-                          </label>
-                        ) : <span className="text-gray-400 px-4">—</span>}
+
                       </td>
                       <td className="px-4 py-3 text-gray-600">{formatDMY(s.birth_date)}</td>
                       <td className="px-4 py-3">

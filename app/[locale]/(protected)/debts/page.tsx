@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
-import { Search, AlertCircle, Send, Banknote } from 'lucide-react';
+import { Search, AlertCircle, Send, Banknote, Snowflake } from 'lucide-react';
 import toast, { Toaster } from 'react-hot-toast';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -16,6 +16,7 @@ interface Debt {
   student_name: string;
   student_phone: string;
   student_second_phone: string;
+  student_status: string;
   group_name: string | null;
   group_id: string | null;
   course_id: string | null;
@@ -31,8 +32,9 @@ interface PaymentForm {
   note: string;
 }
 
-function rowBg(status: Debt['status']): string {
-  switch (status) {
+function rowBg(debtStatus: Debt['status'], studentStatus: string): string {
+  if (studentStatus === 'frozen') return 'bg-[#F0F9FF]';
+  switch (debtStatus) {
     case 'overdue':  return 'bg-red-100';
     case 'unpaid':   return 'bg-yellow-100';
     case 'partial':  return 'bg-yellow-50';
@@ -261,9 +263,18 @@ export default function DebtsPage() {
                     const sel = phoneSelection[d.id] ?? { phone1: false, phone2: false };
                     const canSms = d.status !== 'paid';
                     return (
-                      <tr key={d.id} className={cn('transition-colors hover:brightness-95', rowBg(d.status))}>
+                      <tr key={d.id} className={cn('transition-colors hover:brightness-95', rowBg(d.status, d.student_status))}>
                         <td className="px-4 py-3 text-gray-500">{(page - 1) * PAGE_SIZE + idx + 1}</td>
-                        <td className="px-4 py-3 font-medium text-gray-900">{d.student_name}</td>
+                        <td className="px-4 py-3 font-medium text-gray-900">
+                          <span className="flex items-center gap-2 flex-wrap">
+                            {d.student_name}
+                            {d.student_status === 'frozen' && (
+                              <span className="inline-flex items-center gap-1 px-1.5 py-0.5 bg-cyan-100 text-cyan-700 border border-cyan-300 rounded text-xs font-medium">
+                                <Snowflake className="w-3 h-3" /> Muzlatilgan
+                              </span>
+                            )}
+                          </span>
+                        </td>
                         <td className="px-4 py-3 text-gray-600">{d.group_name || '—'}</td>
 
                         <td className="px-4 py-3">

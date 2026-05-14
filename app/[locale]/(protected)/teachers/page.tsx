@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState, useCallback, useRef } from 'react';
-import { Plus, Search, Minus } from 'lucide-react';
+import { Plus, Search, Minus, Eye, EyeOff } from 'lucide-react';
 import toast, { Toaster } from 'react-hot-toast';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -76,6 +76,7 @@ export default function TeachersPage() {
   const [form, setForm]                 = useState(EMPTY_FORM);
   const [archiveTarget, setArchiveTarget] = useState<{ id: string; name: string } | null>(null);
   const [touched, setTouched]           = useState<Record<string, boolean>>({});
+  const [showPassword, setShowPassword] = useState(false);
 
   // ── Refs ───────────────────────────────────────────────────────────────────
   const firstNameRef    = useRef<HTMLInputElement>(null);
@@ -87,7 +88,7 @@ export default function TeachersPage() {
   const salaryAmtRef    = useRef<HTMLInputElement>(null);
   const saveRef         = useRef<HTMLButtonElement>(null);
 
-  function closeModal() { setShowAdd(false); setForm(EMPTY_FORM); setTouched({}); }
+  function closeModal() { setShowAdd(false); setForm(EMPTY_FORM); setTouched({}); setShowPassword(false); }
 
   // ── Validation ─────────────────────────────────────────────────────────────
   const salaryAmt = parseFloat(form.salary_amount);
@@ -354,16 +355,26 @@ export default function TeachersPage() {
             {/* Parol */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Parol <span className="text-red-500">*</span></label>
-              <input
-                ref={passwordRef}
-                type="password"
-                value={form.password}
-                onChange={(e) => setForm((f) => ({ ...f, password: e.target.value }))}
-                onKeyDown={makeHandleKey(subjectRef, phoneRef, closeModal)}
-                className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                required
-                minLength={6}
-              />
+              <div className="relative">
+                <input
+                  ref={passwordRef}
+                  type={showPassword ? 'text' : 'password'}
+                  value={form.password}
+                  onChange={(e) => setForm((f) => ({ ...f, password: e.target.value }))}
+                  onKeyDown={makeHandleKey(subjectRef, phoneRef, closeModal)}
+                  className="w-full px-3 py-2 pr-10 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  required
+                  minLength={6}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword((v) => !v)}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-gray-400 hover:text-gray-600"
+                  tabIndex={-1}
+                >
+                  {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
+              </div>
             </div>
 
             {/* Fan */}

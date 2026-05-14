@@ -91,7 +91,7 @@ export default function Sidebar() {
             const visibleItems = section.items.filter((item) => {
               if (user?.role === 'superadmin') return item.key !== 'leads' && item.key !== 'attendance';
               if ((item as { roles?: string[] | null }).roles) {
-                return (item as { roles: string[] }).roles.includes(user?.role ?? '');
+                return ((item as { roles?: string[] | null }).roles ?? []).includes(user?.role ?? '');
               }
               return true;
             });

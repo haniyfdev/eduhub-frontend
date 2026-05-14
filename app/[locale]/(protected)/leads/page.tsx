@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState, useCallback, useRef } from 'react';
-import { Plus, Search, Send, Minus } from 'lucide-react';
+import { Plus, Search, Send, Minus, X } from 'lucide-react';
 import toast, { Toaster } from 'react-hot-toast';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -15,9 +15,10 @@ const STATUS_STYLES: Record<string, string> = {
   active:   'bg-green-50 text-green-700 border-green-200',
   trial:    'bg-blue-50 text-blue-700 border-blue-200',
   archived: 'bg-gray-100 text-gray-600 border-gray-200',
+  ignored:  'bg-red-50 text-red-700 border-red-200',
 };
 const STATUS_LABELS: Record<string, string> = {
-  pending: 'Kutilmoqda', active: 'Faol', trial: 'Sinov', archived: 'Arxivlangan',
+  pending: 'Kutilmoqda', active: 'Faol', trial: 'Sinov', archived: 'Arxivlangan', ignored: 'Rad etdi',
 };
 
 interface Course { id: string; name: string; }
@@ -45,6 +46,9 @@ export default function LeadsPage() {
   const [form, setForm]                 = useState(EMPTY_FORM);
   const [archiveTarget, setArchiveTarget] = useState<{ id: string; name: string } | null>(null);
   const [archiving, setArchiving]       = useState(false);
+  const [ignoreTarget, setIgnoreTarget] = useState<{ id: string; name: string } | null>(null);
+  const [ignoreDescription, setIgnoreDescription] = useState('');
+  const [ignoring, setIgnoring]         = useState(false);
   const [touched, setTouched]           = useState<Record<string, boolean>>({});
   const [phoneSelection, setPhoneSelection] = useState<PhoneSelection>({});
   const [showSmsConfirm, setShowSmsConfirm] = useState(false);
@@ -216,6 +220,22 @@ export default function LeadsPage() {
     }
   }
 
+  async function handleIgnore() {
+    if (!ignoreTarget) return;
+    setIgnoring(true);
+    try {
+      await api.post(`/api/v1/leads/${ignoreTarget.id}/ignore/`, { description: ignoreDescription });
+      toast.success('Lead rad etildi');
+      setIgnoreTarget(null);
+      setIgnoreDescription('');
+      fetchLeads();
+    } catch {
+      toast.error('Xatolik yuz berdi');
+    } finally {
+      setIgnoring(false);
+    }
+  }
+
   // ── Render ─────────────────────────────────────────────────────────────────
 
   return (
@@ -258,6 +278,7 @@ export default function LeadsPage() {
           <option value="">Barchasi</option>
           <option value="pending">Kutilmoqda</option>
           <option value="trial">Sinov</option>
+          <option value="ignored">Rad etdi</option>
         </select>
         <select value={courseFilter} onChange={(e) => setCourseFilter(e.target.value)}
           className="px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-700">
@@ -292,7 +313,7 @@ export default function LeadsPage() {
                 : students.length === 0
                   ? <tr><td colSpan={9} className="px-4 py-16 text-center text-gray-400">Natija topilmadi</td></tr>
                   : students.map((s, idx) => (
-                    <tr key={s.id} className="transition-colors hover:brightness-95">
+                    <tr key={s.id} className={cn('group transition-colors hover:brightness-95', s.status === 'ignored' ? 'bg-[#FEF2F2]' : '')}>
                       <td className="px-4 py-3 text-gray-400 text-xs">{(page - 1) * pageSize + idx + 1}</td>
                       <td className="px-4 py-3 font-medium text-gray-900">{s.first_name} {s.last_name}</td>
                       <td className="px-4 py-3">
@@ -321,13 +342,24 @@ export default function LeadsPage() {
                       </td>
                       <td className="px-4 py-3 text-xs text-gray-400">{formatDMY(s.created_at)}</td>
                       <td className="px-4 py-3">
-                        <button
-                          onClick={() => setArchiveTarget({ id: s.id, name: `${s.first_name} ${s.last_name}` })}
-                          className="p-1 rounded text-red-400 hover:bg-red-50 hover:text-red-600 transition-colors"
-                          title="Arxivlash"
-                        >
-                          <Minus className="w-4 h-4" />
-                        </button>
+                        <div className="flex items-center gap-1">
+                          <button
+                            onClick={() => setArchiveTarget({ id: s.id, name: `${s.first_name} ${s.last_name}` })}
+                            className="p-1 rounded text-red-400 hover:bg-red-50 hover:text-red-600 transition-colors"
+                            title="Arxivlash"
+                          >
+                            <Minus className="w-4 h-4" />
+                          </button>
+                          {s.status !== 'ignored' && (
+                            <button
+                              onClick={() => setIgnoreTarget({ id: s.id, name: `${s.first_name} ${s.last_name}` })}
+                              className="p-1 rounded text-gray-300 hover:bg-red-50 hover:text-red-500 transition-colors opacity-0 group-hover:opacity-100"
+                              title="Rad etish"
+                            >
+                              <X className="w-4 h-4" />
+                            </button>
+                          )}
+                        </div>
                       </td>
                     </tr>
                   ))
@@ -523,6 +555,34 @@ export default function LeadsPage() {
             <button onClick={confirmArchive} disabled={archiving}
               className="flex-1 px-4 py-2 bg-red-600 text-white text-sm font-medium rounded hover:bg-red-700 disabled:opacity-60">
               {archiving ? '...' : 'Ha, arxivlash'}
+            </button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* ══ Ignore Dialog ══ */}
+      <Dialog open={!!ignoreTarget} onOpenChange={(open) => { if (!open) { setIgnoreTarget(null); setIgnoreDescription(''); } }}>
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader><DialogTitle>Leadni rad etilgan deb belgilash</DialogTitle></DialogHeader>
+          <p className="text-sm text-gray-600 mt-1">
+            <span className="font-medium">{ignoreTarget?.name}</span> rad etiladi.
+          </p>
+          <textarea
+            value={ignoreDescription}
+            onChange={(e) => setIgnoreDescription(e.target.value)}
+            maxLength={500}
+            placeholder="Rad etish sababi (ixtiyoriy)..."
+            rows={3}
+            className="w-full mt-3 px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-red-400 resize-none"
+          />
+          <div className="flex gap-3 mt-4">
+            <button onClick={() => { setIgnoreTarget(null); setIgnoreDescription(''); }}
+              className="flex-1 px-4 py-2 border border-gray-300 text-sm font-medium rounded hover:bg-gray-50">
+              Bekor qilish
+            </button>
+            <button onClick={handleIgnore} disabled={ignoring}
+              className="flex-1 px-4 py-2 bg-red-600 text-white text-sm font-medium rounded hover:bg-red-700 disabled:opacity-60">
+              {ignoring ? '...' : 'Tasdiqlash'}
             </button>
           </div>
         </DialogContent>

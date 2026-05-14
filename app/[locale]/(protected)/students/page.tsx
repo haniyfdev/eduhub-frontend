@@ -15,7 +15,7 @@ const STATUS_STYLES: Record<string, string> = {
   active:   'bg-green-50 text-green-700 border-green-200',
   trial:    'bg-blue-50 text-blue-700 border-blue-200',
   archived: 'bg-gray-100 text-gray-600 border-gray-200',
-  frozen:   'bg-sky-100 text-sky-700 border-sky-300',
+  frozen:   'bg-cyan-100 text-cyan-700 border-cyan-300',
 };
 const STATUS_LABELS: Record<string, string> = {
   pending: 'Kutilmoqda', active: 'Faol', trial: 'Sinov', archived: 'Arxivlangan', frozen: 'Muzlatilgan',
@@ -215,12 +215,7 @@ export default function StudentsPage() {
                       <td className="px-4 py-3 text-gray-400 text-xs">{(page - 1) * pageSize + idx + 1}</td>
                       
                       {/* 2. Ism */}
-                      <td className="px-4 py-3 font-medium text-gray-900">
-                        <span className="flex items-center gap-1.5">
-                          {s.first_name} {s.last_name}
-                          {s.status === 'frozen' && <Snowflake className="w-3.5 h-3.5 text-sky-500 flex-shrink-0" />}
-                        </span>
-                      </td>
+                      <td className="px-4 py-3 font-medium text-gray-900">{s.first_name} {s.last_name}</td>
                       
                       {/* 3. Telefon */}
                       <td className="px-4 py-3">
@@ -253,8 +248,9 @@ export default function StudentsPage() {
 
                       {/* 8. Holat */}
                       <td className="px-4 py-3">
-                        <span className={cn('inline-flex items-center px-2 py-0.5 text-xs font-medium border rounded',
+                        <span className={cn('inline-flex items-center gap-1 px-2 py-0.5 text-xs font-medium border rounded',
                           STATUS_STYLES[s.status] ?? 'bg-gray-100 text-gray-600 border-gray-200')}>
+                          {s.status === 'frozen' && <Snowflake className="w-3 h-3 flex-shrink-0" />}
                           {STATUS_LABELS[s.status] ?? s.status}
                         </span>
                       </td>

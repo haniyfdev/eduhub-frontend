@@ -2,9 +2,11 @@
   "navigation": {
     "dashboard": "Dashboard",
     "students": "Students",
+    "leads": "Leads",
     "groups": "Groups",
     "teachers": "Teachers",
     "courses": "Courses",
+    "attendance": "Attendance",
     "payments": "Payments",
     "debts": "Debtors",
     "reports": "Reports",

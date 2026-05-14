@@ -2,9 +2,11 @@
   "navigation": {
     "dashboard": "Bosh sahifa",
     "students": "O'quvchilar",
+    "leads": "Leadlar",
     "groups": "Guruhlar",
     "teachers": "O'qituvchilar",
     "courses": "Kurslar",
+    "attendance": "Davomat",
     "payments": "To'lovlar",
     "debts": "Qarzdorlar",
     "reports": "Hisobotlar",

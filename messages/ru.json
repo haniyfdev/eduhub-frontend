@@ -2,9 +2,11 @@
   "navigation": {
     "dashboard": "Главная",
     "students": "Студенты",
+    "leads": "Лиды",
     "groups": "Группы",
     "teachers": "Учителя",
     "courses": "Курсы",
+    "attendance": "Посещаемость",
     "payments": "Платежи",
     "debts": "Должники",
     "reports": "Отчёты",

@@ -101,6 +101,58 @@ const RANK_BADGES = ['🥇', '🥈', '🥉', '4-', '5-'];
 
 function CardSkeleton() { return <Skeleton className="h-28 w-full rounded" />; }
 
+function FunnelWidget({ locale }: { locale: string }) {
+  const [counts, setCounts] = useState<{ pending: number; trial: number; active: number } | null>(null);
+
+  useEffect(() => {
+    async function load() {
+      try {
+        const { data } = await import('@/lib/axios').then((m) => m.default.get('/api/v1/leads/?page_size=1'));
+        const pending = data.count ?? 0;
+        const { data: d2 } = await import('@/lib/axios').then((m) => m.default.get('/api/v1/leads/?status=trial&page_size=1'));
+        const trial = d2.count ?? 0;
+        const { data: d3 } = await import('@/lib/axios').then((m) => m.default.get('/api/v1/students/?status=active&page_size=1'));
+        const active = d3.count ?? 0;
+        setCounts({ pending, trial, active });
+      } catch {
+        setCounts(null);
+      }
+    }
+    load();
+  }, []);
+
+  if (!counts) return <Skeleton className="h-16 w-full" />;
+
+  const total = counts.pending + counts.trial + counts.active || 1;
+  const steps = [
+    { label: 'Leadlar', count: counts.pending + counts.trial, color: 'bg-yellow-400', pct: Math.round((counts.pending + counts.trial) / total * 100), href: `/${locale}/leads` },
+    { label: 'Sinov', count: counts.trial, color: 'bg-blue-400', pct: Math.round(counts.trial / total * 100), href: `/${locale}/leads?status=trial` },
+    { label: 'Faol talaba', count: counts.active, color: 'bg-green-500', pct: Math.round(counts.active / total * 100), href: `/${locale}/students` },
+  ];
+
+  return (
+    <div className="flex items-end gap-3">
+      {steps.map((s, i) => (
+        <Link key={s.label} href={s.href} className="flex-1 group">
+          <div className="flex items-center justify-between mb-1">
+            <span className="text-xs text-gray-500">{s.label}</span>
+            <span className="text-xs font-semibold text-gray-700">{s.count}</span>
+          </div>
+          <div className="h-3 w-full bg-gray-100 rounded-full overflow-hidden">
+            <div
+              className={`h-full rounded-full transition-all ${s.color}`}
+              style={{ width: `${s.pct}%` }}
+            />
+          </div>
+          {i < steps.length - 1 && (
+            <p className="text-[10px] text-gray-400 mt-1 text-right">{s.pct}%</p>
+          )}
+        </Link>
+      ))}
+    </div>
+  );
+}
+
 // ── Main Component ─────────────────────────────────────────────────────────
 
 export default function DashboardPage() {
@@ -400,6 +452,14 @@ export default function DashboardPage() {
         <div className="bg-red-50 border border-red-200 text-red-700 text-sm px-4 py-3 rounded flex items-center justify-between">
           <span>Xatolik yuz berdi</span>
           <button onClick={fetchData} className="underline font-medium">Qayta urinish</button>
+        </div>
+      )}
+
+      {/* Conversion Funnel */}
+      {!loading && d && (
+        <div className="bg-white rounded border border-gray-200 shadow-sm p-5">
+          <h2 className="text-sm font-semibold text-gray-900 mb-4">O&apos;quvchi konversiyasi</h2>
+          <FunnelWidget locale={locale} />
         </div>
       )}
 

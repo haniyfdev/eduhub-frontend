@@ -6,6 +6,7 @@ import { useLocale, useTranslations } from 'next-intl';
 import {
   LayoutDashboard, Users, Users2, GraduationCap, BookOpen,
   CreditCard, AlertCircle, BarChart3, Settings, Building2, Archive,
+  UserPlus, CalendarCheck,
 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { cn } from '@/lib/utils';
@@ -20,10 +21,12 @@ const sections = [
   {
     label: "Ta'lim",
     items: [
-      { key: 'students', icon: Users, href: '/students' },
-      { key: 'groups', icon: Users2, href: '/groups' },
-      { key: 'teachers', icon: GraduationCap, href: '/teachers' },
-      { key: 'courses', icon: BookOpen, href: '/courses' },
+      { key: 'students', icon: Users, href: '/students', roles: null },
+      { key: 'leads', icon: UserPlus, href: '/leads', roles: ['boss', 'manager', 'admin'] },
+      { key: 'groups', icon: Users2, href: '/groups', roles: null },
+      { key: 'teachers', icon: GraduationCap, href: '/teachers', roles: null },
+      { key: 'courses', icon: BookOpen, href: '/courses', roles: null },
+      { key: 'attendance', icon: CalendarCheck, href: '/attendance', roles: ['boss', 'manager', 'admin', 'teacher'] },
     ],
   },
   {
@@ -86,7 +89,10 @@ export default function Sidebar() {
         <nav className="flex-1 px-2 py-3 overflow-y-auto space-y-4">
           {sections.map((section, si) => {
             const visibleItems = section.items.filter((item) => {
-              if (item.key === 'companies') return user?.role === 'superadmin';
+              if (user?.role === 'superadmin') return item.key !== 'leads' && item.key !== 'attendance';
+              if ((item as { roles?: string[] | null }).roles) {
+                return (item as { roles: string[] }).roles.includes(user?.role ?? '');
+              }
               return true;
             });
             if (visibleItems.length === 0) return null;

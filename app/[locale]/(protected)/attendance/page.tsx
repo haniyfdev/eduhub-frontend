@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
-import { CalendarCheck, X, Search, Send } from 'lucide-react';
+import { CalendarCheck, Search, Send, X } from 'lucide-react';
 import toast, { Toaster } from 'react-hot-toast';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -52,12 +52,34 @@ function PctBar({ pct }: { pct: number }) {
   );
 }
 
+// absent/total foiziga qarab rang:
+// > 80% davomat => oq (normal)
+// 61-80% => juda och qizil
+// <= 60% => medium qizil
 function rowBg(pct: number): string {
-  if (pct >= 100) return '';
-  if (pct >= 50)  return 'bg-[#FECACA]';
-  if (pct >= 30)  return 'bg-[#FEE2E2]';
-  return 'bg-[#FFF5F5]';
+  if (pct > 80) return '';
+  if (pct > 60) return 'bg-red-50';
+  return 'bg-red-100';
 }
+
+function formatDate(dateStr: string): string {
+  const d = new Date(dateStr);
+  const day = String(d.getDate()).padStart(2, '0');
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const year = d.getFullYear();
+  return `${day}-${month}-${year}`;
+}
+
+const STATUS_COLOR: Record<string, string> = {
+  present: 'bg-green-500',
+  absent:  'bg-red-500',
+  late:    'bg-yellow-400',
+};
+const STATUS_LABEL: Record<string, string> = {
+  present: 'Keldi',
+  absent:  'Kelmadi',
+  late:    'Kechikdi',
+};
 
 export default function AttendancePage() {
   const [rows, setRows]         = useState<AttendanceSummaryRow[]>([]);
@@ -121,7 +143,12 @@ export default function AttendancePage() {
         params: { student: row.student_id, page_size: 200 },
       });
       const list = Array.isArray(data) ? data : (data.results ?? []);
-      const days: AttendanceDay[] = list.map((a: { lesson_date?: string; lesson?: { date?: string }; status: string; note?: string }) => ({
+      const days: AttendanceDay[] = list.map((a: {
+        lesson_date?: string;
+        lesson?: { date?: string };
+        status: string;
+        note?: string;
+      }) => ({
         date: a.lesson_date ?? a.lesson?.date ?? '',
         status: a.status,
         note: a.note ?? null,
@@ -162,21 +189,11 @@ export default function AttendancePage() {
     }
   }
 
-  const STATUS_COLOR: Record<string, string> = {
-    present: 'bg-green-500',
-    absent:  'bg-red-500',
-    late:    'bg-yellow-400',
-  };
-  const STATUS_LABEL: Record<string, string> = {
-    present: 'Keldi',
-    absent:  'Kelmadi',
-    late:    'Kechikdi',
-  };
-
   return (
     <div className="space-y-5">
       <Toaster position="top-right" />
 
+      {/* Page header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
           <CalendarCheck className="w-6 h-6 text-blue-600" />
@@ -193,6 +210,7 @@ export default function AttendancePage() {
         )}
       </div>
 
+      {/* Search */}
       <div className="relative max-w-xs">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
         <input
@@ -203,6 +221,7 @@ export default function AttendancePage() {
         />
       </div>
 
+      {/* Main table */}
       <div className="bg-white rounded border border-gray-200 shadow-sm overflow-hidden">
         <table className="w-full text-sm">
           <thead>
@@ -230,7 +249,7 @@ export default function AttendancePage() {
             ) : rows.map((row, idx) => (
               <tr
                 key={row.student_id}
-                onClick={() => calendar?.student_id === row.student_id ? setCalendar(null) : openCalendar(row)}
+                onClick={() => openCalendar(row)}
                 className={cn('cursor-pointer transition-colors hover:brightness-95', rowBg(row.attendance_pct))}
               >
                 <td className="px-4 py-3 text-gray-500 text-xs">{idx + 1}</td>
@@ -263,103 +282,104 @@ export default function AttendancePage() {
                   <p className="font-semibold text-gray-800">{row.group}</p>
                   <p className="text-xs text-gray-500">{row.course}</p>
                 </td>
+                {/* absent/total — qoldirgan/jami */}
                 <td className="px-4 py-3">
-                <span className={cn('text-sm font-medium tabular-nums',
-                  row.absent / row.total > 0.5 ? 'text-red-600' : 'text-gray-700')}>
-                  {row.present}/{row.total}
-                </span>
+                  <span className={cn('text-sm font-medium tabular-nums',
+                    row.absent / row.total > 0.5 ? 'text-red-600' : 'text-gray-700')}>
+                    {row.absent}/{row.total}
+                  </span>
                 </td>
                 <td className="px-4 py-3">
                   <PctBar pct={row.attendance_pct} />
                 </td>
               </tr>
             ))}
-                  ))
-            {calendar && rows.find(r => r.student_id === calendar.student_id) && (
-              <tr>
-                <td colSpan={7} className="p-0 bg-white border-b border-blue-100">
-                  <div className="px-4 py-4 space-y-3">
-                    {/* Header */}
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-3">
-                        <span className="font-semibold text-gray-900">{calendar.student_name}</span>
-                        <PctBadge pct={calendar.attendance_pct} />
-                        <span className="text-sm text-gray-500">{calendar.present}/{calendar.total} dars</span>
-                        <span className="text-sm text-red-600 font-medium">{calendar.absent} qoldirildi</span>
-                      </div>
-                      <button onClick={() => setCalendar(null)} className="text-gray-400 hover:text-gray-600">
-                        <X className="w-4 h-4" />
-                      </button>
-                    </div>
-                    {/* Legend */}
-                    <div className="flex items-center gap-4 text-xs text-gray-500">
-                      {Object.entries(STATUS_LABEL).map(([s, l]) => (
-                        <div key={s} className="flex items-center gap-1.5">
-                          <div className={cn('w-2.5 h-2.5 rounded-full', STATUS_COLOR[s])} />
-                          {l}
-                        </div>
-                      ))}
-                    </div>
-                    {/* Table */}
-                    {calLoading ? (
-                      <div className="space-y-2">
-                        {Array(4).fill(0).map((_, i) => <Skeleton key={i} className="h-9 w-full" />)}
-                      </div>
-                    ) : calDays.length === 0 ? (
-                      <p className="text-sm text-gray-400 py-4 text-center">Davomat topilmadi</p>
-                    ) : (
-                      <table className="w-full text-sm border border-gray-100 rounded overflow-hidden">
-                        <thead>
-                          <tr className="bg-gray-50 text-xs text-gray-500 uppercase">
-                            <th className="text-left px-3 py-2 font-semibold">№</th>
-                            <th className="text-left px-3 py-2 font-semibold">Sana</th>
-                            <th className="text-left px-3 py-2 font-semibold">Holat</th>
-                            <th className="text-left px-3 py-2 font-semibold">Izoh</th>
-                          </tr>
-                        </thead>
-                        <tbody className="divide-y divide-gray-100">
-                          {calDays.map((day, i) => {
-                            const isAbsent = day.status === 'absent';
-                            const isLate = day.status === 'late';
-                            return (
-                              <tr
-                                key={i}
-                                className={cn(
-                                  isAbsent ? 'bg-red-50' : isLate ? 'bg-yellow-50' : 'bg-green-50'
-                                )}
-                              >
-                                <td className="px-3 py-2 text-gray-400 text-xs">{i + 1}</td>
-                                <td className="px-3 py-2 font-medium text-gray-800">
-                                  {new Date(day.date).toLocaleDateString('uz-UZ', {
-                                    day: '2-digit', month: 'short', year: 'numeric'
-                                  })}
-                                </td>
-                                <td className="px-3 py-2">
-                                  <span className={cn(
-                                    'inline-flex items-center gap-1.5 text-xs font-semibold',
-                                    isAbsent ? 'text-red-600' : isLate ? 'text-yellow-600' : 'text-green-600'
-                                  )}>
-                                    <div className={cn('w-2 h-2 rounded-full', STATUS_COLOR[day.status])} />
-                                    {STATUS_LABEL[day.status]}
-                                  </span>
-                                </td>
-                                <td className="px-3 py-2 text-gray-500 text-xs">{day.note || '—'}</td>
-                              </tr>
-                            );
-                          })}
-                        </tbody>
-                      </table>
-                    )}
-                  </div>
-                </td>
-              </tr>
-            )}
           </tbody>
-
         </table>
       </div>
 
-      
+      {/* Detail Modal — yangi oyna */}
+      <Dialog open={!!calendar} onOpenChange={() => setCalendar(null)}>
+        <DialogContent className="sm:max-w-lg max-h-[85vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <CalendarCheck className="w-5 h-5 text-blue-600" />
+              {calendar?.student_name}
+            </DialogTitle>
+          </DialogHeader>
+
+          {calendar && (
+            <div className="space-y-4">
+              {/* Summary */}
+              <div className="flex items-center gap-4 text-sm flex-wrap">
+                <PctBadge pct={calendar.attendance_pct} />
+                <span className="text-gray-500">{calendar.present}/{calendar.total} dars</span>
+                <span className="text-red-600 font-medium">{calendar.absent} dars qoldirildi</span>
+              </div>
+
+              {/* Legend */}
+              <div className="flex items-center gap-4 text-xs text-gray-500">
+                {Object.entries(STATUS_LABEL).map(([s, l]) => (
+                  <div key={s} className="flex items-center gap-1.5">
+                    <div className={cn('w-2.5 h-2.5 rounded-full', STATUS_COLOR[s])} />
+                    {l}
+                  </div>
+                ))}
+              </div>
+
+              {/* Table */}
+              {calLoading ? (
+                <div className="space-y-2">
+                  {Array(4).fill(0).map((_, i) => <Skeleton key={i} className="h-9 w-full" />)}
+                </div>
+              ) : calDays.length === 0 ? (
+                <p className="text-sm text-gray-400 text-center py-6">Davomat ma&apos;lumoti topilmadi</p>
+              ) : (
+                <table className="w-full text-sm border border-gray-100 rounded overflow-hidden">
+                  <thead>
+                    <tr className="bg-gray-50 text-xs text-gray-500 uppercase">
+                      <th className="text-left px-3 py-2 font-semibold">№</th>
+                      <th className="text-left px-3 py-2 font-semibold">Sana</th>
+                      <th className="text-left px-3 py-2 font-semibold">Holat</th>
+                      <th className="text-left px-3 py-2 font-semibold">Izoh</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100">
+                    {calDays.map((day, i) => {
+                      const isAbsent = day.status === 'absent';
+                      const isLate   = day.status === 'late';
+                      return (
+                        <tr
+                          key={i}
+                          className={cn(
+                            isAbsent ? 'bg-red-50' : isLate ? 'bg-yellow-50' : 'bg-green-50'
+                          )}
+                        >
+                          <td className="px-3 py-2 text-gray-400 text-xs">{i + 1}</td>
+                          <td className="px-3 py-2 font-medium text-gray-800">
+                            {formatDate(day.date)}
+                          </td>
+                          <td className="px-3 py-2">
+                            <span className={cn(
+                              'inline-flex items-center gap-1.5 text-xs font-semibold',
+                              isAbsent ? 'text-red-600' : isLate ? 'text-yellow-600' : 'text-green-600'
+                            )}>
+                              <div className={cn('w-2 h-2 rounded-full', STATUS_COLOR[day.status])} />
+                              {STATUS_LABEL[day.status]}
+                            </span>
+                          </td>
+                          <td className="px-3 py-2 text-gray-500 text-xs">{day.note || '—'}</td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              )}
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
       {/* SMS Modal */}
       <Dialog open={showSms} onOpenChange={setShowSms}>
         <DialogContent className="sm:max-w-md">

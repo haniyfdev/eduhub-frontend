@@ -16,7 +16,7 @@ interface Group {
   id: string;
   name: string;
   number: number;
-  gender_type: 'a' | 'b' | 'c';
+  gender_type: 'a' | 'b' | 'c' | null;
   course: { id: string; name: string };
   teacher: { id: string; first_name: string; last_name: string };
   students_count: number;
@@ -27,15 +27,6 @@ interface Group {
 
 interface Course { id: string; name: string; }
 interface Teacher { id: string; first_name: string; last_name: string; }
-
-const GENDER_STYLES: Record<string, string> = {
-  a: 'bg-blue-50 text-blue-700 border-blue-200',
-  b: 'bg-pink-50 text-pink-700 border-pink-200',
-  c: 'bg-purple-50 text-purple-700 border-purple-200',
-};
-const GENDER_LABELS: Record<string, string> = {
-  a: 'Bolalar', b: 'Qizlar', c: 'Aralash',
-};
 
 const DAYS = [
   { key: 'Du', label: 'Du' },
@@ -49,12 +40,41 @@ const DAYS = [
 
 const EMPTY_FORM = {
   course_id: '', teacher_id: '', gender_type: '',
-  days: [] as string[], time: '', room: '',
+  days: [] as string[], start_time: '', end_time: '', room: '',
 };
 
-function buildSchedule(days: string[], time: string): string {
-  if (days.length === 0 && !time) return '';
-  return [days.join(','), time].filter(Boolean).join(' ');
+function buildSchedule(days: string[], startTime: string, endTime: string): string {
+  const timeStr = startTime && endTime ? `${startTime}-${endTime}` : startTime || endTime || '';
+  if (days.length === 0 && !timeStr) return '';
+  return [days.join(','), timeStr].filter(Boolean).join(' ');
+}
+
+function parseDays(schedule: string): string {
+  if (!schedule) return '';
+  return schedule.split(' ')[0].replace(/,/g, ', ');
+}
+
+function parseTime(schedule: string): string {
+  if (!schedule) return '';
+  const parts = schedule.split(' ');
+  if (parts.length < 2) return '';
+  return parts.slice(1).join(' ').replace('-', ' – ');
+}
+
+function makeTimeInput(raw: string): string {
+  let val = raw.replace(/\D/g, '');
+  if (val.length > 4) val = val.slice(0, 4);
+  if (val.length > 2) val = val.slice(0, 2) + ':' + val.slice(2);
+  return val;
+}
+
+function validateTime(t: string, label: string): string | null {
+  if (!t) return null;
+  const parts = t.split(':');
+  if (parts.length !== 2 || t.length !== 5) return `${label} HH:MM formatida bo'lishi kerak`;
+  const h = parseInt(parts[0], 10), m = parseInt(parts[1], 10);
+  if (isNaN(h) || isNaN(m) || h < 0 || h > 23 || m < 0 || m > 59) return `${label} noto'g'ri`;
+  return null;
 }
 
 export default function GroupsPage() {
@@ -116,28 +136,22 @@ export default function GroupsPage() {
   async function handleAdd(e: React.FormEvent) {
     e.preventDefault();
 
-    if (!form.gender_type) { toast.error('Guruh turini tanlang!'); return; }
-    if (!form.time) { toast.error('Dars vaqtini kiriting!'); return; }
-    if (!form.room) { toast.error('Xonani kiriting!'); return; }
+    if (!form.room) { toast.error('Xona kiritilishi shart'); return; }
 
-    // Vaqt validatsiyasi
-    const timeParts = form.time.split(':');
-    if (timeParts.length !== 2) { toast.error("Vaqt HH:MM formatida bo'lishi kerak!"); return; }
-    const hours = parseInt(timeParts[0], 10);
-    const minutes = parseInt(timeParts[1], 10);
-    if (isNaN(hours) || isNaN(minutes) || hours < 0 || hours > 23 || minutes < 0 || minutes > 59 || form.time.length !== 5) {
-      toast.error("Vaqt 00:00 — 23:59 oralig'ida bo'lishi kerak!"); return;
-    }
-    
+    const startErr = validateTime(form.start_time, 'Boshlanish vaqti');
+    if (startErr) { toast.error(startErr); return; }
+    const endErr = validateTime(form.end_time, 'Tugash vaqti');
+    if (endErr) { toast.error(endErr); return; }
+
     setSaving(true);
     try {
-      const schedule = buildSchedule(form.days, form.time);
+      const schedule = buildSchedule(form.days, form.start_time, form.end_time);
       await api.post('/api/v1/groups/', {
         course_id: form.course_id,
         teacher_id: form.teacher_id,
-        gender_type: form.gender_type,
+        ...(form.gender_type ? { gender_type: form.gender_type } : {}),
         ...(schedule ? { schedule } : {}),
-        ...(form.room ? { room: form.room } : {}),
+        room: form.room,
       });
       toast.success("Guruh muvaffaqiyatli qo'shildi");
       setShowAdd(false);
@@ -188,7 +202,6 @@ export default function GroupsPage() {
     }
   }
 
-
   return (
     <div className="space-y-5">
       <Toaster position="top-right" />
@@ -237,7 +250,7 @@ export default function GroupsPage() {
           <table className="w-full text-sm">
             <thead>
               <tr className="bg-gray-50 border-b border-gray-200">
-                {['№', "Guruh", "Kurs", "O'qituvchi", "O'quvchilar", 'Turi', 'Jadval', 'Holat', 'Amallar'].map((h) => (
+                {['№', 'Guruh', 'Kurs', "O'qituvchi", "O'quvchilar", 'Kunlar', 'Soatlar', 'Holat', 'Amallar'].map((h) => (
                   <th key={h} className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">{h}</th>
                 ))}
               </tr>
@@ -253,15 +266,15 @@ export default function GroupsPage() {
                   ? <tr><td colSpan={9} className="px-4 py-16 text-center text-gray-400">Natija topilmadi</td></tr>
                   : groups.map((g, idx) => (
                     <tr
-                        key={g.id}
-                        onClick={() => router.push(`/${locale}/groups/${g.id}`)}
-                        className={cn(
-                          "cursor-pointer transition-colors",
-                          g.status === 'archived' ? "bg-yellow-50 hover:bg-yellow-100"
-                          : g.status === 'frozen' ? "bg-sky-50 hover:bg-sky-100"
-                          : "hover:bg-gray-50"
-                        )}
-                        >
+                      key={g.id}
+                      onClick={() => router.push(`/${locale}/groups/${g.id}`)}
+                      className={cn(
+                        'cursor-pointer transition-colors',
+                        g.status === 'archived' ? 'bg-yellow-50 hover:bg-yellow-100'
+                        : g.status === 'frozen' ? 'bg-sky-50 hover:bg-sky-100'
+                        : 'hover:bg-gray-50'
+                      )}
+                    >
                       <td className="px-4 py-3 text-gray-400 text-xs">{(page - 1) * pageSize + idx + 1}</td>
                       <td className="px-4 py-3 font-bold text-gray-900">{g.name}</td>
                       <td className="px-4 py-3 text-gray-600">{g.course?.name || '—'}</td>
@@ -269,12 +282,8 @@ export default function GroupsPage() {
                         {g.teacher ? `${g.teacher.first_name} ${g.teacher.last_name}` : '—'}
                       </td>
                       <td className="px-4 py-3 text-gray-700">{g.students_count ?? 0}</td>
-                      <td className="px-4 py-3">
-                        <span className={cn('inline-flex items-center px-2 py-0.5 text-xs font-medium border rounded', GENDER_STYLES[g.gender_type])}>
-                          {GENDER_LABELS[g.gender_type]}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3 text-gray-500 text-xs">{g.schedule || '—'}</td>
+                      <td className="px-4 py-3 text-gray-600 text-xs">{parseDays(g.schedule) || '—'}</td>
+                      <td className="px-4 py-3 text-gray-600 text-xs">{parseTime(g.schedule) || '—'}</td>
                       <td className="px-4 py-3">
                         <span className={cn('inline-flex items-center px-2 py-0.5 text-xs font-medium border rounded',
                           g.status === 'active' ? 'bg-green-50 text-green-700 border-green-200'
@@ -319,7 +328,7 @@ export default function GroupsPage() {
                             </span>
                           )}
                         </div>
-                    </td>
+                      </td>
                     </tr>
                   ))
               }
@@ -398,6 +407,7 @@ export default function GroupsPage() {
         </DialogContent>
       </Dialog>
 
+      {/* Add group dialog */}
       <Dialog open={showAdd} onOpenChange={(open) => { if (!open) setForm(EMPTY_FORM); setShowAdd(open); }}>
         <DialogContent className="sm:max-w-md max-h-[90vh] overflow-y-auto">
           <DialogHeader><DialogTitle>Yangi guruh</DialogTitle></DialogHeader>
@@ -429,10 +439,7 @@ export default function GroupsPage() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Guruh turi <span className="text-red-500">*</span>
-                {!form.gender_type && <span className="ml-2 text-xs text-orange-500 font-normal">— tanlash majburiy</span>}
-              </label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Guruh turi</label>
               <div className="flex gap-2">
                 {[
                   { value: 'a', label: 'Bolalar', style: 'border-blue-300 bg-blue-50 text-blue-700' },
@@ -442,7 +449,7 @@ export default function GroupsPage() {
                   <button
                     key={value}
                     type="button"
-                    onClick={() => setForm((f) => ({ ...f, gender_type: value }))}
+                    onClick={() => setForm((f) => ({ ...f, gender_type: f.gender_type === value ? '' : value }))}
                     className={cn(
                       'flex-1 py-2 text-xs font-medium border rounded transition-colors',
                       form.gender_type === value ? style : 'border-gray-300 text-gray-600 hover:bg-gray-50'
@@ -476,28 +483,36 @@ export default function GroupsPage() {
               </div>
             </div>
 
-            {/* Time picker */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Dars vaqti</label>
-              <input
-                type="text"
-                value={form.time}
-                maxLength={5}
-                placeholder="HH:MM"
-                onChange={(e) => {
-                  let val = e.target.value.replace(/\D/g, '');
-                  if (val.length > 4) val = val.slice(0, 4);
-                  if (val.length > 2) val = val.slice(0, 2) + ':' + val.slice(2);
-                  setForm((f) => ({ ...f, time: val }));
-                }}
-                className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
+            {/* Start / End time */}
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Boshlanish vaqti <span className="text-red-500">*</span></label>
+                <input
+                  type="text"
+                  value={form.start_time}
+                  maxLength={5}
+                  placeholder="HH:MM"
+                  onChange={(e) => setForm((f) => ({ ...f, start_time: makeTimeInput(e.target.value) }))}
+                  className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Tugash vaqti <span className="text-red-500">*</span></label>
+                <input
+                  type="text"
+                  value={form.end_time}
+                  maxLength={5}
+                  placeholder="HH:MM"
+                  onChange={(e) => setForm((f) => ({ ...f, end_time: makeTimeInput(e.target.value) }))}
+                  className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
             </div>
 
             {/* Schedule preview */}
-            {(form.days.length > 0 || form.time) && (
+            {(form.days.length > 0 || form.start_time || form.end_time) && (
               <div className="px-3 py-2 bg-gray-50 rounded text-xs text-gray-600">
-                Jadval: <span className="font-medium">{buildSchedule(form.days, form.time) || '—'}</span>
+                Jadval: <span className="font-medium">{buildSchedule(form.days, form.start_time, form.end_time) || '—'}</span>
               </div>
             )}
 

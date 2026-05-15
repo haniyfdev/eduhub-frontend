@@ -278,22 +278,22 @@ export default function CoursesPage() {
                         </span>
                       </td>
                       <td className="px-4 py-3">
-                        <div className="flex items-center gap-1">
-                          <button onClick={() => openEdit(c)}
-                            className="p-1 rounded hover:bg-gray-200 text-gray-400 hover:text-gray-700 transition-colors"
-                            title="Tahrirlash">
-                            <Pencil className="w-3.5 h-3.5" />
-                          </button>
-                          {c.status === 'active' ? (
+                        {c.status === 'active' ? (
+                          <div className="flex items-center gap-1">
+                            <button onClick={() => openEdit(c)}
+                              className="p-1 rounded hover:bg-gray-200 text-gray-400 hover:text-gray-700 transition-colors"
+                              title="Tahrirlash">
+                              <Pencil className="w-3.5 h-3.5" />
+                            </button>
                             <button onClick={() => setArchiveTarget({ id: c.id, name: c.name })}
                               className="p-1 rounded text-red-400 hover:bg-red-50 hover:text-red-600 transition-colors"
                               title="Arxivlash">
                               <Minus className="w-4 h-4" />
                             </button>
-                          ) : (
-                            <span className="text-xs text-gray-400">{formatDMY(c.closed_at) || '—'}</span>
-                          )}
-                        </div>
+                          </div>
+                        ) : (
+                          <span className="text-xs text-gray-400">{formatDMY(c.closed_at) || '—'}</span>
+                        )}
                       </td>
                     </tr>
                   ))

@@ -239,7 +239,7 @@ export default function CoursesPage() {
           <table className="w-full text-sm">
             <thead>
               <tr className="bg-gray-50 border-b border-gray-200">
-                {['№', '', 'Nomi', 'Narxi', 'Muddati', "O'qituvchilar", 'Sana', 'Holat', 'Amallar'].map((h, i) => (
+                {['№', 'Nomi', 'Narxi', 'Muddati', "O'qituvchilar", 'Sana', 'Holat', 'Amallar'].map((h, i) => (
                   <th key={i} className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">{h}</th>
                 ))}
               </tr>
@@ -256,17 +256,9 @@ export default function CoursesPage() {
                   : courses.map((c, idx) => (
                     <tr key={c.id} className={cn('transition-colors', c.status === 'archived' ? 'bg-yellow-50 hover:bg-yellow-100' : 'hover:bg-gray-50')}>
                       <td className="px-4 py-3 text-gray-400 text-xs">{(page - 1) * pageSize + idx + 1}</td>
-                      <td className="px-2 py-3">
-                        <button
-                          onClick={() => openEdit(c)}
-                          className="p-1 rounded hover:bg-gray-200 text-gray-400 hover:text-gray-700 transition-colors"
-                        >
-                          <Pencil className="w-3.5 h-3.5" />
-                        </button>
-                      </td>
                       <td className="px-4 py-3 font-medium text-gray-900">{c.name}</td>
-                      <td className="px-4 py-3 text-gray-700">{formatCurrency(c.price)}</td>
-                      <td className="px-4 py-3 text-gray-600">{c.duration_months} oy / {c.duration_hours} soat</td>
+                      <td className="px-4 py-3 text-gray-700 whitespace-nowrap">{formatCurrency(c.price)}</td>
+                      <td className="px-4 py-3 text-gray-600 whitespace-nowrap">{c.duration_months} oy / {c.duration_hours} soat</td>
                       <td className="px-4 py-3 text-gray-600">
                         {c.teacher_names && c.teacher_names.length > 0 ? (
                           <div className="flex flex-wrap gap-1">
@@ -286,15 +278,22 @@ export default function CoursesPage() {
                         </span>
                       </td>
                       <td className="px-4 py-3">
-                        {c.status === 'active' ? (
-                          <button onClick={() => setArchiveTarget({ id: c.id, name: c.name })}
-                            className="p-1 rounded text-red-400 hover:bg-red-50 hover:text-red-600 transition-colors"
-                            title="Arxivlash">
-                            <Minus className="w-4 h-4" />
+                        <div className="flex items-center gap-1">
+                          <button onClick={() => openEdit(c)}
+                            className="p-1 rounded hover:bg-gray-200 text-gray-400 hover:text-gray-700 transition-colors"
+                            title="Tahrirlash">
+                            <Pencil className="w-3.5 h-3.5" />
                           </button>
-                        ) : (
-                          <span className="text-xs text-gray-400">{formatDMY(c.closed_at) || '—'}</span>
-                        )}
+                          {c.status === 'active' ? (
+                            <button onClick={() => setArchiveTarget({ id: c.id, name: c.name })}
+                              className="p-1 rounded text-red-400 hover:bg-red-50 hover:text-red-600 transition-colors"
+                              title="Arxivlash">
+                              <Minus className="w-4 h-4" />
+                            </button>
+                          ) : (
+                            <span className="text-xs text-gray-400">{formatDMY(c.closed_at) || '—'}</span>
+                          )}
+                        </div>
                       </td>
                     </tr>
                   ))

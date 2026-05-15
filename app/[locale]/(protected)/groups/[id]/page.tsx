@@ -220,8 +220,10 @@ export default function GroupDetailPage() {
     if (!changeGroupTarget || !newGroupId) return;
     setChangingGroup(true);
     try {
-      await api.post(`/api/v1/groups/${id}/remove-student/`, { student_id: changeGroupTarget.studentId });
-      await api.post(`/api/v1/groups/${newGroupId}/add-student/`, { student_id: changeGroupTarget.studentId });
+      await api.post(`/api/v1/groups/${id}/transfer-student/`, {
+        student_id: changeGroupTarget.studentId,
+        new_group_id: newGroupId,
+      });
       toast.success("Guruh o'zgartirildi");
       setChangeGroupTarget(null);
       fetchGroup();

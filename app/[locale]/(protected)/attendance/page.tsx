@@ -88,16 +88,16 @@ export default function AttendancePage() {
   }, [search, fetchSummary]);
 
   function getPhone(sid: string, which: 'phone1' | 'phone2'): boolean {
-    return phoneTargets[sid]?.[which] ?? true;
+    return phoneTargets[sid]?.[which] ?? false;
   }
 
   function togglePhone(sid: string, which: 'phone1' | 'phone2') {
     setPhoneTargets(prev => ({
       ...prev,
       [sid]: {
-        phone1: prev[sid]?.phone1 ?? true,
-        phone2: prev[sid]?.phone2 ?? true,
-        [which]: !(prev[sid]?.[which] ?? true),
+        phone1: prev[sid]?.phone1 ?? false,
+        phone2: prev[sid]?.phone2 ?? false,
+        [which]: !(prev[sid]?.[which] ?? false),
       },
     }));
   }
@@ -212,7 +212,7 @@ function toggleSelect(id: string) {
         <table className="w-full text-sm">
           <thead>
             <tr className="bg-gray-50 border-b border-gray-200">
-              {['№', '', "O'quvchi", 'Telefon', 'Guruh', 'Darslar', 'Davomat %', 'SMS'].map((h, i) => (
+              {['№', '', "O'quvchi", 'Telefon', 'Ota-ona tel', 'Guruh', 'Darslar', 'Davomat %', 'SMS'].map((h, i) => (
                 <th key={i} className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap">{h}</th>
               ))}
             </tr>
@@ -221,14 +221,14 @@ function toggleSelect(id: string) {
             {loading ? (
               Array(8).fill(0).map((_, i) => (
                 <tr key={i}>
-                  {Array(8).fill(0).map((_, j) => (
+                  {Array(9).fill(0).map((_, j) => (
                     <td key={j} className="px-4 py-3"><Skeleton className="h-4 w-full" /></td>
                   ))}
                 </tr>
               ))
             ) : rows.length === 0 ? (
               <tr>
-                <td colSpan={8} className="px-4 py-16 text-center text-gray-400">
+                <td colSpan={9} className="px-4 py-16 text-center text-gray-400">
                   Sababsiz qolgan o&apos;quvchilar topilmadi
                 </td>
               </tr>
@@ -252,28 +252,28 @@ function toggleSelect(id: string) {
                   </td>
                   <td className="px-4 py-3 font-medium text-gray-900">{row.student_name}</td>
                   <td className="px-4 py-3" onClick={e => e.stopPropagation()}>
-                    <div className="space-y-1">
-                      <label className="flex items-center gap-1.5 text-xs cursor-pointer select-none">
+                    <label className="flex items-center gap-2 cursor-pointer select-none">
+                      <input
+                        type="checkbox"
+                        checked={getPhone(row.student_id, 'phone1')}
+                        onChange={() => togglePhone(row.student_id, 'phone1')}
+                        className="rounded border-gray-300 accent-blue-600 flex-shrink-0"
+                      />
+                      <span className="text-xs text-gray-600">{formatPhone(row.phone)}</span>
+                    </label>
+                  </td>
+                  <td className="px-4 py-3" onClick={e => e.stopPropagation()}>
+                    {row.second_phone ? (
+                      <label className="flex items-center gap-2 cursor-pointer select-none">
                         <input
                           type="checkbox"
-                          checked={getPhone(row.student_id, 'phone1')}
-                          onChange={() => togglePhone(row.student_id, 'phone1')}
-                          className="accent-blue-600 w-3 h-3"
+                          checked={getPhone(row.student_id, 'phone2')}
+                          onChange={() => togglePhone(row.student_id, 'phone2')}
+                          className="rounded border-gray-300 accent-blue-600 flex-shrink-0"
                         />
-                        <span className="text-gray-700">{formatPhone(row.phone)}</span>
+                        <span className="text-xs text-gray-500">{formatPhone(row.second_phone)}</span>
                       </label>
-                      {row.second_phone && (
-                        <label className="flex items-center gap-1.5 text-xs cursor-pointer select-none">
-                          <input
-                            type="checkbox"
-                            checked={getPhone(row.student_id, 'phone2')}
-                            onChange={() => togglePhone(row.student_id, 'phone2')}
-                            className="accent-blue-600 w-3 h-3"
-                          />
-                          <span className="text-gray-500">{formatPhone(row.second_phone)}</span>
-                        </label>
-                      )}
-                    </div>
+                    ) : <span className="text-gray-300 text-xs">—</span>}
                   </td>
                   <td className="px-4 py-3">
                     <p className="font-semibold text-gray-800">{row.group}</p>

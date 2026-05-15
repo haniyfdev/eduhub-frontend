@@ -18,14 +18,12 @@ interface AttendanceSummaryRow {
   total: number;
   present: number;
   absent: number;
-  late: number;
   attendance_pct: number;
 }
 
 interface AttendanceDay {
   date: string;
   status: string;
-  lesson_topic?: string;
 }
 
 function PctBadge({ pct }: { pct: number }) {
@@ -53,11 +51,17 @@ function PctBar({ pct }: { pct: number }) {
   );
 }
 
+function rowBg(pct: number): string {
+  if (pct >= 100) return '';
+  if (pct >= 50)  return 'bg-[#FECACA]';
+  if (pct >= 30)  return 'bg-[#FEE2E2]';
+  return 'bg-[#FFF5F5]';
+}
+
 export default function AttendancePage() {
   const [rows, setRows]         = useState<AttendanceSummaryRow[]>([]);
   const [loading, setLoading]   = useState(true);
   const [search, setSearch]     = useState('');
-  const [selected, setSelected] = useState<Set<string>>(new Set());
   const [phoneTargets, setPhoneTargets] = useState<Record<string, { phone1: boolean; phone2: boolean }>>({});
   const [calendar, setCalendar]         = useState<AttendanceSummaryRow | null>(null);
   const [calDays, setCalDays]           = useState<AttendanceDay[]>([]);
@@ -74,7 +78,6 @@ export default function AttendancePage() {
       const { data } = await api.get('/api/v1/attendance/summary/', { params });
       const list: AttendanceSummaryRow[] = Array.isArray(data) ? data : (data.results ?? []);
       setRows(list);
-      setSelected(new Set());
     } catch {
       toast.error("Davomat ma'lumotlarini yuklashda xatolik");
     } finally {
@@ -102,18 +105,11 @@ export default function AttendancePage() {
     }));
   }
 
-function toggleSelect(id: string) {
-  setSelected(prev => {
-    const next = new Set(prev);
-    // Ternar operator o'rniga if/else ishlatamiz
-    if (next.has(id)) {
-      next.delete(id);
-    } else {
-      next.add(id);
-    }
-    return next;
-  });
-}
+  const checkedPhoneCount = rows.reduce((acc, r) => {
+    if (phoneTargets[r.student_id]?.phone1) acc++;
+    if (r.second_phone && phoneTargets[r.student_id]?.phone2) acc++;
+    return acc;
+  }, 0);
 
   async function openCalendar(row: AttendanceSummaryRow) {
     setCalendar(row);
@@ -124,10 +120,9 @@ function toggleSelect(id: string) {
         params: { student: row.student_id, page_size: 200 },
       });
       const list = Array.isArray(data) ? data : (data.results ?? []);
-      const days: AttendanceDay[] = list.map((a: { lesson_date?: string; lesson?: { date?: string }; status: string; note?: string }) => ({
+      const days: AttendanceDay[] = list.map((a: { lesson_date?: string; lesson?: { date?: string }; status: string }) => ({
         date: a.lesson_date ?? a.lesson?.date ?? '',
         status: a.status,
-        lesson_topic: a.note ?? '',
       }));
       days.sort((a, b) => a.date.localeCompare(b.date));
       setCalDays(days);
@@ -140,17 +135,15 @@ function toggleSelect(id: string) {
 
   async function handleSms(e: React.FormEvent) {
     e.preventDefault();
-    if (!smsMsg.trim() || selected.size === 0) return;
+    if (!smsMsg.trim()) return;
     setSendingSms(true);
     try {
-      const phones = rows
-        .filter(r => selected.has(r.student_id))
-        .flatMap(r => {
-          const list: string[] = [];
-          if (getPhone(r.student_id, 'phone1')) list.push(r.phone);
-          if (r.second_phone && getPhone(r.student_id, 'phone2')) list.push(r.second_phone);
-          return list;
-        });
+      const phones = rows.flatMap(r => {
+        const list: string[] = [];
+        if (getPhone(r.student_id, 'phone1')) list.push(r.phone);
+        if (r.second_phone && getPhone(r.student_id, 'phone2')) list.push(r.second_phone);
+        return list;
+      });
       await Promise.all(
         phones.map(phone =>
           api.post('/api/v1/notifications/send-sms/', { phone, message: smsMsg }).catch(() => null)
@@ -159,7 +152,7 @@ function toggleSelect(id: string) {
       toast.success('SMS yuborildi');
       setShowSms(false);
       setSmsMsg('');
-      setSelected(new Set());
+      setPhoneTargets({});
     } catch {
       toast.error('SMS yuborishda xatolik');
     } finally {
@@ -169,13 +162,13 @@ function toggleSelect(id: string) {
 
   const STATUS_COLOR: Record<string, string> = {
     present: 'bg-green-500',
-    absent: 'bg-red-500',
-    late: 'bg-yellow-400',
+    absent:  'bg-red-500',
+    late:    'bg-yellow-400',
   };
   const STATUS_LABEL: Record<string, string> = {
     present: 'Keldi',
-    absent: 'Kelmadi',
-    late: 'Kechikdi',
+    absent:  'Kelmadi',
+    late:    'Kechikdi',
   };
 
   return (
@@ -187,13 +180,13 @@ function toggleSelect(id: string) {
           <CalendarCheck className="w-6 h-6 text-blue-600" />
           <h1 className="text-xl font-bold text-gray-900">Davomat</h1>
         </div>
-        {selected.size > 0 && (
+        {checkedPhoneCount > 0 && (
           <button
             onClick={() => setShowSms(true)}
             className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors"
           >
             <Send className="w-4 h-4" />
-            SMS ({selected.size})
+            SMS ({checkedPhoneCount})
           </button>
         )}
       </div>
@@ -212,7 +205,7 @@ function toggleSelect(id: string) {
         <table className="w-full text-sm">
           <thead>
             <tr className="bg-gray-50 border-b border-gray-200">
-              {['№', '', "O'quvchi", 'Telefon', 'Ota-ona tel', 'Guruh', 'Darslar', 'Davomat %', 'SMS'].map((h, i) => (
+              {["№", "O'quvchi", 'Telefon', 'Ota-ona tel', 'Guruh', 'Darslar', 'Davomat %'].map((h, i) => (
                 <th key={i} className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap">{h}</th>
               ))}
             </tr>
@@ -221,84 +214,64 @@ function toggleSelect(id: string) {
             {loading ? (
               Array(8).fill(0).map((_, i) => (
                 <tr key={i}>
-                  {Array(9).fill(0).map((_, j) => (
+                  {Array(7).fill(0).map((_, j) => (
                     <td key={j} className="px-4 py-3"><Skeleton className="h-4 w-full" /></td>
                   ))}
                 </tr>
               ))
             ) : rows.length === 0 ? (
               <tr>
-                <td colSpan={9} className="px-4 py-16 text-center text-gray-400">
-                  Sababsiz qolgan o&apos;quvchilar topilmadi
+                <td colSpan={7} className="px-4 py-16 text-center text-gray-400">
+                  Davomat ma&apos;lumoti topilmadi
                 </td>
               </tr>
-            ) : rows.map((row, idx) => {
-              const missedRatio = row.total > 0 ? row.absent / row.total : 0;
-              return (
-                <tr
-                  key={row.student_id}
-                  onClick={() => openCalendar(row)}
-                  className="hover:bg-gray-50 cursor-pointer transition-colors"
-                >
-                  <td className="px-4 py-3 text-gray-400 text-xs">{idx + 1}</td>
-                  <td className="px-2 py-3">
+            ) : rows.map((row, idx) => (
+              <tr
+                key={row.student_id}
+                onClick={() => openCalendar(row)}
+                className={cn('cursor-pointer transition-colors hover:brightness-95', rowBg(row.attendance_pct))}
+              >
+                <td className="px-4 py-3 text-gray-500 text-xs">{idx + 1}</td>
+                <td className="px-4 py-3 font-medium text-gray-900">{row.student_name}</td>
+                <td className="px-4 py-3" onClick={e => e.stopPropagation()}>
+                  <label className="flex items-center gap-2 cursor-pointer select-none">
                     <input
                       type="checkbox"
-                      checked={selected.has(row.student_id)}
-                      onChange={() => toggleSelect(row.student_id)}
-                      onClick={e => e.stopPropagation()}
-                      className="accent-blue-600 w-4 h-4"
+                      checked={getPhone(row.student_id, 'phone1')}
+                      onChange={() => togglePhone(row.student_id, 'phone1')}
+                      className="rounded border-gray-300 accent-blue-600 flex-shrink-0"
                     />
-                  </td>
-                  <td className="px-4 py-3 font-medium text-gray-900">{row.student_name}</td>
-                  <td className="px-4 py-3" onClick={e => e.stopPropagation()}>
+                    <span className="text-sm font-medium text-gray-900">{formatPhone(row.phone)}</span>
+                  </label>
+                </td>
+                <td className="px-4 py-3" onClick={e => e.stopPropagation()}>
+                  {row.second_phone ? (
                     <label className="flex items-center gap-2 cursor-pointer select-none">
                       <input
                         type="checkbox"
-                        checked={getPhone(row.student_id, 'phone1')}
-                        onChange={() => togglePhone(row.student_id, 'phone1')}
+                        checked={getPhone(row.student_id, 'phone2')}
+                        onChange={() => togglePhone(row.student_id, 'phone2')}
                         className="rounded border-gray-300 accent-blue-600 flex-shrink-0"
                       />
-                      <span className="text-xs text-gray-600">{formatPhone(row.phone)}</span>
+                      <span className="text-sm font-medium text-gray-900">{formatPhone(row.second_phone)}</span>
                     </label>
-                  </td>
-                  <td className="px-4 py-3" onClick={e => e.stopPropagation()}>
-                    {row.second_phone ? (
-                      <label className="flex items-center gap-2 cursor-pointer select-none">
-                        <input
-                          type="checkbox"
-                          checked={getPhone(row.student_id, 'phone2')}
-                          onChange={() => togglePhone(row.student_id, 'phone2')}
-                          className="rounded border-gray-300 accent-blue-600 flex-shrink-0"
-                        />
-                        <span className="text-xs text-gray-500">{formatPhone(row.second_phone)}</span>
-                      </label>
-                    ) : <span className="text-gray-300 text-xs">—</span>}
-                  </td>
-                  <td className="px-4 py-3">
-                    <p className="font-semibold text-gray-800">{row.group}</p>
-                    <p className="text-xs text-gray-400">{row.course}</p>
-                  </td>
-                  <td className="px-4 py-3">
-                    <span className={cn('text-sm font-medium tabular-nums', missedRatio > 0.2 ? 'text-red-600' : 'text-gray-700')}>
-                      {row.absent}/{row.total}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3">
-                    <PctBar pct={row.attendance_pct} />
-                  </td>
-                  <td className="px-4 py-3" onClick={e => e.stopPropagation()}>
-                    <button
-                      onClick={() => { setSelected(new Set([row.student_id])); setShowSms(true); }}
-                      className="p-1.5 rounded hover:bg-blue-50 text-gray-400 hover:text-blue-600 transition-colors"
-                      title="SMS yuborish"
-                    >
-                      <Send className="w-3.5 h-3.5" />
-                    </button>
-                  </td>
-                </tr>
-              );
-            })}
+                  ) : <span className="text-gray-300">—</span>}
+                </td>
+                <td className="px-4 py-3">
+                  <p className="font-semibold text-gray-800">{row.group}</p>
+                  <p className="text-xs text-gray-500">{row.course}</p>
+                </td>
+                <td className="px-4 py-3">
+                  <span className={cn('text-sm font-medium tabular-nums',
+                    row.absent / row.total > 0.5 ? 'text-red-600' : 'text-gray-700')}>
+                    {row.absent}/{row.total}
+                  </span>
+                </td>
+                <td className="px-4 py-3">
+                  <PctBar pct={row.attendance_pct} />
+                </td>
+              </tr>
+            ))}
           </tbody>
         </table>
       </div>
@@ -317,7 +290,7 @@ function toggleSelect(id: string) {
               <div className="flex items-center gap-4 text-sm">
                 <PctBadge pct={calendar.attendance_pct} />
                 <span className="text-gray-500">{calendar.present}/{calendar.total} dars</span>
-                <span className="text-red-600 font-medium">{calendar.absent} sababsiz</span>
+                <span className="text-red-600 font-medium">{calendar.absent} dars qoldirildi</span>
               </div>
               <div className="flex items-center gap-4 text-xs text-gray-500">
                 {Object.entries(STATUS_LABEL).map(([s, l]) => (
@@ -349,20 +322,6 @@ function toggleSelect(id: string) {
                   ))}
                 </div>
               )}
-              <div className="flex justify-end pt-2">
-                <button
-                  onClick={() => {
-                    const cal = calendar;
-                    setCalendar(null);
-                    setSelected(new Set([cal.student_id]));
-                    setShowSms(true);
-                  }}
-                  className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded hover:bg-blue-700"
-                >
-                  <Send className="w-4 h-4" />
-                  SMS yuborish
-                </button>
-              </div>
             </div>
           )}
         </DialogContent>
@@ -372,7 +331,7 @@ function toggleSelect(id: string) {
       <Dialog open={showSms} onOpenChange={setShowSms}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>SMS yuborish — {selected.size} ta o&apos;quvchi</DialogTitle>
+            <DialogTitle>SMS yuborish — {checkedPhoneCount} ta raqam</DialogTitle>
           </DialogHeader>
           <form onSubmit={handleSms} className="space-y-4 mt-2">
             <div>
@@ -390,18 +349,12 @@ function toggleSelect(id: string) {
               <p className="text-xs text-gray-400 mt-1">{smsMsg.length} belgi</p>
             </div>
             <div className="flex gap-3 pt-1">
-              <button
-                type="button"
-                onClick={() => setShowSms(false)}
-                className="flex-1 px-4 py-2 border border-gray-300 text-sm font-medium rounded hover:bg-gray-50"
-              >
+              <button type="button" onClick={() => setShowSms(false)}
+                className="flex-1 px-4 py-2 border border-gray-300 text-sm font-medium rounded hover:bg-gray-50">
                 Bekor qilish
               </button>
-              <button
-                type="submit"
-                disabled={sendingSms || !smsMsg.trim()}
-                className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded hover:bg-blue-700 disabled:opacity-60"
-              >
+              <button type="submit" disabled={sendingSms || !smsMsg.trim()}
+                className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded hover:bg-blue-700 disabled:opacity-60">
                 <Send className="w-4 h-4" />
                 {sendingSms ? 'Yuborilmoqda...' : 'Yuborish'}
               </button>

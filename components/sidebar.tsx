@@ -6,7 +6,7 @@ import { useLocale, useTranslations } from 'next-intl';
 import {
   LayoutDashboard, Users, Users2, GraduationCap, BookOpen,
   CreditCard, AlertCircle, BarChart3, Settings, Building2, Archive,
-  UserPlus, CalendarCheck,
+  Lightbulb, CalendarCheck,
 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { cn } from '@/lib/utils';
@@ -21,7 +21,7 @@ const sections = [
   {
     label: "Ta'lim",
     items: [
-      { key: 'leads', icon: UserPlus, href: '/leads', roles: ['boss', 'manager', 'admin'] },
+      { key: 'leads', icon: Lightbulb, href: '/leads', roles: ['boss', 'manager', 'admin'] },
       { key: 'students', icon: Users, href: '/students', roles: null },
       { key: 'groups', icon: Users2, href: '/groups', roles: null },
       { key: 'teachers', icon: GraduationCap, href: '/teachers', roles: null },

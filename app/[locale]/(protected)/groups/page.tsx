@@ -20,7 +20,9 @@ interface Group {
   course: { id: string; name: string };
   teacher: { id: string; first_name: string; last_name: string };
   students_count: number;
-  schedule: string;
+  schedule: string | null;
+  start_time: string | null;
+  end_time: string | null;
   room: string;
   status: 'active' | 'archived' | 'frozen';
 }
@@ -43,22 +45,13 @@ const EMPTY_FORM = {
   days: [] as string[], start_time: '', end_time: '', room: '',
 };
 
-function buildSchedule(days: string[], startTime: string, endTime: string): string {
-  const timeStr = startTime && endTime ? `${startTime}-${endTime}` : startTime || endTime || '';
-  if (days.length === 0 && !timeStr) return '';
-  return [days.join(','), timeStr].filter(Boolean).join(' ');
+function buildSchedule(days: string[]): string {
+  return days.join(',');
 }
 
-function parseDays(schedule: string): string {
+function parseDays(schedule: string | null): string {
   if (!schedule) return '';
   return schedule.split(' ')[0].replace(/,/g, ', ');
-}
-
-function parseTime(schedule: string): string {
-  if (!schedule) return '';
-  const parts = schedule.split(' ');
-  if (parts.length < 2) return '';
-  return parts.slice(1).join(' ').replace('-', ' – ');
 }
 
 function makeTimeInput(raw: string): string {
@@ -143,14 +136,20 @@ export default function GroupsPage() {
     const endErr = validateTime(form.end_time, 'Tugash vaqti');
     if (endErr) { toast.error(endErr); return; }
 
+    if (form.start_time && form.end_time && form.end_time <= form.start_time) {
+      toast.error("Tugash vaqti boshlanish vaqtidan keyin bo'lishi kerak"); return;
+    }
+
     setSaving(true);
     try {
-      const schedule = buildSchedule(form.days, form.start_time, form.end_time);
+      const schedule = buildSchedule(form.days);
       await api.post('/api/v1/groups/', {
         course_id: form.course_id,
         teacher_id: form.teacher_id,
         ...(form.gender_type ? { gender_type: form.gender_type } : {}),
         ...(schedule ? { schedule } : {}),
+        ...(form.start_time ? { start_time: form.start_time } : {}),
+        ...(form.end_time ? { end_time: form.end_time } : {}),
         room: form.room,
       });
       toast.success("Guruh muvaffaqiyatli qo'shildi");
@@ -283,7 +282,9 @@ export default function GroupsPage() {
                       </td>
                       <td className="px-4 py-3 text-gray-700">{g.students_count ?? 0}</td>
                       <td className="px-4 py-3 text-gray-600 text-xs">{parseDays(g.schedule) || '—'}</td>
-                      <td className="px-4 py-3 text-gray-600 text-xs">{parseTime(g.schedule) || '—'}</td>
+                      <td className="px-4 py-3 text-gray-600 text-xs">
+                        {g.start_time ? `${g.start_time} – ${g.end_time ?? ''}` : '—'}
+                      </td>
                       <td className="px-4 py-3">
                         <span className={cn('inline-flex items-center px-2 py-0.5 text-xs font-medium border rounded',
                           g.status === 'active' ? 'bg-green-50 text-green-700 border-green-200'
@@ -512,7 +513,9 @@ export default function GroupsPage() {
             {/* Schedule preview */}
             {(form.days.length > 0 || form.start_time || form.end_time) && (
               <div className="px-3 py-2 bg-gray-50 rounded text-xs text-gray-600">
-                Jadval: <span className="font-medium">{buildSchedule(form.days, form.start_time, form.end_time) || '—'}</span>
+                Jadval: <span className="font-medium">
+                  {[buildSchedule(form.days), [form.start_time, form.end_time].filter(Boolean).join(' – ')].filter(Boolean).join(' ') || '—'}
+                </span>
               </div>
             )}
 

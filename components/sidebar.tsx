@@ -6,7 +6,7 @@ import { useLocale, useTranslations } from 'next-intl';
 import {
   LayoutDashboard, Users, Users2, GraduationCap, BookOpen,
   CreditCard, AlertCircle, BarChart3, Settings, Building2, Archive,
-  Lightbulb, CalendarCheck,
+  Lightbulb, CalendarCheck, DoorOpen,
 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { cn } from '@/lib/utils';
@@ -24,6 +24,7 @@ const sections = [
       { key: 'leads', icon: Lightbulb, href: '/leads', roles: ['boss', 'manager', 'admin'] },
       { key: 'students', icon: Users, href: '/students', roles: null },
       { key: 'groups', icon: Users2, href: '/groups', roles: null },
+      { key: 'rooms', icon: DoorOpen, href: '/rooms', roles: ['boss', 'manager', 'admin'] },
       { key: 'teachers', icon: GraduationCap, href: '/teachers', roles: null },
       { key: 'courses', icon: BookOpen, href: '/courses', roles: null },
       { key: 'attendance', icon: CalendarCheck, href: '/attendance', roles: ['boss', 'manager', 'admin', 'teacher'] },

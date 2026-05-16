@@ -7,7 +7,8 @@ import {
 } from 'recharts';
 import {
   TrendingUp, TrendingDown, DollarSign, AlertTriangle,
-  Plus, Check, ChevronDown, ChevronUp, UserMinus,
+  Users, GraduationCap, Users2, Lightbulb, AlertCircle,
+  Check, ChevronDown, ChevronUp, Plus, UserMinus,
 } from 'lucide-react';
 import toast, { Toaster } from 'react-hot-toast';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -18,111 +19,137 @@ import { cn, formatCurrency } from '@/lib/utils';
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 interface PnLData {
-  income: number;
-  expenses: number;
-  net_profit: number;
-  expense_breakdown: Record<string, number>;
+  from_date: string; to_date: string;
+  income: { total: number };
+  expenses: {
+    total: number; teacher_salaries: number; staff_salaries: number;
+    rent: number; utility: number; other: number;
+  };
+  net_profit: number; net_profit_percent: number; expense_percent: number;
+  stats: {
+    total_leads: number; active_students: number; active_teachers: number;
+    active_groups: number; total_debtors: number; total_debt_amount: number;
+  };
 }
-interface HistoryItem { period: string; income: number; expenses: number; profit: number; }
+interface HistoryItem  { month: string; income: number; expenses: number; profit: number; }
 interface CourseIncome { course: string; amount: number; }
-interface DebtForecast {
-  total: number;
-  breakdown: { unpaid: number; overdue: number; partial: number };
-  count: { unpaid: number; overdue: number; partial: number };
+interface DebtForecast { total: number; }
+interface ConversionStats {
+  total_leads: number; trial: number; converted: number;
+  ignored: number; still_pending: number; conversion_rate: number;
 }
-interface ConversionStats { pending: number; trial: number; ignored: number; }
 interface TeacherSalary {
   id: string; teacher_name: string;
   base_amount: number; kpi_amount: number; total_amount: number; paid_at: string | null;
 }
-interface ManualExpense {
-  id: string; category: string; amount: number; description: string; expense_date: string;
+interface Expense {
+  id: string; category: string; amount: number;
+  description: string; expense_date: string; source: string;
 }
 interface ArchivedStudent {
-  id: string; first_name: string; last_name: string; course_name: string | null; archived_at: string | null;
-}
-interface GroupData {
-  id: string; name: string; room: string; schedule: string | null;
-  start_time: string | null; end_time: string | null;
-  course: { name: string } | null;
-  teacher: { first_name: string; last_name: string } | null;
-  status: string; students_count: number;
+  id: string; first_name: string; last_name: string;
+  course_name: string | null; archived_at: string | null; phone: string;
 }
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
+const PIE_COLORS = ['#6366f1','#8b5cf6','#ec4899','#3b82f6','#10b981','#f59e0b','#ef4444','#06b6d4'];
 const EXPENSE_LABELS: Record<string, string> = {
   rent: 'Ijara', utility: 'Kommunal', tax: 'Soliq', fine: 'Jarima',
   discount: 'Chegirma', teacher_salary: "O'q. maoshi", staff_salary: 'Xodim maoshi', other: 'Boshqa',
 };
-const MANUAL_CATEGORIES = ['rent', 'utility', 'tax', 'fine', 'staff_salary', 'other'];
-const PIE_COLORS = ['#6366f1', '#8b5cf6', '#ec4899', '#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#06b6d4'];
-const MONTH_LABELS = ['Yan', 'Fev', 'Mar', 'Apr', 'May', 'Iyn', 'Iyl', 'Avg', 'Sen', 'Okt', 'Noy', 'Dek'];
+const MANUAL_CATS = ['rent', 'utility', 'tax', 'fine', 'staff_salary', 'other'];
+const MONTH_LABELS = ['Yan','Fev','Mar','Apr','May','Iyn','Iyl','Avg','Sen','Okt','Noy','Dek'];
 
-function currentMonth() {
+function todayStr()      { return new Date().toISOString().slice(0, 10); }
+function monthStartStr() {
   const d = new Date();
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-01`;
 }
-function todayStr() { return new Date().toISOString().slice(0, 10); }
-function shortMonth(period: string) {
-  const [, m] = period.split('-');
-  return MONTH_LABELS[parseInt(m, 10) - 1] ?? period;
+function shortMonth(m: string) {
+  const [, mo] = m.split('-');
+  return MONTH_LABELS[parseInt(mo, 10) - 1] ?? m;
+}
+
+function lastMonthRange() {
+  const d = new Date();
+  const first = new Date(d.getFullYear(), d.getMonth() - 1, 1);
+  const last  = new Date(d.getFullYear(), d.getMonth(), 0);
+  const fmt   = (dt: Date) => dt.toISOString().slice(0, 10);
+  return { from: fmt(first), to: fmt(last) };
+}
+function thisYearRange() {
+  const y = new Date().getFullYear();
+  return { from: `${y}-01-01`, to: todayStr() };
+}
+function lastYearRange() {
+  const y = new Date().getFullYear() - 1;
+  return { from: `${y}-01-01`, to: `${y}-12-31` };
 }
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function ReportsPage() {
-  const [month, setMonth] = useState(currentMonth);
-  const [loading, setLoading] = useState(true);
+  const [fromDate, setFromDate] = useState(monthStartStr);
+  const [toDate,   setToDate]   = useState(todayStr);
+  const [loading,  setLoading]  = useState(true);
 
-  const [pnl, setPnl] = useState<PnLData | null>(null);
-  const [history, setHistory] = useState<HistoryItem[]>([]);
-  const [courseIncome, setCourseIncome] = useState<CourseIncome[]>([]);
-  const [debt, setDebt] = useState<DebtForecast | null>(null);
-  const [conversion, setConversion] = useState<ConversionStats | null>(null);
-  const [teacherSalaries, setTeacherSalaries] = useState<TeacherSalary[]>([]);
-  const [manualExpenses, setManualExpenses] = useState<ManualExpense[]>([]);
-  const [churn, setChurn] = useState<ArchivedStudent[]>([]);
-  const [rooms, setRooms] = useState<GroupData[]>([]);
+  const [pnl,            setPnl]            = useState<PnLData | null>(null);
+  const [history,        setHistory]        = useState<HistoryItem[]>([]);
+  const [courseIncome,   setCourseIncome]   = useState<CourseIncome[]>([]);
+  const [debt,           setDebt]           = useState<DebtForecast | null>(null);
+  const [conversion,     setConversion]     = useState<ConversionStats | null>(null);
+  const [teacherSals,    setTeacherSals]    = useState<TeacherSalary[]>([]);
+  const [expenses,       setExpenses]       = useState<Expense[]>([]);
+  const [churn,          setChurn]          = useState<ArchivedStudent[]>([]);
 
-  const [showTeachers, setShowTeachers] = useState(true);
-  const [markingPaid, setMarkingPaid] = useState<string | null>(null);
-  const [showExpenseModal, setShowExpenseModal] = useState(false);
-  const [editingExpense, setEditingExpense] = useState<ManualExpense | null>(null);
-  const [expenseForm, setExpenseForm] = useState({
+  const [showTeachers,   setShowTeachers]   = useState(true);
+  const [markingPaid,    setMarkingPaid]    = useState<string | null>(null);
+  const [calculating,    setCalculating]    = useState(false);
+  const [showExpModal,   setShowExpModal]   = useState(false);
+  const [editingExp,     setEditingExp]     = useState<Expense | null>(null);
+  const [expForm,        setExpForm]        = useState({
     category: 'rent', amount: '', description: '', expense_date: todayStr(),
   });
-  const [savingExpense, setSavingExpense] = useState(false);
+  const [savingExp, setSavingExp] = useState(false);
+
+  // ── Presets ─────────────────────────────────────────────────────────────────
+
+  const presets = [
+    { label: 'Bu oy',      action: () => { setFromDate(monthStartStr()); setToDate(todayStr()); } },
+    { label: "O'tgan oy",  action: () => { const r = lastMonthRange(); setFromDate(r.from); setToDate(r.to); } },
+    { label: 'Bu yil',     action: () => { const r = thisYearRange();  setFromDate(r.from); setToDate(r.to); } },
+    { label: "O'tgan yil", action: () => { const r = lastYearRange();  setFromDate(r.from); setToDate(r.to); } },
+  ];
 
   // ── Data Fetching ────────────────────────────────────────────────────────────
 
   const loadData = useCallback(async () => {
     setLoading(true);
+    const q = `from_date=${fromDate}&to_date=${toDate}`;
     const results = await Promise.allSettled([
-      api.get(`/api/v1/profit-loss/?month=${month}`),
-      api.get(`/api/v1/profit-loss/history/?months=6`),
-      api.get(`/api/v1/profit-loss/income-by-course/?month=${month}`),
+      api.get(`/api/v1/profit-loss/?${q}`),
+      api.get(`/api/v1/profit-loss/history/?${q}`),
+      api.get(`/api/v1/profit-loss/income-by-course/?${q}`),
       api.get(`/api/v1/profit-loss/debt-forecast/`),
-      api.get(`/api/v1/leads/conversion-stats/`),
-      api.get(`/api/v1/teacher-salaries/?month=${month}`),
-      api.get(`/api/v1/expenses/?month=${month}&source=manual`),
-      api.get(`/api/v1/students/?archived_month=${month}&status=archived`),
-      api.get(`/api/v1/groups/?status=active`),
+      api.get(`/api/v1/leads/conversion-stats/?${q}`),
+      api.get(`/api/v1/teacher-salaries/?${q}`),
+      api.get(`/api/v1/expenses/?${q}`),
+      api.get(`/api/v1/students/?status=archived&${q}`),
     ]);
 
-    const [pnlR, histR, courseR, debtR, convR, salR, expR, churnR, roomR] = results;
-    if (pnlR.status === 'fulfilled') setPnl(pnlR.value.data);
-    if (histR.status === 'fulfilled') setHistory(histR.value.data);
+    const [pnlR, histR, courseR, debtR, convR, salR, expR, churnR] = results;
+    if (pnlR.status    === 'fulfilled') setPnl(pnlR.value.data);
+    if (histR.status   === 'fulfilled') setHistory(histR.value.data);
     if (courseR.status === 'fulfilled') setCourseIncome(courseR.value.data);
-    if (debtR.status === 'fulfilled') setDebt(debtR.value.data);
-    if (convR.status === 'fulfilled') setConversion(convR.value.data);
-    if (salR.status === 'fulfilled') setTeacherSalaries(salR.value.data.results ?? salR.value.data);
-    if (expR.status === 'fulfilled') setManualExpenses(expR.value.data.results ?? expR.value.data);
-    if (churnR.status === 'fulfilled') setChurn(churnR.value.data.results ?? churnR.value.data);
-    if (roomR.status === 'fulfilled') setRooms(roomR.value.data.results ?? roomR.value.data);
+    if (debtR.status   === 'fulfilled') setDebt(debtR.value.data);
+    if (convR.status   === 'fulfilled') setConversion(convR.value.data);
+    if (salR.status    === 'fulfilled') setTeacherSals(salR.value.data.results ?? salR.value.data);
+    if (expR.status    === 'fulfilled') setExpenses(expR.value.data.results ?? expR.value.data);
+    if (churnR.status  === 'fulfilled') setChurn(churnR.value.data.results ?? churnR.value.data);
 
     setLoading(false);
-  }, [month]);
+  }, [fromDate, toDate]);
 
   useEffect(() => { loadData(); }, [loadData]);
 
@@ -132,89 +159,93 @@ export default function ReportsPage() {
     setMarkingPaid(id);
     try {
       const { data: updated } = await api.post<TeacherSalary>(`/api/v1/teacher-salaries/${id}/mark-paid/`);
-      setTeacherSalaries(prev => prev.map(s => s.id === id ? updated : s));
+      setTeacherSals(prev => prev.map(s => s.id === id ? updated : s));
       toast.success("Maosh to'landi");
-      loadData();
-    } catch { toast.error('Xatolik yuz berdi'); }
+    } catch { toast.error('Xatolik'); }
     finally { setMarkingPaid(null); }
   }
 
-  function openAddExpense() {
-    setEditingExpense(null);
-    setExpenseForm({ category: 'rent', amount: '', description: '', expense_date: todayStr() });
-    setShowExpenseModal(true);
+  async function handleCalculateSalaries() {
+    setCalculating(true);
+    const month = fromDate.slice(0, 7);
+    try {
+      const { data } = await api.post(`/api/v1/teacher-salaries/calculate/?month=${month}`);
+      toast.success(`${data.created.length} ta maosh yaratildi`);
+      loadData();
+    } catch { toast.error('Xatolik'); }
+    finally { setCalculating(false); }
   }
 
-  function openEditExpense(e: ManualExpense) {
-    setEditingExpense(e);
-    setExpenseForm({ category: e.category, amount: String(e.amount), description: e.description, expense_date: e.expense_date });
-    setShowExpenseModal(true);
+  function openAddExp() {
+    setEditingExp(null);
+    setExpForm({ category: 'rent', amount: '', description: '', expense_date: todayStr() });
+    setShowExpModal(true);
   }
-
-  async function handleSaveExpense(ev: React.FormEvent) {
+  function openEditExp(e: Expense) {
+    setEditingExp(e);
+    setExpForm({ category: e.category, amount: String(e.amount), description: e.description, expense_date: e.expense_date });
+    setShowExpModal(true);
+  }
+  async function handleSaveExp(ev: React.FormEvent) {
     ev.preventDefault();
-    if (!expenseForm.amount || parseFloat(expenseForm.amount) <= 0) { toast.error('Summani kiriting'); return; }
-    setSavingExpense(true);
+    if (!expForm.amount || parseFloat(expForm.amount) <= 0) { toast.error('Summani kiriting'); return; }
+    setSavingExp(true);
     try {
       const body = {
-        category: expenseForm.category,
-        amount: parseFloat(expenseForm.amount),
-        description: expenseForm.description || '',
-        expense_date: expenseForm.expense_date,
+        category: expForm.category, amount: parseFloat(expForm.amount),
+        description: expForm.description || '', expense_date: expForm.expense_date,
       };
-      if (editingExpense) {
-        await api.patch(`/api/v1/expenses/${editingExpense.id}/`, body);
-        toast.success('Xarajat yangilandi');
+      if (editingExp) {
+        await api.patch(`/api/v1/expenses/${editingExp.id}/`, body);
+        toast.success('Yangilandi');
       } else {
         await api.post('/api/v1/expenses/', body);
-        toast.success("Xarajat qo'shildi");
+        toast.success("Qo'shildi");
       }
-      setShowExpenseModal(false);
+      setShowExpModal(false);
       loadData();
     } catch (err: any) {
-      toast.error(err?.response?.data?.detail || 'Xatolik yuz berdi');
-    } finally {
-      setSavingExpense(false);
-    }
+      toast.error(err?.response?.data?.detail || 'Xatolik');
+    } finally { setSavingExp(false); }
   }
 
-  // ── Derived Data ─────────────────────────────────────────────────────────────
+  // ── Derived ──────────────────────────────────────────────────────────────────
 
-  const income = Number(pnl?.income ?? 0);
-  const expenses = Number(pnl?.expenses ?? 0);
-  const profit = Number(pnl?.net_profit ?? 0);
-  const totalDebt = Number(debt?.total ?? 0);
+  const income   = Number(pnl?.income?.total      ?? 0);
+  const expTotal = Number(pnl?.expenses?.total    ?? 0);
+  const profit   = Number(pnl?.net_profit         ?? 0);
+  const debtAmt  = Number(debt?.total             ?? 0);
+  const stats    = pnl?.stats;
 
-  const expenseBreakdownData = useMemo(() => {
-    if (!pnl?.expense_breakdown) return [];
-    return Object.entries(pnl.expense_breakdown)
-      .map(([key, val]) => ({ key, name: EXPENSE_LABELS[key] ?? key, value: Number(val) }))
-      .filter(d => d.value > 0)
-      .sort((a, b) => b.value - a.value);
+  const expBreakdown = useMemo(() => {
+    if (!pnl?.expenses) return [];
+    const { teacher_salaries, staff_salaries, rent, utility, other } = pnl.expenses;
+    return [
+      { key: 'teacher_salary', name: "O'q. maoshi",   value: Number(teacher_salaries) },
+      { key: 'staff_salary',   name: 'Xodim maoshi',  value: Number(staff_salaries) },
+      { key: 'rent',           name: 'Ijara',          value: Number(rent) },
+      { key: 'utility',        name: 'Kommunal',       value: Number(utility) },
+      { key: 'other',          name: 'Boshqa',         value: Number(other) },
+    ].filter(d => d.value > 0).sort((a, b) => b.value - a.value);
   }, [pnl]);
 
-  const totalLeads = (conversion?.pending ?? 0) + (conversion?.trial ?? 0) + (conversion?.ignored ?? 0);
-  const funnelData = conversion ? [
-    { label: 'Yangi (kutilmoqda)', value: conversion.pending, color: '#6366f1' },
-    { label: 'Sinov darsida', value: conversion.trial, color: '#f59e0b' },
-    { label: 'Rad etilgan', value: conversion.ignored, color: '#ef4444' },
-  ] : [];
-
   const trendData = history.map(h => ({
-    period: shortMonth(h.period),
+    period: shortMonth(h.month),
     income: Number(h.income),
     expenses: Number(h.expenses),
   }));
 
-  const roomSchedule = useMemo(() => {
-    const byRoom: Record<string, GroupData[]> = {};
-    for (const g of rooms) {
-      const r = g.room || 'Nomsiz xona';
-      if (!byRoom[r]) byRoom[r] = [];
-      byRoom[r].push(g);
-    }
-    return Object.entries(byRoom).sort(([a], [b]) => a.localeCompare(b));
-  }, [rooms]);
+  const totalLeads = conversion
+    ? conversion.total_leads + conversion.converted
+    : 0;
+
+  const funnelRows = conversion ? [
+    { label: 'Jami leadlar',  value: conversion.total_leads,  color: '#6366f1', max: totalLeads },
+    { label: 'Sinov muddati', value: conversion.trial,        color: '#f59e0b', max: totalLeads },
+    { label: 'Faol talabaga', value: conversion.converted,    color: '#10b981', max: totalLeads },
+    { label: 'Rad etdilar',   value: conversion.ignored,      color: '#ef4444', max: totalLeads },
+    { label: 'Kutilmoqda',    value: conversion.still_pending, color: '#6b7280', max: totalLeads },
+  ] : [];
 
   const Skel = ({ className }: { className?: string }) => (
     <Skeleton className={cn('rounded-lg', className)} />
@@ -223,36 +254,62 @@ export default function ReportsPage() {
   // ── Render ───────────────────────────────────────────────────────────────────
 
   return (
-    <div className="space-y-6 pb-12">
+    <div className="space-y-5 pb-12">
       <Toaster position="top-right" />
 
-      {/* Header */}
-      <div className="flex flex-wrap items-end justify-between gap-4">
+      {/* ── Header + Date Filter ── */}
+      <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Hisobotlar</h1>
           <p className="text-sm text-gray-500 mt-0.5">Moliyaviy tahlil va statistika</p>
         </div>
-        <input
-          type="month" value={month} onChange={e => setMonth(e.target.value)}
-          className="px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
-        />
+        <div className="flex flex-wrap items-center gap-2">
+          {/* Preset buttons */}
+          <div className="flex rounded-lg border border-gray-200 overflow-hidden text-xs font-medium">
+            {presets.map(({ label, action }) => (
+              <button key={label} onClick={action}
+                className="px-3 py-2 bg-white text-gray-600 hover:bg-blue-50 hover:text-blue-600 transition-colors border-r border-gray-200 last:border-0">
+                {label}
+              </button>
+            ))}
+          </div>
+          {/* Custom range inputs */}
+          <div className="flex items-center gap-1.5">
+            <input type="date" value={fromDate} onChange={e => setFromDate(e.target.value)}
+              className="px-2.5 py-2 border border-gray-200 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white" />
+            <span className="text-gray-400 text-sm">—</span>
+            <input type="date" value={toDate} onChange={e => setToDate(e.target.value)}
+              className="px-2.5 py-2 border border-gray-200 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white" />
+          </div>
+        </div>
       </div>
 
-      {/* Section 1: KPI Cards */}
+      {/* ── Section 1: 4 Financial KPI Cards ── */}
       <div className="grid grid-cols-2 xl:grid-cols-4 gap-4">
         {([
-          { label: 'Daromad', value: income, icon: TrendingUp, color: 'text-emerald-600', bg: 'bg-emerald-50', border: 'border-emerald-200' },
-          { label: 'Xarajat', value: expenses, icon: TrendingDown, color: 'text-red-600', bg: 'bg-red-50', border: 'border-red-200' },
           {
-            label: 'Sof foyda', value: profit, icon: DollarSign,
+            label: 'Daromad', value: income, icon: TrendingUp,
+            sub: `${Number(pnl?.net_profit_percent ?? 0).toFixed(1)}% sof foyda`,
+            color: 'text-emerald-600', bg: 'bg-emerald-50', border: 'border-emerald-200',
+          },
+          {
+            label: 'Harajat', value: expTotal, icon: TrendingDown,
+            sub: `${Number(pnl?.expense_percent ?? 0).toFixed(1)}% umumiy daromaddan`,
+            color: 'text-red-600', bg: 'bg-red-50', border: 'border-red-200',
+          },
+          {
+            label: 'Sof foyda', value: profit, icon: DollarSign, sub: '',
             color: profit >= 0 ? 'text-blue-600' : 'text-red-600',
             bg: profit >= 0 ? 'bg-blue-50' : 'bg-red-50',
             border: profit >= 0 ? 'border-blue-200' : 'border-red-200',
           },
-          { label: 'Qarzdorlik', value: totalDebt, icon: AlertTriangle, color: 'text-amber-600', bg: 'bg-amber-50', border: 'border-amber-200' },
-        ] as const).map(({ label, value, icon: Icon, color, bg, border }) => (
-          <div key={label} className={cn('rounded-xl border p-5 flex items-center gap-4', bg, border)}>
-            <div className={cn('p-2.5 rounded-lg bg-white shadow-sm shrink-0', color)}>
+          {
+            label: 'Qarzdorlik', value: debtAmt, icon: AlertTriangle, sub: '',
+            color: 'text-amber-600', bg: 'bg-amber-50', border: 'border-amber-200',
+          },
+        ] as const).map(({ label, value, icon: Icon, sub, color, bg, border }) => (
+          <div key={label} className={cn('rounded-xl border p-5 flex items-start gap-4', bg, border)}>
+            <div className={cn('p-2.5 rounded-lg bg-white shadow-sm shrink-0 mt-0.5', color)}>
               <Icon className="w-5 h-5" />
             </div>
             <div className="min-w-0">
@@ -260,42 +317,69 @@ export default function ReportsPage() {
               {loading
                 ? <Skel className="h-7 w-28 mt-1" />
                 : <p className={cn('text-xl font-bold mt-0.5 truncate', color)}>{formatCurrency(value)}</p>}
+              {sub && !loading && (
+                <p className="text-xs text-gray-400 mt-0.5 truncate">{sub}</p>
+              )}
             </div>
           </div>
         ))}
       </div>
 
-      {/* Section 2+3: Trend chart + Course income pie */}
+      {/* ── Section 2: 5 Stat Cards ── */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-5 gap-3">
+        {([
+          { label: 'Leadlar',            value: stats?.total_leads,    icon: Lightbulb,    color: 'text-yellow-600 bg-yellow-50 border-yellow-200' },
+          { label: "Faol o'quvchilar",   value: stats?.active_students, icon: Users,        color: 'text-emerald-600 bg-emerald-50 border-emerald-200' },
+          { label: "O'qituvchilar",      value: stats?.active_teachers, icon: GraduationCap, color: 'text-blue-600 bg-blue-50 border-blue-200' },
+          { label: 'Faol guruhlar',      value: stats?.active_groups,  icon: Users2,       color: 'text-purple-600 bg-purple-50 border-purple-200' },
+          { label: 'Qarzdorlar',         value: stats?.total_debtors,  icon: AlertCircle,  color: 'text-red-600 bg-red-50 border-red-200' },
+        ] as const).map(({ label, value, icon: Icon, color }) => {
+          const [tc, bgc, bc] = color.split(' ');
+          return (
+            <div key={label} className={cn('rounded-xl border p-4 flex items-center gap-3', bgc, bc)}>
+              <div className={cn('p-2 rounded-lg bg-white shadow-sm shrink-0', tc)}>
+                <Icon className="w-4 h-4" />
+              </div>
+              <div className="min-w-0">
+                <p className="text-[11px] text-gray-500 font-medium truncate">{label}</p>
+                {loading
+                  ? <Skel className="h-6 w-12 mt-0.5" />
+                  : <p className={cn('text-lg font-bold', tc)}>{value ?? 0}</p>}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* ── Section 3: Trend + Course Pie ── */}
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
-        {/* Area chart — 6-month trend */}
+        {/* Progress Trendi */}
         <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-5">
-          <h2 className="text-sm font-semibold text-gray-900 mb-4">6 oylik trend</h2>
-          {loading ? <Skel className="h-52 w-full" /> : (
+          <h2 className="text-sm font-semibold text-gray-900 mb-4">Progress trendi</h2>
+          {loading ? <Skel className="h-52 w-full" /> : trendData.length === 0 ? (
+            <div className="h-52 flex items-center justify-center text-sm text-gray-400">Ma&apos;lumot yo&apos;q</div>
+          ) : (
             <>
-              <ResponsiveContainer width="100%" height={210}>
+              <ResponsiveContainer width="100%" height={200}>
                 <AreaChart data={trendData} margin={{ top: 4, right: 4, bottom: 0, left: 0 }}>
                   <defs>
-                    <linearGradient id="gIncome" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#10b981" stopOpacity={0.2} />
+                    <linearGradient id="gInc" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%"  stopColor="#10b981" stopOpacity={0.2} />
                       <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
                     </linearGradient>
-                    <linearGradient id="gExpense" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#ef4444" stopOpacity={0.15} />
+                    <linearGradient id="gExp" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%"  stopColor="#ef4444" stopOpacity={0.15} />
                       <stop offset="95%" stopColor="#ef4444" stopOpacity={0} />
                     </linearGradient>
                   </defs>
                   <CartesianGrid strokeDasharray="3 3" stroke="#F3F4F6" vertical={false} />
                   <XAxis dataKey="period" tick={{ fontSize: 11, fill: '#9CA3AF' }} axisLine={false} tickLine={false} />
-                  <YAxis
-                    tick={{ fontSize: 10, fill: '#9CA3AF' }} axisLine={false} tickLine={false} width={60}
-                    tickFormatter={v => v >= 1_000_000 ? `${(v / 1_000_000).toFixed(1)}M` : v >= 1000 ? `${(v / 1000).toFixed(0)}K` : String(v)}
-                  />
-                  <Tooltip
-                    contentStyle={{ border: '1px solid #E5E7EB', borderRadius: 8, fontSize: 12 }}
-                    formatter={(v: any) => formatCurrency(Number(v))}
-                  />
-                  <Area type="monotone" dataKey="income" stroke="#10b981" strokeWidth={2} fill="url(#gIncome)" name="Daromad" />
-                  <Area type="monotone" dataKey="expenses" stroke="#ef4444" strokeWidth={2} fill="url(#gExpense)" name="Xarajat" />
+                  <YAxis tick={{ fontSize: 10, fill: '#9CA3AF' }} axisLine={false} tickLine={false} width={58}
+                    tickFormatter={v => v >= 1_000_000 ? `${(v/1_000_000).toFixed(1)}M` : v >= 1000 ? `${(v/1000).toFixed(0)}K` : String(v)} />
+                  <Tooltip contentStyle={{ border: '1px solid #E5E7EB', borderRadius: 8, fontSize: 12 }}
+                    formatter={(v: any) => formatCurrency(Number(v))} />
+                  <Area type="monotone" dataKey="income"   stroke="#10b981" strokeWidth={2} fill="url(#gInc)" name="Daromad" />
+                  <Area type="monotone" dataKey="expenses" stroke="#ef4444" strokeWidth={2} fill="url(#gExp)" name="Harajat" />
                 </AreaChart>
               </ResponsiveContainer>
               <div className="flex items-center gap-5 mt-2 justify-center">
@@ -303,66 +387,72 @@ export default function ReportsPage() {
                   <span className="w-3 h-3 rounded-full bg-emerald-500 inline-block" /> Daromad
                 </span>
                 <span className="flex items-center gap-1.5 text-xs text-gray-500">
-                  <span className="w-3 h-3 rounded-full bg-red-500 inline-block" /> Xarajat
+                  <span className="w-3 h-3 rounded-full bg-red-500 inline-block" /> Harajat
                 </span>
               </div>
             </>
           )}
         </div>
 
-        {/* Pie chart — income by course */}
-        <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-5">
+        {/* Course income pie — pie LEFT, legend RIGHT */}
+        <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6">
           <h2 className="text-sm font-semibold text-gray-900 mb-4">Kurs bo&apos;yicha daromad</h2>
           {loading ? <Skel className="h-52 w-full" /> : courseIncome.length === 0 ? (
             <div className="h-52 flex items-center justify-center text-sm text-gray-400">
-              Bu oyda to&apos;lov mavjud emas
+              Bu davrda to&apos;lov mavjud emas
             </div>
           ) : (
-            <ResponsiveContainer width="100%" height={230}>
-              <PieChart>
-                <Pie
-                  data={courseIncome} dataKey="amount" nameKey="course"
-                  cx="50%" cy="50%" outerRadius={85} innerRadius={40}
-                >
-                  {courseIncome.map((_, i) => (
-                    <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />
-                  ))}
-                </Pie>
-                <Tooltip
-                  contentStyle={{ border: '1px solid #E5E7EB', borderRadius: 8, fontSize: 12 }}
-                  formatter={(v: any) => formatCurrency(Number(v))}
-                />
-              </PieChart>
-            </ResponsiveContainer>
-          )}
-          {!loading && courseIncome.length > 0 && (
-            <div className="flex flex-wrap gap-2 mt-1 justify-center">
-              {courseIncome.map((c, i) => (
-                <span key={i} className="flex items-center gap-1.5 text-xs text-gray-500">
-                  <span className="w-2.5 h-2.5 rounded-full inline-block" style={{ background: PIE_COLORS[i % PIE_COLORS.length] }} />
-                  {c.course}
-                </span>
-              ))}
+            <div className="flex items-center gap-6">
+              <div className="w-44 h-44 shrink-0">
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Pie data={courseIncome} dataKey="amount" nameKey="course"
+                      cx="50%" cy="50%" outerRadius={72} innerRadius={36}>
+                      {courseIncome.map((_, i) => (
+                        <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />
+                      ))}
+                    </Pie>
+                    <Tooltip contentStyle={{ border: '1px solid #E5E7EB', borderRadius: 8, fontSize: 12 }}
+                      formatter={(v: any) => formatCurrency(Number(v))} />
+                  </PieChart>
+                </ResponsiveContainer>
+              </div>
+              <div className="flex-1 space-y-2.5 min-w-0">
+                {courseIncome.map((c, i) => {
+                  const pct = income > 0 ? (Number(c.amount) / income * 100).toFixed(1) : '0';
+                  return (
+                    <div key={i} className="flex items-center justify-between gap-2 text-xs">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <span className="w-2.5 h-2.5 rounded-full shrink-0 inline-block"
+                          style={{ background: PIE_COLORS[i % PIE_COLORS.length] }} />
+                        <span className="text-gray-700 truncate">{c.course}</span>
+                      </div>
+                      <div className="shrink-0 text-right">
+                        <span className="text-gray-400 mr-1.5">{pct}%</span>
+                        <span className="font-semibold text-gray-900">{formatCurrency(Number(c.amount))}</span>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
             </div>
           )}
         </div>
       </div>
 
-      {/* Section 4+5: Expense breakdown + Leads funnel */}
+      {/* ── Section 4: Expense breakdown + Leads funnel ── */}
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
         {/* Expense breakdown */}
         <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-5">
-          <h2 className="text-sm font-semibold text-gray-900 mb-4">Xarajatlar tafsiloti</h2>
+          <h2 className="text-sm font-semibold text-gray-900 mb-4">Harajatlar tafsiloti</h2>
           {loading ? (
-            <div className="space-y-3">{Array(5).fill(0).map((_, i) => <Skel key={i} className="h-8 w-full" />)}</div>
-          ) : expenseBreakdownData.length === 0 ? (
-            <div className="h-44 flex items-center justify-center text-sm text-gray-400">
-              Bu oyda xarajat yo&apos;q
-            </div>
+            <div className="space-y-3">{Array(4).fill(0).map((_, i) => <Skel key={i} className="h-8 w-full" />)}</div>
+          ) : expBreakdown.length === 0 ? (
+            <div className="h-40 flex items-center justify-center text-sm text-gray-400">Bu davrda harajat yo&apos;q</div>
           ) : (
             <div className="space-y-3">
-              {expenseBreakdownData.map(({ key, name, value }) => {
-                const pct = expenses > 0 ? (value / expenses) * 100 : 0;
+              {expBreakdown.map(({ key, name, value }) => {
+                const pct = expTotal > 0 ? (value / expTotal) * 100 : 0;
                 return (
                   <div key={key}>
                     <div className="flex items-center justify-between mb-1">
@@ -370,10 +460,8 @@ export default function ReportsPage() {
                       <span className="text-xs font-semibold text-gray-900">{formatCurrency(value)}</span>
                     </div>
                     <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
-                      <div
-                        className="h-full rounded-full transition-all duration-500 bg-blue-500"
-                        style={{ width: `${pct}%` }}
-                      />
+                      <div className="h-full rounded-full transition-all duration-500 bg-blue-500"
+                        style={{ width: `${pct}%` }} />
                     </div>
                   </div>
                 );
@@ -382,37 +470,33 @@ export default function ReportsPage() {
           )}
         </div>
 
-        {/* Leads funnel */}
+        {/* Leads conversion funnel */}
         <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-5">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-sm font-semibold text-gray-900">Lidlar konversiyasi</h2>
             {!loading && conversion && (
-              <span className="text-xs text-gray-400 bg-gray-100 px-2 py-0.5 rounded-full">
-                Jami: {totalLeads}
+              <span className="text-xs font-medium text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
+                {conversion.conversion_rate}% konversiya
               </span>
             )}
           </div>
           {loading ? (
-            <div className="space-y-4">{Array(3).fill(0).map((_, i) => <Skel key={i} className="h-10 w-full" />)}</div>
+            <div className="space-y-3">{Array(5).fill(0).map((_, i) => <Skel key={i} className="h-8 w-full" />)}</div>
           ) : !conversion ? (
-            <div className="h-44 flex items-center justify-center text-sm text-gray-400">Ma&apos;lumot yo&apos;q</div>
+            <div className="h-40 flex items-center justify-center text-sm text-gray-400">Ma&apos;lumot yo&apos;q</div>
           ) : (
-            <div className="space-y-5">
-              {funnelData.map(({ label, value, color }) => {
-                const pct = totalLeads > 0 ? (value / totalLeads) * 100 : 0;
+            <div className="space-y-3">
+              {funnelRows.map(({ label, value, color, max }) => {
+                const pct = max > 0 ? (value / max) * 100 : 0;
                 return (
-                  <div key={label}>
-                    <div className="flex items-center justify-between mb-1.5">
-                      <span className="text-sm text-gray-700">{label}</span>
-                      <span className="text-sm font-bold text-gray-900">{value}</span>
+                  <div key={label} className="flex items-center gap-3">
+                    <span className="w-34 text-xs text-gray-600 shrink-0 w-36">{label}</span>
+                    <div className="flex-1 h-5 bg-gray-100 rounded overflow-hidden">
+                      <div className="h-full rounded transition-all duration-700"
+                        style={{ width: `${pct}%`, backgroundColor: color }} />
                     </div>
-                    <div className="h-2.5 bg-gray-100 rounded-full overflow-hidden">
-                      <div
-                        className="h-full rounded-full transition-all duration-700"
-                        style={{ width: `${pct}%`, backgroundColor: color }}
-                      />
-                    </div>
-                    <p className="text-xs text-gray-400 mt-1">{pct.toFixed(1)}%</p>
+                    <span className="w-7 text-xs font-bold text-gray-900 text-right shrink-0">{value}</span>
+                    <span className="w-11 text-xs text-gray-400 text-right shrink-0">{pct.toFixed(1)}%</span>
                   </div>
                 );
               })}
@@ -421,23 +505,30 @@ export default function ReportsPage() {
         </div>
       </div>
 
-      {/* Section 6: Teacher Salaries */}
+      {/* ── Section 5: Teacher Salaries ── */}
       <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
-        <button
-          onClick={() => setShowTeachers(t => !t)}
-          className="w-full flex items-center justify-between px-5 py-4 hover:bg-gray-50 transition-colors"
-        >
+        <button onClick={() => setShowTeachers(t => !t)}
+          className="w-full flex items-center justify-between px-5 py-4 hover:bg-gray-50 transition-colors">
           <h2 className="text-sm font-semibold text-gray-900">O&apos;qituvchilar maoshi</h2>
-          {showTeachers ? <ChevronUp className="w-4 h-4 text-gray-400" /> : <ChevronDown className="w-4 h-4 text-gray-400" />}
+          <div className="flex items-center gap-2">
+            <button
+              onClick={e => { e.stopPropagation(); handleCalculateSalaries(); }}
+              disabled={calculating}
+              className="text-xs px-2.5 py-1 bg-blue-50 text-blue-600 border border-blue-200 rounded-lg hover:bg-blue-100 transition-colors disabled:opacity-50"
+            >
+              {calculating ? 'Hisoblanmoqda...' : 'Hisoblash'}
+            </button>
+            {showTeachers ? <ChevronUp className="w-4 h-4 text-gray-400" /> : <ChevronDown className="w-4 h-4 text-gray-400" />}
+          </div>
         </button>
         {showTeachers && (
           loading ? (
             <div className="p-4 space-y-2 border-t border-gray-100">
               {Array(3).fill(0).map((_, i) => <Skel key={i} className="h-10 w-full" />)}
             </div>
-          ) : teacherSalaries.length === 0 ? (
+          ) : teacherSals.length === 0 ? (
             <p className="px-5 py-8 text-sm text-gray-400 text-center border-t border-gray-100">
-              Bu oy uchun maosh mavjud emas
+              Bu davr uchun maosh mavjud emas
             </p>
           ) : (
             <div className="overflow-x-auto border-t border-gray-100">
@@ -450,7 +541,7 @@ export default function ReportsPage() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100">
-                  {teacherSalaries.map(s => (
+                  {teacherSals.map(s => (
                     <tr key={s.id} className="hover:bg-gray-50 transition-colors">
                       <td className="px-4 py-3 font-medium text-gray-900">{s.teacher_name}</td>
                       <td className="px-4 py-3 text-gray-600">{formatCurrency(s.base_amount)}</td>
@@ -467,11 +558,8 @@ export default function ReportsPage() {
                       </td>
                       <td className="px-4 py-3">
                         {!s.paid_at && (
-                          <button
-                            onClick={() => handleMarkPaid(s.id)}
-                            disabled={markingPaid === s.id}
-                            className="text-xs text-blue-600 hover:underline disabled:opacity-50"
-                          >
+                          <button onClick={() => handleMarkPaid(s.id)} disabled={markingPaid === s.id}
+                            className="text-xs text-blue-600 hover:underline disabled:opacity-50">
                             {markingPaid === s.id ? '...' : 'Tasdiqlash'}
                           </button>
                         )}
@@ -485,48 +573,51 @@ export default function ReportsPage() {
         )}
       </div>
 
-      {/* Section 7: Manual Expenses */}
+      {/* ── Section 6: All Expenses ── */}
       <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
         <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
-          <h2 className="text-sm font-semibold text-gray-900">Kiritilgan xarajatlar</h2>
-          <button
-            onClick={openAddExpense}
-            className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 text-white text-xs font-medium rounded-lg hover:bg-blue-700 transition-colors"
-          >
+          <h2 className="text-sm font-semibold text-gray-900">Harajatlar</h2>
+          <button onClick={openAddExp}
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 text-white text-xs font-medium rounded-lg hover:bg-blue-700 transition-colors">
             <Plus className="w-3.5 h-3.5" /> Qo&apos;shish
           </button>
         </div>
         {loading ? (
-          <div className="p-4 space-y-2">
-            {Array(3).fill(0).map((_, i) => <Skel key={i} className="h-10 w-full" />)}
-          </div>
-        ) : manualExpenses.length === 0 ? (
-          <p className="px-5 py-8 text-sm text-gray-400 text-center">Bu oyda kiritilgan xarajat yo&apos;q</p>
+          <div className="p-4 space-y-2">{Array(4).fill(0).map((_, i) => <Skel key={i} className="h-10 w-full" />)}</div>
+        ) : expenses.length === 0 ? (
+          <p className="px-5 py-8 text-sm text-gray-400 text-center">Bu davrda harajat yo&apos;q</p>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
                 <tr className="bg-gray-50 border-b border-gray-200">
-                  {['Kategoriya', 'Tavsif', 'Sana', 'Summa', ''].map((h, i) => (
+                  {['Kategoriya', 'Tavsif', 'Sana', 'Manba', 'Summa', ''].map((h, i) => (
                     <th key={i} className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">{h}</th>
                   ))}
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
-                {manualExpenses.map(e => (
+                {expenses.map(e => (
                   <tr key={e.id} className="hover:bg-gray-50 transition-colors">
                     <td className="px-4 py-3">
                       <span className="inline-flex items-center px-2 py-0.5 text-xs font-medium rounded-full bg-gray-100 text-gray-700">
                         {EXPENSE_LABELS[e.category] ?? e.category}
                       </span>
                     </td>
-                    <td className="px-4 py-3 text-gray-600">{e.description || '—'}</td>
+                    <td className="px-4 py-3 text-gray-600 max-w-48 truncate">{e.description || '—'}</td>
                     <td className="px-4 py-3 text-gray-500 text-xs">{e.expense_date}</td>
+                    <td className="px-4 py-3">
+                      {e.source === 'auto'
+                        ? <span className="text-xs text-blue-500 bg-blue-50 px-1.5 py-0.5 rounded">avto</span>
+                        : <span className="text-xs text-gray-400 bg-gray-50 px-1.5 py-0.5 rounded">qo&apos;l</span>}
+                    </td>
                     <td className="px-4 py-3 font-semibold text-red-600">−{formatCurrency(e.amount)}</td>
                     <td className="px-4 py-3">
-                      <button onClick={() => openEditExpense(e)} className="text-xs text-blue-600 hover:underline">
-                        Tahrirlash
-                      </button>
+                      {e.source !== 'auto' && (
+                        <button onClick={() => openEditExp(e)} className="text-xs text-blue-600 hover:underline">
+                          Tahrirlash
+                        </button>
+                      )}
                     </td>
                   </tr>
                 ))}
@@ -536,154 +627,92 @@ export default function ReportsPage() {
         )}
       </div>
 
-      {/* Section 8+9: Churn table + Room schedule */}
-      <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
-        {/* Churn — students archived this month */}
-        <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
-          <div className="flex items-center gap-2 px-5 py-4 border-b border-gray-100">
-            <UserMinus className="w-4 h-4 text-red-500 shrink-0" />
-            <h2 className="text-sm font-semibold text-gray-900">Bu oyda ketgan o&apos;quvchilar</h2>
-            {!loading && (
-              <span className="ml-auto text-xs font-medium text-gray-500 bg-gray-100 px-2 py-0.5 rounded-full shrink-0">
-                {churn.length}
-              </span>
-            )}
-          </div>
-          {loading ? (
-            <div className="p-4 space-y-2">
-              {Array(3).fill(0).map((_, i) => <Skel key={i} className="h-8 w-full" />)}
-            </div>
-          ) : churn.length === 0 ? (
-            <p className="px-5 py-8 text-sm text-gray-400 text-center">Bu oy ketgan o&apos;quvchi yo&apos;q</p>
-          ) : (
-            <div className="overflow-x-auto max-h-72 overflow-y-auto">
-              <table className="w-full text-sm">
-                <thead className="sticky top-0 bg-white">
-                  <tr className="bg-gray-50 border-b border-gray-200">
-                    {["O'quvchi", 'Kurs', 'Sana'].map(h => (
-                      <th key={h} className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">{h}</th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-100">
-                  {churn.map(s => (
-                    <tr key={s.id} className="hover:bg-gray-50 transition-colors">
-                      <td className="px-4 py-3 font-medium text-gray-900">{s.first_name} {s.last_name}</td>
-                      <td className="px-4 py-3 text-gray-500 text-xs">{s.course_name || '—'}</td>
-                      <td className="px-4 py-3 text-gray-500 text-xs">
-                        {s.archived_at ? s.archived_at.slice(0, 10) : '—'}
-                      </td>
-                    </tr>
+      {/* ── Section 7: Churn Table (full width) ── */}
+      <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+        <div className="flex items-center gap-2 px-5 py-4 border-b border-gray-100">
+          <UserMinus className="w-4 h-4 text-red-500 shrink-0" />
+          <h2 className="text-sm font-semibold text-gray-900">Ketgan o&apos;quvchilar</h2>
+          {!loading && (
+            <span className="ml-auto text-xs font-medium text-gray-500 bg-gray-100 px-2 py-0.5 rounded-full shrink-0">
+              {churn.length} ta
+            </span>
+          )}
+        </div>
+        {loading ? (
+          <div className="p-4 space-y-2">{Array(3).fill(0).map((_, i) => <Skel key={i} className="h-8 w-full" />)}</div>
+        ) : churn.length === 0 ? (
+          <p className="px-5 py-8 text-sm text-gray-400 text-center">Bu davrda ketgan o&apos;quvchi yo&apos;q</p>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="bg-gray-50 border-b border-gray-200">
+                  {['#', "O'quvchi", 'Telefon', 'Kurs', 'Arxivlangan sana'].map((h, i) => (
+                    <th key={i} className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">{h}</th>
                   ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </div>
-
-        {/* Room schedule */}
-        <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
-          <div className="flex items-center gap-2 px-5 py-4 border-b border-gray-100">
-            <h2 className="text-sm font-semibold text-gray-900">Xonalar jadvali</h2>
-            {!loading && (
-              <span className="ml-auto text-xs font-medium text-gray-500 bg-gray-100 px-2 py-0.5 rounded-full shrink-0">
-                {roomSchedule.length} xona
-              </span>
-            )}
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-100">
+                {churn.map((s, idx) => (
+                  <tr key={s.id} className="hover:bg-gray-50 transition-colors">
+                    <td className="px-4 py-3 text-gray-400 text-xs">{idx + 1}</td>
+                    <td className="px-4 py-3 font-medium text-gray-900">{s.first_name} {s.last_name}</td>
+                    <td className="px-4 py-3 text-gray-500 text-xs">{s.phone || '—'}</td>
+                    <td className="px-4 py-3 text-gray-500 text-xs">{s.course_name || '—'}</td>
+                    <td className="px-4 py-3 text-gray-500 text-xs">
+                      {s.archived_at ? s.archived_at.slice(0, 10) : '—'}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
-          {loading ? (
-            <div className="p-4 space-y-2">
-              {Array(4).fill(0).map((_, i) => <Skel key={i} className="h-10 w-full" />)}
-            </div>
-          ) : roomSchedule.length === 0 ? (
-            <p className="px-5 py-8 text-sm text-gray-400 text-center">Faol guruhlar mavjud emas</p>
-          ) : (
-            <div className="divide-y divide-gray-100 max-h-72 overflow-y-auto">
-              {roomSchedule.map(([room, groups]) => (
-                <div key={room} className="px-5 py-3">
-                  <p className="text-xs font-bold text-gray-400 uppercase tracking-wide mb-2">{room}</p>
-                  <div className="space-y-2">
-                    {[...groups]
-                      .sort((a, b) => (a.start_time ?? '').localeCompare(b.start_time ?? ''))
-                      .map(g => (
-                        <div key={g.id} className="flex items-center gap-3 text-xs">
-                          <span className="font-semibold text-gray-900 w-10 shrink-0">{g.name}</span>
-                          <span className="text-gray-500 w-24 shrink-0">
-                            {g.start_time && g.end_time ? `${g.start_time}–${g.end_time}` : '—'}
-                          </span>
-                          <span className="text-gray-400 w-16 shrink-0">{g.schedule?.split(' ')[0] ?? ''}</span>
-                          <span className="text-gray-500 truncate">{g.course?.name ?? ''}</span>
-                          <span className="ml-auto text-gray-400 shrink-0">{g.students_count}</span>
-                        </div>
-                      ))}
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
+        )}
       </div>
 
-      {/* Expense Modal */}
-      <Dialog open={showExpenseModal} onOpenChange={setShowExpenseModal}>
+      {/* ── Expense Modal ── */}
+      <Dialog open={showExpModal} onOpenChange={setShowExpModal}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>
-              {editingExpense ? 'Xarajatni tahrirlash' : "Yangi xarajat qo'shish"}
-            </DialogTitle>
+            <DialogTitle>{editingExp ? 'Harajatni tahrirlash' : "Yangi harajat qo'shish"}</DialogTitle>
           </DialogHeader>
-          <form onSubmit={handleSaveExpense} className="space-y-4 mt-2">
+          <form onSubmit={handleSaveExp} className="space-y-4 mt-2">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Kategoriya</label>
-              <select
-                value={expenseForm.category}
-                onChange={e => setExpenseForm({ ...expenseForm, category: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none"
-              >
-                {MANUAL_CATEGORIES.map(key => (
-                  <option key={key} value={key}>{EXPENSE_LABELS[key]}</option>
-                ))}
+              <select value={expForm.category} onChange={e => setExpForm({ ...expForm, category: e.target.value })}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none">
+                {MANUAL_CATS.map(key => <option key={key} value={key}>{EXPENSE_LABELS[key]}</option>)}
               </select>
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Summa</label>
-              <input
-                type="number" value={expenseForm.amount}
-                onChange={e => setExpenseForm({ ...expenseForm, amount: e.target.value })}
+              <input type="number" value={expForm.amount}
+                onChange={e => setExpForm({ ...expForm, amount: e.target.value })}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none"
-                placeholder="0" required
-              />
+                placeholder="0" required />
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Tavsif</label>
-              <input
-                type="text" value={expenseForm.description}
-                onChange={e => setExpenseForm({ ...expenseForm, description: e.target.value })}
+              <input type="text" value={expForm.description}
+                onChange={e => setExpForm({ ...expForm, description: e.target.value })}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none"
-                placeholder="Xarajat haqida..."
-              />
+                placeholder="Harajat haqida..." />
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Sana</label>
-              <input
-                type="date" value={expenseForm.expense_date}
-                onChange={e => setExpenseForm({ ...expenseForm, expense_date: e.target.value })}
+              <input type="date" value={expForm.expense_date}
+                onChange={e => setExpForm({ ...expForm, expense_date: e.target.value })}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none"
-                required
-              />
+                required />
             </div>
             <div className="flex gap-3 pt-2">
-              <button
-                type="button" onClick={() => setShowExpenseModal(false)}
-                className="flex-1 px-4 py-2 border border-gray-300 text-sm font-medium rounded-lg hover:bg-gray-50"
-              >
+              <button type="button" onClick={() => setShowExpModal(false)}
+                className="flex-1 px-4 py-2 border border-gray-300 text-sm font-medium rounded-lg hover:bg-gray-50">
                 Bekor qilish
               </button>
-              <button
-                type="submit" disabled={savingExpense}
-                className="flex-1 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 disabled:opacity-60"
-              >
-                {savingExpense ? 'Saqlanmoqda...' : 'Saqlash'}
+              <button type="submit" disabled={savingExp}
+                className="flex-1 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 disabled:opacity-60">
+                {savingExp ? 'Saqlanmoqda...' : 'Saqlash'}
               </button>
             </div>
           </form>

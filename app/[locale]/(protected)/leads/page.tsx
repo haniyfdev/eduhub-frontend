@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState, useCallback, useRef } from 'react';
-import { Plus, Search, Send, X, ChevronUp, ChevronDown, UserCheck } from 'lucide-react';
+import { Plus, Search, Send, X } from 'lucide-react';
 import toast, { Toaster } from 'react-hot-toast';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -66,7 +66,6 @@ export default function LeadsPage() {
   const [showSms, setShowSms]           = useState(false);
   const [smsMessage, setSmsMessage]     = useState('');
   const [sendingSms, setSendingSms]     = useState(false);
-  const [promoting, setPromoting]       = useState<string | null>(null);
 
   const firstNameRef = useRef<HTMLInputElement>(null);
   const lastNameRef  = useRef<HTMLInputElement>(null);
@@ -149,33 +148,6 @@ export default function LeadsPage() {
     setShowSms(false);
     setSmsMessage('');
     setSendingSms(false);
-  }
-
-  async function handlePromote(lead: Lead) {
-    setPromoting(lead.id);
-    try {
-      const res = await api.post(`/api/v1/leads/${lead.id}/promote/`);
-      if (res.status === 201) {
-        toast.success(`${lead.first_name} ${lead.last_name} endi o'quvchi sifatida qo'shildi!`);
-      } else {
-        toast.success("Sinov bosqichiga o'tkazildi");
-      }
-      fetchLeads();
-    } catch {
-      toast.error('Xatolik yuz berdi');
-    } finally {
-      setPromoting(null);
-    }
-  }
-
-  async function handleDemote(lead: Lead) {
-    try {
-      await api.post(`/api/v1/leads/${lead.id}/demote/`);
-      toast.success("Kutilmoqda bosqichiga qaytarildi");
-      fetchLeads();
-    } catch {
-      toast.error('Xatolik yuz berdi');
-    }
   }
 
   async function handleIgnore() {
@@ -337,37 +309,14 @@ export default function LeadsPage() {
                       </td>
                       <td className="px-4 py-3 text-xs text-gray-400">{formatDMY(l.created_at)}</td>
                       <td className="px-4 py-3">
-                        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                          {l.status === 'pending' && (
-                            <button onClick={() => handlePromote(l)} disabled={promoting === l.id}
-                              className="p-1 rounded hover:bg-green-50 text-gray-400 hover:text-green-600 transition-colors disabled:opacity-40"
-                              title="Sinov bosqichiga o'tkazish">
-                              <ChevronUp className="w-4 h-4" />
-                            </button>
-                          )}
-                          {l.status === 'trial' && (
-                            <>
-                              <button onClick={() => handleDemote(l)}
-                                className="p-1 rounded hover:bg-gray-100 text-gray-400 hover:text-gray-600 transition-colors"
-                                title="Kutilmoqdaga qaytarish">
-                                <ChevronDown className="w-4 h-4" />
-                              </button>
-                              <button onClick={() => handlePromote(l)} disabled={promoting === l.id}
-                                className="p-1 rounded hover:bg-blue-50 text-gray-400 hover:text-blue-600 transition-colors disabled:opacity-40"
-                                title="O'quvchiga o'tkazish">
-                                <UserCheck className="w-4 h-4" />
-                              </button>
-                            </>
-                          )}
-                          {l.status !== 'ignored' && (
-                            <button
-                              onClick={() => setIgnoreTarget({ id: l.id, name: `${l.first_name} ${l.last_name}` })}
-                              className="p-1 rounded hover:bg-red-50 text-gray-300 hover:text-red-500 transition-colors"
-                              title="Rad etish">
-                              <X className="w-4 h-4" />
-                            </button>
-                          )}
-                        </div>
+                        {l.status !== 'ignored' && (
+                          <button
+                            onClick={() => setIgnoreTarget({ id: l.id, name: `${l.first_name} ${l.last_name}` })}
+                            className="p-1 rounded hover:bg-red-50 text-gray-300 hover:text-red-500 transition-colors opacity-0 group-hover:opacity-100"
+                            title="Rad etish">
+                            <X className="w-4 h-4" />
+                          </button>
+                        )}
                       </td>
                     </tr>
                   ))

@@ -249,7 +249,7 @@ export default function GroupsPage() {
           <table className="w-full text-sm">
             <thead>
               <tr className="bg-gray-50 border-b border-gray-200">
-                {['№', 'Guruh', 'Kurs', "O'qituvchi", "O'quvchilar", 'Kunlar', 'Soatlar', 'Holat', 'Amallar'].map((h) => (
+                {['№', 'Guruh', 'Kurs', "O'qituvchi", "O'quvchilar", 'Kunlar', 'Soatlar', 'Xona', 'Holat', 'Amallar'].map((h) => (
                   <th key={h} className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">{h}</th>
                 ))}
               </tr>
@@ -257,12 +257,12 @@ export default function GroupsPage() {
             <tbody className="divide-y divide-gray-100">
               {loading
                 ? Array(6).fill(0).map((_, i) => (
-                  <tr key={i}>{Array(9).fill(0).map((_, j) => (
+                  <tr key={i}>{Array(10).fill(0).map((_, j) => (
                     <td key={j} className="px-4 py-3"><Skeleton className="h-4 w-full" /></td>
                   ))}</tr>
                 ))
                 : groups.length === 0
-                  ? <tr><td colSpan={9} className="px-4 py-16 text-center text-gray-400">Natija topilmadi</td></tr>
+                  ? <tr><td colSpan={10} className="px-4 py-16 text-center text-gray-400">Natija topilmadi</td></tr>
                   : groups.map((g, idx) => (
                     <tr
                       key={g.id}
@@ -285,6 +285,7 @@ export default function GroupsPage() {
                       <td className="px-4 py-3 text-gray-600 text-xs">
                         {g.start_time ? `${g.start_time} – ${g.end_time ?? ''}` : '—'}
                       </td>
+                      <td className="px-4 py-3 text-gray-600 text-xs">{g.room || '—'}</td>
                       <td className="px-4 py-3">
                         <span className={cn('inline-flex items-center px-2 py-0.5 text-xs font-medium border rounded',
                           g.status === 'active' ? 'bg-green-50 text-green-700 border-green-200'

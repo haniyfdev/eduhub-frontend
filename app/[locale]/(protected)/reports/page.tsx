@@ -35,8 +35,14 @@ interface HistoryItem  { month: string; income: number; expenses: number; profit
 interface CourseIncome { course: string; amount: number; }
 interface DebtForecast { total: number; }
 interface ConversionStats {
-  total: number; trial: number; active: number; ignored: number;
+  grand_total: number;
+  active:  { count: number; percent: number };
+  pending: { count: number; percent: number };
+  frozen:  { count: number; percent: number };
+  ignored: { count: number; percent: number };
 }
+interface ReferralItem { source: string; label: string; count: number; percent: number; }
+interface ReferralData { total: number; data: ReferralItem[]; }
 interface Expense {
   id: string; category: string; amount: number;
   description: string; expense_date: string; source: string;
@@ -50,6 +56,10 @@ interface ArchivedStudent {
 // ─── Constants ────────────────────────────────────────────────────────────────
 
 const PIE_COLORS = ['#6366f1','#8b5cf6','#ec4899','#3b82f6','#10b981','#f59e0b','#ef4444','#06b6d4'];
+const REFERRAL_COLORS: Record<string, string> = {
+  banner: '#F59E0B', friend: '#3B82F6', parent: '#10B981',
+  social_media: '#8B5CF6', other: '#6B7280',
+};
 const EXPENSE_LABELS: Record<string, string> = {
   rent: 'Ijara', utility: 'Kommunal', tax: 'Soliq', fine: 'Jarima',
   discount: 'Chegirma', teacher_salary: "O'qituvchi maoshi", staff_salary: 'Xodim maoshi', other: 'Boshqa',
@@ -115,6 +125,7 @@ export default function ReportsPage() {
   const [courseIncome, setCourseIncome] = useState<CourseIncome[]>([]);
   const [debt,         setDebt]         = useState<DebtForecast | null>(null);
   const [conversion,   setConversion]   = useState<ConversionStats | null>(null);
+  const [referral,     setReferral]     = useState<ReferralData | null>(null);
   const [expenses,     setExpenses]     = useState<Expense[]>([]);
   const [churn,        setChurn]        = useState<ArchivedStudent[]>([]);
 
@@ -141,17 +152,19 @@ export default function ReportsPage() {
       api.get(`/api/v1/profit-loss/history/?${q}`),
       api.get(`/api/v1/profit-loss/income-by-course/?${q}`),
       api.get(`/api/v1/profit-loss/debt-forecast/`),
-      api.get(`/api/v1/leads/conversion-stats/?${q}`),
+      api.get(`/api/v1/leads/conversion-stats/`),
+      api.get(`/api/v1/leads/referral-stats/`),
       api.get(`/api/v1/expenses/?${q}`),
       api.get(`/api/v1/students/?status=archived&archive_reason=dropped_out&${q}`),
     ]);
 
-    const [pnlR, histR, courseR, debtR, convR, expR, churnR] = results;
+    const [pnlR, histR, courseR, debtR, convR, refR, expR, churnR] = results;
     if (pnlR.status    === 'fulfilled') setPnl(pnlR.value.data);
     if (histR.status   === 'fulfilled') setHistory(histR.value.data);
     if (courseR.status === 'fulfilled') setCourseIncome(courseR.value.data);
     if (debtR.status   === 'fulfilled') setDebt(debtR.value.data);
     if (convR.status   === 'fulfilled') setConversion(convR.value.data);
+    if (refR.status    === 'fulfilled') setReferral(refR.value.data);
     if (expR.status    === 'fulfilled') setExpenses(expR.value.data.results ?? expR.value.data);
     if (churnR.status  === 'fulfilled') setChurn(churnR.value.data.results ?? churnR.value.data);
 
@@ -222,12 +235,12 @@ export default function ReportsPage() {
     expenses: Number(h.expenses),
   }));
 
-  const funnelBase = conversion?.total ?? 0;
   const funnelRows = conversion ? [
-    { label: 'Jami leadlar',     value: conversion.total,   color: '#6366f1' },
-    { label: "Faol o'quvchilar", value: conversion.active,  color: '#10b981' },
-    { label: 'Sinovdagilar',     value: conversion.trial,   color: '#f59e0b' },
-    { label: 'Rad etganlar',     value: conversion.ignored, color: '#ef4444' },
+    { label: 'Jami (leads+students)', value: conversion.grand_total, percent: 100,                       color: '#9CA3AF' },
+    { label: "Faol o'quvchilar",      value: conversion.active.count,  percent: conversion.active.percent,  color: '#22C55E' },
+    { label: 'Kutilmoqda',            value: conversion.pending.count, percent: conversion.pending.percent, color: '#EAB308' },
+    { label: 'Muzlatilgan',           value: conversion.frozen.count,  percent: conversion.frozen.percent,  color: '#06B6D4' },
+    { label: 'Rad etdi',              value: conversion.ignored.count, percent: conversion.ignored.percent, color: '#EF4444' },
   ] : [];
 
   // Expenses: teacher_salary grouped into one row
@@ -445,8 +458,33 @@ export default function ReportsPage() {
         </div>
       </div>
 
-      {/* ── Section 4: Expense breakdown (collapsible) + Leads funnel ── */}
+      {/* ── Section 4: Leads Conversion Funnel ── */}
+      <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-5">
+        <h2 className="text-sm font-semibold text-gray-900 mb-4">Lidlar konversiyasi</h2>
+        {loading ? (
+          <div className="space-y-3">{Array(5).fill(0).map((_, i) => <Skel key={i} className="h-7 w-full" />)}</div>
+        ) : !conversion ? (
+          <div className="h-40 flex items-center justify-center text-sm text-gray-400">Ma&apos;lumot yo&apos;q</div>
+        ) : (
+          <div className="space-y-2.5">
+            {funnelRows.map(({ label, value, percent, color }) => (
+              <div key={label} className="flex items-center gap-3">
+                <span className="text-xs text-gray-600 shrink-0 w-40">{label}</span>
+                <div className="flex-1 h-5 bg-gray-100 rounded overflow-hidden">
+                  <div className="h-full rounded transition-all duration-700"
+                    style={{ width: `${percent}%`, backgroundColor: color }} />
+                </div>
+                <span className="w-12 text-xs font-bold text-gray-900 text-right shrink-0">{value}</span>
+                <span className="w-14 text-xs text-gray-400 text-right shrink-0">{percent.toFixed(1)}%</span>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* ── Section 5: Expense Breakdown + Referral Chart ── */}
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
+        {/* LEFT: Harajatlar tafsiloti (collapsible) */}
         <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
           <button
             onClick={() => setExpOpen(o => !o)}
@@ -486,34 +524,49 @@ export default function ReportsPage() {
           )}
         </div>
 
+        {/* RIGHT: Qayerdan kelishdi? (referral pie) */}
         <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-5">
-          <h2 className="text-sm font-semibold text-gray-900 mb-4">Lidlar konversiyasi</h2>
-          {loading ? (
-            <div className="space-y-3">{Array(4).fill(0).map((_, i) => <Skel key={i} className="h-8 w-full" />)}</div>
-          ) : !conversion ? (
-            <div className="h-40 flex items-center justify-center text-sm text-gray-400">Ma&apos;lumot yo&apos;q</div>
+          <h2 className="text-sm font-semibold text-gray-900 mb-4">Qayerdan kelishdi?</h2>
+          {loading ? <Skel className="h-48 w-full" /> : !referral || referral.data.length === 0 ? (
+            <div className="h-48 flex items-center justify-center text-sm text-gray-400">Ma&apos;lumot yo&apos;q</div>
           ) : (
-            <div className="space-y-3">
-              {funnelRows.map(({ label, value, color }) => {
-                const pct = funnelBase > 0 ? (value / funnelBase) * 100 : 0;
-                return (
-                  <div key={label} className="flex items-center gap-3">
-                    <span className="text-xs text-gray-600 shrink-0 w-36">{label}</span>
-                    <div className="flex-1 h-5 bg-gray-100 rounded overflow-hidden">
-                      <div className="h-full rounded transition-all duration-700"
-                        style={{ width: `${pct}%`, backgroundColor: color }} />
-                    </div>
-                    <span className="w-7 text-xs font-bold text-gray-900 text-right shrink-0">{value}</span>
-                    <span className="w-11 text-xs text-gray-400 text-right shrink-0">{pct.toFixed(1)}%</span>
+            <div className="flex items-center gap-6 min-h-[200px]">
+              <div className="shrink-0" style={{ width: 200, height: 200 }}>
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Pie data={referral.data} dataKey="count" nameKey="label"
+                      cx="50%" cy="50%" outerRadius={90} innerRadius={42}>
+                      {referral.data.map((item, i) => (
+                        <Cell key={i} fill={REFERRAL_COLORS[item.source] ?? '#6B7280'} />
+                      ))}
+                    </Pie>
+                    <Tooltip
+                      contentStyle={{ border: '1px solid #E5E7EB', borderRadius: 8, fontSize: 12 }}
+                      formatter={(_v: unknown, _n: unknown, props: { payload?: ReferralItem }) => [
+                        `${props.payload?.count ?? 0} ta (${props.payload?.percent ?? 0}%)`,
+                        props.payload?.label ?? '',
+                      ]}
+                    />
+                  </PieChart>
+                </ResponsiveContainer>
+              </div>
+              <div className="flex-1 space-y-2.5 min-w-0">
+                {referral.data.map((item) => (
+                  <div key={item.source} className="flex items-center gap-2">
+                    <span className="w-2.5 h-2.5 rounded-full shrink-0"
+                      style={{ background: REFERRAL_COLORS[item.source] ?? '#6B7280' }} />
+                    <span className="text-xs text-gray-700 flex-1 truncate">{item.label}</span>
+                    <span className="text-xs font-semibold text-gray-500 shrink-0">{item.percent}%</span>
+                    <span className="text-xs text-gray-400 shrink-0">({item.count} ta)</span>
                   </div>
-                );
-              })}
+                ))}
+              </div>
             </div>
           )}
         </div>
       </div>
 
-      {/* ── Section 5: Expenses ── */}
+      {/* ── Section 6: Expenses ── */}
       <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
         <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
           <h2 className="text-sm font-semibold text-gray-900">Harajatlar</h2>
@@ -570,7 +623,7 @@ export default function ReportsPage() {
         )}
       </div>
 
-      {/* ── Section 6: Churn Table ── */}
+      {/* ── Section 7: Churn Table ── */}
       <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
         <button
           onClick={() => setChurnOpen(o => !o)}

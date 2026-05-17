@@ -6,7 +6,7 @@ import { useLocale, useTranslations } from 'next-intl';
 import {
   LayoutDashboard, Users, Users2, GraduationCap, BookOpen,
   CreditCard, AlertCircle, BarChart3, Settings, Building2, Archive,
-  Lightbulb, CalendarCheck, DoorOpen, Banknote,
+  Lightbulb, CalendarCheck, DoorOpen, Banknote, Send,
 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { cn } from '@/lib/utils';
@@ -145,6 +145,18 @@ export default function Sidebar() {
           )}
         </nav>
 
+        {/* Support link */}
+        <div className="px-2 pb-3 pt-2 border-t border-gray-100">
+          <a
+            href="https://t.me/haniyfdev"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-3 mx-2 px-3 py-2 rounded-lg text-sm text-gray-500 hover:text-blue-600 hover:bg-blue-50 transition-colors"
+          >
+            <Send className="flex-shrink-0" style={{ width: 18, height: 18 }} />
+            Support
+          </a>
+        </div>
       </aside>
     </>
   );

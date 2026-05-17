@@ -52,7 +52,7 @@ interface ArchivedStudent {
 const PIE_COLORS = ['#6366f1','#8b5cf6','#ec4899','#3b82f6','#10b981','#f59e0b','#ef4444','#06b6d4'];
 const EXPENSE_LABELS: Record<string, string> = {
   rent: 'Ijara', utility: 'Kommunal', tax: 'Soliq', fine: 'Jarima',
-  discount: 'Chegirma', teacher_salary: "O'q. maoshi", staff_salary: 'Xodim maoshi', other: 'Boshqa',
+  discount: 'Chegirma', teacher_salary: "O'qituvchi maoshi", staff_salary: 'Xodim maoshi', other: 'Boshqa',
 };
 const MANUAL_CATS = ['rent', 'utility', 'tax', 'fine', 'staff_salary', 'other'];
 const MONTH_LABELS = ['Yan','Fev','Mar','Apr','May','Iyn','Iyl','Avg','Sen','Okt','Noy','Dek'];
@@ -119,7 +119,9 @@ export default function ReportsPage() {
   const [churn,        setChurn]        = useState<ArchivedStudent[]>([]);
 
   // Collapsible sections
-  const [expOpen, setExpOpen] = useState(true);
+  const [activePreset, setActivePreset] = useState<'current_month' | 'current_year' | 'custom'>('current_month');
+  const [expOpen, setExpOpen] = useState(false);
+  const [churnOpen, setChurnOpen] = useState(false);
 
   // Expense modal
   const [showExpModal, setShowExpModal] = useState(false);
@@ -141,7 +143,7 @@ export default function ReportsPage() {
       api.get(`/api/v1/profit-loss/debt-forecast/`),
       api.get(`/api/v1/leads/conversion-stats/?${q}`),
       api.get(`/api/v1/expenses/?${q}`),
-      api.get(`/api/v1/students/?status=archived&${q}`),
+      api.get(`/api/v1/students/?status=archived&archive_reason=dropped_out&${q}`),
     ]);
 
     const [pnlR, histR, courseR, debtR, convR, expR, churnR] = results;
@@ -245,6 +247,9 @@ export default function ReportsPage() {
     return others;
   }, [expenses]);
 
+  const debtPct = (income + debtAmt) > 0 ? (debtAmt / (income + debtAmt)) * 100 : 0;
+  const debtPctColor = debtPct > 10 ? 'text-red-500' : debtPct >= 5 ? 'text-orange-500' : 'text-green-500';
+
   const Skel = ({ className }: { className?: string }) => (
     <Skeleton className={cn('rounded-lg', className)} />
   );
@@ -264,20 +269,25 @@ export default function ReportsPage() {
         <div className="flex flex-wrap items-center gap-2">
           <div className="flex rounded-lg border border-gray-200 overflow-hidden text-xs font-medium">
             {([
-              { label: 'Joriy oy',  from: monthStartStr, to: todayStr },
-              { label: 'Joriy yil', from: thisYearStart, to: todayStr },
-            ] as const).map(({ label, from, to }) => (
+              { label: 'Joriy oy',  preset: 'current_month' as const, from: monthStartStr, to: todayStr },
+              { label: 'Joriy yil', preset: 'current_year' as const, from: thisYearStart, to: todayStr },
+            ]).map(({ label, preset, from, to }) => (
               <button key={label}
-                onClick={() => { setFromDate(from()); setToDate(to()); }}
-                className="px-3 py-2 bg-white text-gray-600 hover:bg-blue-50 hover:text-blue-600 transition-colors border-r border-gray-200 last:border-0">
+                onClick={() => { setActivePreset(preset); setFromDate(from()); setToDate(to()); }}
+                className={cn(
+                  'px-3 py-2 transition-colors border-r border-gray-200 last:border-0',
+                  activePreset === preset
+                    ? 'bg-blue-600 text-white'
+                    : 'bg-white text-gray-600 hover:bg-blue-50 hover:text-blue-600'
+                )}>
                 {label}
               </button>
             ))}
           </div>
           <div className="flex items-center gap-1.5">
-            <DateField value={fromDate} onChange={setFromDate} />
+            <DateField value={fromDate} onChange={(v) => { setFromDate(v); setActivePreset('custom'); }} />
             <span className="text-gray-400 text-sm">—</span>
-            <DateField value={toDate} onChange={setToDate} />
+            <DateField value={toDate} onChange={(v) => { setToDate(v); setActivePreset('custom'); }} />
           </div>
         </div>
       </div>
@@ -288,24 +298,28 @@ export default function ReportsPage() {
           {
             label: 'Daromad', value: income, icon: TrendingUp,
             sub: `${Number(pnl?.net_profit_percent ?? 0).toFixed(1)}% sof foyda`,
+            subColor: 'text-gray-400',
             color: 'text-emerald-600', bg: 'bg-emerald-50', border: 'border-emerald-200',
           },
           {
             label: 'Harajat', value: expTotal, icon: TrendingDown,
             sub: `${Number(pnl?.expense_percent ?? 0).toFixed(1)}% umumiy daromaddan`,
+            subColor: 'text-gray-400',
             color: 'text-red-600', bg: 'bg-red-50', border: 'border-red-200',
           },
           {
-            label: 'Sof foyda', value: profit, icon: DollarSign, sub: '',
+            label: 'Sof foyda', value: profit, icon: DollarSign, sub: '', subColor: 'text-gray-400',
             color: profit >= 0 ? 'text-blue-600' : 'text-red-600',
             bg: profit >= 0 ? 'bg-blue-50' : 'bg-red-50',
             border: profit >= 0 ? 'border-blue-200' : 'border-red-200',
           },
           {
-            label: 'Qarzdorlik', value: debtAmt, icon: AlertTriangle, sub: '',
+            label: 'Qarzdorlik', value: debtAmt, icon: AlertTriangle,
+            sub: `${debtPct.toFixed(1)}% umumiy daromaddan`,
+            subColor: debtPctColor,
             color: 'text-amber-600', bg: 'bg-amber-50', border: 'border-amber-200',
           },
-        ] as const).map(({ label, value, icon: Icon, sub, color, bg, border }) => (
+        ]).map(({ label, value, icon: Icon, sub, subColor, color, bg, border }) => (
           <div key={label} className={cn('rounded-xl border p-5 flex items-start gap-4', bg, border)}>
             <div className={cn('p-2.5 rounded-lg bg-white shadow-sm shrink-0 mt-0.5', color)}>
               <Icon className="w-5 h-5" />
@@ -316,7 +330,7 @@ export default function ReportsPage() {
                 ? <Skel className="h-7 w-28 mt-1" />
                 : <p className={cn('text-xl font-bold mt-0.5 truncate', color)}>{formatCurrency(value)}</p>}
               {sub && !loading && (
-                <p className="text-xs text-gray-400 mt-0.5 truncate">{sub}</p>
+                <p className={cn('text-xs mt-0.5 truncate', subColor)}>{sub}</p>
               )}
             </div>
           </div>
@@ -392,7 +406,7 @@ export default function ReportsPage() {
         </div>
 
         <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6">
-          <h2 className="text-sm font-semibold text-gray-900 mb-4">Kurs bo&apos;yicha daromad</h2>
+          <h2 className="text-sm font-semibold text-gray-900 mb-4">Kurslar bo&apos;yicha daromad</h2>
           {loading ? <Skel className="h-64 w-full" /> : courseIncome.length === 0 ? (
             <div className="h-64 flex items-center justify-center text-sm text-gray-400">
               Bu davrda to&apos;lov mavjud emas
@@ -558,46 +572,61 @@ export default function ReportsPage() {
 
       {/* ── Section 6: Churn Table ── */}
       <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
-        <div className="flex items-center gap-2 px-5 py-4 border-b border-gray-100">
-          <UserMinus className="w-4 h-4 text-red-500 shrink-0" />
-          <h2 className="text-sm font-semibold text-gray-900">Ketgan o&apos;quvchilar</h2>
-          {!loading && (
-            <span className="ml-auto text-xs font-medium text-gray-500 bg-gray-100 px-2 py-0.5 rounded-full shrink-0">
-              {churn.length} ta
-            </span>
-          )}
-        </div>
-        {loading ? (
-          <div className="p-4 space-y-2">{Array(3).fill(0).map((_, i) => <Skel key={i} className="h-8 w-full" />)}</div>
-        ) : churn.length === 0 ? (
-          <p className="px-5 py-8 text-sm text-gray-400 text-center">Bu davrda ketgan o&apos;quvchi yo&apos;q</p>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="bg-gray-50 border-b border-gray-200">
-                  {['№', "O'quvchi", 'Telefon', 'Ota-ona tel', 'Guruh', 'Kurs', 'Arxivlangan sana'].map((h, i) => (
-                    <th key={i} className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">{h}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-100">
-                {churn.map((s, idx) => (
-                  <tr key={s.id} className="hover:bg-gray-50 transition-colors">
-                    <td className="px-4 py-3 text-gray-400 text-xs font-medium">{idx + 1}</td>
-                    <td className="px-4 py-3 font-semibold text-gray-900 text-sm">{s.first_name} {s.last_name}</td>
-                    <td className="px-4 py-3 text-gray-600 text-sm font-medium">{s.phone || '—'}</td>
-                    <td className="px-4 py-3 text-gray-500 text-sm font-medium">{s.second_phone || '—'}</td>
-                    <td className="px-4 py-3 text-gray-600 text-sm font-medium">{s.last_group || '—'}</td>
-                    <td className="px-4 py-3 text-gray-500 text-sm font-medium">{s.course_name || '—'}</td>
-                    <td className="px-4 py-3 text-gray-500 text-sm font-medium">
-                      {s.archived_at ? s.archived_at.slice(0, 10) : '—'}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+        <button
+          onClick={() => setChurnOpen(o => !o)}
+          className="w-full flex items-center justify-between px-5 py-4 hover:bg-gray-50 transition-colors"
+        >
+          <div className="flex items-center gap-2">
+            <UserMinus className="w-4 h-4 text-red-500 shrink-0" />
+            <div className="text-left">
+              <h2 className="text-sm font-semibold text-gray-900">Tashlab ketgan o&apos;quvchilar (Churn)</h2>
+              <p className="text-xs text-gray-400">Kursni tugatmasdan chiqib ketganlar</p>
+            </div>
+            {!loading && churn.length > 0 && (
+              <span className="ml-2 text-xs font-medium text-gray-500 bg-gray-100 px-2 py-0.5 rounded-full shrink-0">
+                {churn.length} ta
+              </span>
+            )}
           </div>
+          {churnOpen
+            ? <ChevronUp className="w-4 h-4 text-gray-400 shrink-0" />
+            : <ChevronDown className="w-4 h-4 text-gray-400 shrink-0" />}
+        </button>
+        {churnOpen && (
+          <>
+            {loading ? (
+              <div className="p-4 space-y-2 border-t border-gray-100">{Array(3).fill(0).map((_, i) => <Skel key={i} className="h-8 w-full" />)}</div>
+            ) : churn.length === 0 ? (
+              <p className="px-5 py-8 text-sm text-gray-400 text-center border-t border-gray-100">Bu davrda tashlab ketgan o&apos;quvchi yo&apos;q</p>
+            ) : (
+              <div className="overflow-x-auto border-t border-gray-100">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="bg-gray-50 border-b border-gray-200">
+                      {['№', "O'quvchi", 'Telefon', 'Ota-ona tel', 'Guruh', 'Kurs', 'Arxivlangan sana'].map((h, i) => (
+                        <th key={i} className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">{h}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100">
+                    {churn.map((s, idx) => (
+                      <tr key={s.id} className="hover:bg-gray-50 transition-colors">
+                        <td className="px-4 py-3 text-gray-400 text-xs font-medium">{idx + 1}</td>
+                        <td className="px-4 py-3 font-semibold text-gray-900 text-sm">{s.first_name} {s.last_name}</td>
+                        <td className="px-4 py-3 text-gray-600 text-sm font-medium">{s.phone || '—'}</td>
+                        <td className="px-4 py-3 text-gray-500 text-sm font-medium">{s.second_phone || '—'}</td>
+                        <td className="px-4 py-3 text-gray-600 text-sm font-medium">{s.last_group || '—'}</td>
+                        <td className="px-4 py-3 text-gray-500 text-sm font-medium">{s.course_name || '—'}</td>
+                        <td className="px-4 py-3 text-gray-500 text-sm font-medium">
+                          {s.archived_at ? s.archived_at.slice(0, 10) : '—'}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </>
         )}
       </div>
 

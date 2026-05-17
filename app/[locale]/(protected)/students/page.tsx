@@ -37,6 +37,7 @@ export default function StudentsPage() {
   const [pageSize, setPageSize]         = useState(25);
   const [count, setCount]               = useState(0);
   const [archiveTarget, setArchiveTarget] = useState<{ id: string; name: string } | null>(null);
+  const [archiveReason, setArchiveReason] = useState<'graduated' | 'dropped_out' | ''>('');
   const overdueIdsRef = useRef<Set<string>>(new Set());
   const [phoneSelection, setPhoneSelection] = useState<PhoneSelection>({});
   const [showSmsConfirm, setShowSmsConfirm] = useState(false);
@@ -123,11 +124,12 @@ export default function StudentsPage() {
   // ── Archive ────────────────────────────────────────────────────────────────
 
   async function confirmArchive() {
-    if (!archiveTarget) return;
+    if (!archiveTarget || !archiveReason) return;
     try {
-      await api.post(`/api/v1/students/${archiveTarget.id}/archive/`);
+      await api.post(`/api/v1/students/${archiveTarget.id}/archive/`, { reason: archiveReason });
       toast.success("O'quvchi arxivlandi");
       setArchiveTarget(null);
+      setArchiveReason('');
       fetchStudents();
     } catch {
       toast.error('Xatolik yuz berdi');
@@ -282,20 +284,47 @@ export default function StudentsPage() {
         onPageChange={setPage} onPageSizeChange={(ps) => { setPageSize(ps); setPage(1); }} />
 
       {/* ══ Archive Dialog ══ */}
-      <Dialog open={!!archiveTarget} onOpenChange={(open) => { if (!open) setArchiveTarget(null); }}>
+      <Dialog open={!!archiveTarget} onOpenChange={(open) => { if (!open) { setArchiveTarget(null); setArchiveReason(''); } }}>
         <DialogContent className="sm:max-w-sm">
-          <DialogHeader><DialogTitle>Arxivlash</DialogTitle></DialogHeader>
-          <p className="text-sm text-gray-600 mt-1">
-            <span className="font-medium">{archiveTarget?.name}</span>ni arxivlashni istaysizmi?
-          </p>
+          <DialogHeader>
+            <DialogTitle>{archiveTarget?.name}ni arxivlash</DialogTitle>
+          </DialogHeader>
+          <div className="mt-4 space-y-3">
+            <button
+              onClick={() => setArchiveReason('graduated')}
+              className={cn(
+                'w-full flex items-start gap-3 p-4 rounded-lg border-2 text-left transition-colors',
+                archiveReason === 'graduated' ? 'border-blue-600 bg-blue-50' : 'border-gray-200 hover:border-gray-300'
+              )}
+            >
+              <span className="text-2xl leading-none">🎓</span>
+              <div>
+                <p className="font-medium text-sm text-gray-900">Kursni bitirdi</p>
+                <p className="text-xs text-gray-500 mt-0.5">O&apos;quv rejasi to&apos;liq tugadi</p>
+              </div>
+            </button>
+            <button
+              onClick={() => setArchiveReason('dropped_out')}
+              className={cn(
+                'w-full flex items-start gap-3 p-4 rounded-lg border-2 text-left transition-colors',
+                archiveReason === 'dropped_out' ? 'border-blue-600 bg-blue-50' : 'border-gray-200 hover:border-gray-300'
+              )}
+            >
+              <span className="text-2xl leading-none">🚪</span>
+              <div>
+                <p className="font-medium text-sm text-gray-900">Tashlab ketdi</p>
+                <p className="text-xs text-gray-500 mt-0.5">Kurs tugamasdan chiqib ketdi</p>
+              </div>
+            </button>
+          </div>
           <div className="flex gap-3 mt-4">
-            <button onClick={() => setArchiveTarget(null)}
+            <button onClick={() => { setArchiveTarget(null); setArchiveReason(''); }}
               className="flex-1 px-4 py-2 border border-gray-300 text-sm font-medium rounded hover:bg-gray-50">
               Bekor qilish
             </button>
-            <button onClick={confirmArchive}
-              className="flex-1 px-4 py-2 bg-red-600 text-white text-sm font-medium rounded hover:bg-red-700">
-              Ha, arxivlash
+            <button onClick={confirmArchive} disabled={!archiveReason}
+              className="flex-1 px-4 py-2 bg-red-600 text-white text-sm font-medium rounded hover:bg-red-700 disabled:opacity-50">
+              Arxivlash
             </button>
           </div>
         </DialogContent>

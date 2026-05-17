@@ -98,7 +98,8 @@ export default function GroupDetailPage() {
   const [addingBulk, setAddingBulk] = useState(false);
 
   // Actions
-  const [removeTarget, setRemoveTarget] = useState<{ studentId: string; name: string } | null>(null);
+  const [archiveTarget, setArchiveTarget] = useState<{ studentId: string; name: string } | null>(null);
+  const [archiveReason, setArchiveReason] = useState<'graduated' | 'dropped_out' | ''>('');
   const [changeGroupTarget, setChangeGroupTarget] = useState<{ studentId: string; name: string } | null>(null);
   const [groupOptions, setGroupOptions] = useState<GroupOption[]>([]);
   const [newGroupId, setNewGroupId] = useState('');
@@ -204,12 +205,13 @@ export default function GroupDetailPage() {
     setAddingBulk(false);
   }
 
-  async function handleRemoveStudent() {
-    if (!removeTarget) return;
+  async function handleArchiveStudent() {
+    if (!archiveTarget || !archiveReason) return;
     try {
-      await api.post(`/api/v1/groups/${id}/remove-student/`, { student_id: removeTarget.studentId });
-      toast.success("O'quvchi guruhdan chiqarildi");
-      setRemoveTarget(null);
+      await api.post(`/api/v1/students/${archiveTarget.studentId}/archive/`, { reason: archiveReason });
+      toast.success("O'quvchi arxivlandi");
+      setArchiveTarget(null);
+      setArchiveReason('');
       fetchGroup();
     } catch {
       toast.error('Xatolik yuz berdi');
@@ -418,9 +420,9 @@ export default function GroupDetailPage() {
                         {canEdit && (
                           <div className="flex items-center gap-1">
                             <button
-                              onClick={() => setRemoveTarget({ studentId: s.id, name: `${s.first_name} ${s.last_name}` })}
+                              onClick={() => { setArchiveReason(''); setArchiveTarget({ studentId: s.id, name: `${s.first_name} ${s.last_name}` }); }}
                               className="p-1 rounded text-red-400 hover:bg-red-50 hover:text-red-600 transition-colors"
-                              title="Chiqarish"
+                              title="Arxivlash"
                             >
                               <Minus className="w-4 h-4" />
                             </button>
@@ -633,16 +635,43 @@ export default function GroupDetailPage() {
         </DialogContent>
       </Dialog>
 
-      {/* Remove student */}
-      <Dialog open={!!removeTarget} onOpenChange={(open) => { if (!open) setRemoveTarget(null); }}>
+      {/* Archive student */}
+      <Dialog open={!!archiveTarget} onOpenChange={(open) => { if (!open) { setArchiveTarget(null); setArchiveReason(''); } }}>
         <DialogContent className="sm:max-w-sm">
-          <DialogHeader><DialogTitle>Guruhdan chiqarish</DialogTitle></DialogHeader>
-          <p className="text-sm text-gray-600 mt-1">
-            <span className="font-medium">{removeTarget?.name}</span>ni guruhdan chiqarishni istaysizmi?
-          </p>
+          <DialogHeader>
+            <DialogTitle>{archiveTarget?.name}ni arxivlash</DialogTitle>
+          </DialogHeader>
+          <div className="mt-4 space-y-3">
+            <button
+              onClick={() => setArchiveReason('graduated')}
+              className={cn(
+                'w-full flex items-start gap-3 p-4 rounded-lg border-2 text-left transition-colors',
+                archiveReason === 'graduated' ? 'border-blue-600 bg-blue-50' : 'border-gray-200 hover:border-gray-300'
+              )}
+            >
+              <span className="text-2xl leading-none">🎓</span>
+              <div>
+                <p className="font-medium text-sm text-gray-900">Kursni bitirdi</p>
+                <p className="text-xs text-gray-500 mt-0.5">O&apos;quv rejasi to&apos;liq tugadi</p>
+              </div>
+            </button>
+            <button
+              onClick={() => setArchiveReason('dropped_out')}
+              className={cn(
+                'w-full flex items-start gap-3 p-4 rounded-lg border-2 text-left transition-colors',
+                archiveReason === 'dropped_out' ? 'border-blue-600 bg-blue-50' : 'border-gray-200 hover:border-gray-300'
+              )}
+            >
+              <span className="text-2xl leading-none">🚪</span>
+              <div>
+                <p className="font-medium text-sm text-gray-900">Tashlab ketdi</p>
+                <p className="text-xs text-gray-500 mt-0.5">Kurs tugamasdan chiqib ketdi</p>
+              </div>
+            </button>
+          </div>
           <div className="flex gap-3 mt-4">
-            <button onClick={() => setRemoveTarget(null)} className="flex-1 px-4 py-2 border border-gray-300 text-sm font-medium rounded hover:bg-gray-50">Bekor</button>
-            <button onClick={handleRemoveStudent} className="flex-1 px-4 py-2 bg-red-600 text-white text-sm font-medium rounded hover:bg-red-700">Ha, chiqarish</button>
+            <button onClick={() => { setArchiveTarget(null); setArchiveReason(''); }} className="flex-1 px-4 py-2 border border-gray-300 text-sm font-medium rounded hover:bg-gray-50">Bekor qilish</button>
+            <button onClick={handleArchiveStudent} disabled={!archiveReason} className="flex-1 px-4 py-2 bg-red-600 text-white text-sm font-medium rounded hover:bg-red-700 disabled:opacity-50">Arxivlash</button>
           </div>
         </DialogContent>
       </Dialog>

@@ -40,8 +40,9 @@ const COURSE_COLORS = [
 
 interface GroupEntry {
   id: string;
-  group_name: string;
+  name: string;
   course: string | null;
+  teacher: string;
   days: string[];
   start_time: string | null;
   end_time: string | null;
@@ -177,7 +178,7 @@ export default function RoomsPage() {
                                     getCourseColor(g.course)
                                   )}
                                 >
-                                  <div className="font-semibold truncate max-w-[96px]">{g.group_name}</div>
+                                  <div className="font-semibold truncate max-w-[96px]">{g.name}</div>
                                   {(g.start_time || g.end_time) && (
                                     <div className="opacity-70 mt-0.5">
                                       {g.start_time ?? ''}{g.start_time && g.end_time ? '–' : ''}{g.end_time ?? ''}

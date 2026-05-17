@@ -35,8 +35,7 @@ interface HistoryItem  { month: string; income: number; expenses: number; profit
 interface CourseIncome { course: string; amount: number; }
 interface DebtForecast { total: number; }
 interface ConversionStats {
-  total_leads: number; trial: number; converted: number;
-  ignored: number; still_pending: number; conversion_rate: number;
+  total: number; trial: number; active: number; ignored: number;
 }
 interface TeacherSalary {
   id: string; teacher_name: string;
@@ -48,7 +47,8 @@ interface Expense {
 }
 interface ArchivedStudent {
   id: string; first_name: string; last_name: string;
-  course_name: string | null; archived_at: string | null; phone: string;
+  course_name: string | null; archived_at: string | null;
+  phone: string; last_group?: string;
 }
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -66,25 +66,10 @@ function monthStartStr() {
   const d = new Date();
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-01`;
 }
+function thisYearStart() { return `${new Date().getFullYear()}-01-01`; }
 function shortMonth(m: string) {
   const [, mo] = m.split('-');
   return MONTH_LABELS[parseInt(mo, 10) - 1] ?? m;
-}
-
-function lastMonthRange() {
-  const d = new Date();
-  const first = new Date(d.getFullYear(), d.getMonth() - 1, 1);
-  const last  = new Date(d.getFullYear(), d.getMonth(), 0);
-  const fmt   = (dt: Date) => dt.toISOString().slice(0, 10);
-  return { from: fmt(first), to: fmt(last) };
-}
-function thisYearRange() {
-  const y = new Date().getFullYear();
-  return { from: `${y}-01-01`, to: todayStr() };
-}
-function lastYearRange() {
-  const y = new Date().getFullYear() - 1;
-  return { from: `${y}-01-01`, to: `${y}-12-31` };
 }
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
@@ -94,33 +79,25 @@ export default function ReportsPage() {
   const [toDate,   setToDate]   = useState(todayStr);
   const [loading,  setLoading]  = useState(true);
 
-  const [pnl,            setPnl]            = useState<PnLData | null>(null);
-  const [history,        setHistory]        = useState<HistoryItem[]>([]);
-  const [courseIncome,   setCourseIncome]   = useState<CourseIncome[]>([]);
-  const [debt,           setDebt]           = useState<DebtForecast | null>(null);
-  const [conversion,     setConversion]     = useState<ConversionStats | null>(null);
-  const [teacherSals,    setTeacherSals]    = useState<TeacherSalary[]>([]);
-  const [expenses,       setExpenses]       = useState<Expense[]>([]);
-  const [churn,          setChurn]          = useState<ArchivedStudent[]>([]);
+  const [pnl,          setPnl]          = useState<PnLData | null>(null);
+  const [history,      setHistory]      = useState<HistoryItem[]>([]);
+  const [courseIncome, setCourseIncome] = useState<CourseIncome[]>([]);
+  const [debt,         setDebt]         = useState<DebtForecast | null>(null);
+  const [conversion,   setConversion]   = useState<ConversionStats | null>(null);
+  const [teacherSals,  setTeacherSals]  = useState<TeacherSalary[]>([]);
+  const [expenses,     setExpenses]     = useState<Expense[]>([]);
+  const [churn,        setChurn]        = useState<ArchivedStudent[]>([]);
 
-  const [showTeachers,   setShowTeachers]   = useState(true);
-  const [markingPaid,    setMarkingPaid]    = useState<string | null>(null);
-  const [calculating,    setCalculating]    = useState(false);
-  const [showExpModal,   setShowExpModal]   = useState(false);
-  const [editingExp,     setEditingExp]     = useState<Expense | null>(null);
-  const [expForm,        setExpForm]        = useState({
+  const [showTeachers,  setShowTeachers]  = useState(true);
+  const [markingPaid,   setMarkingPaid]   = useState<string | null>(null);
+  const [confirmSal,    setConfirmSal]    = useState<TeacherSalary | null>(null);
+  const [calculating,   setCalculating]  = useState(false);
+  const [showExpModal,  setShowExpModal]  = useState(false);
+  const [editingExp,    setEditingExp]   = useState<Expense | null>(null);
+  const [expForm,       setExpForm]      = useState({
     category: 'rent', amount: '', description: '', expense_date: todayStr(),
   });
   const [savingExp, setSavingExp] = useState(false);
-
-  // ── Presets ─────────────────────────────────────────────────────────────────
-
-  const presets = [
-    { label: 'Bu oy',      action: () => { setFromDate(monthStartStr()); setToDate(todayStr()); } },
-    { label: "O'tgan oy",  action: () => { const r = lastMonthRange(); setFromDate(r.from); setToDate(r.to); } },
-    { label: 'Bu yil',     action: () => { const r = thisYearRange();  setFromDate(r.from); setToDate(r.to); } },
-    { label: "O'tgan yil", action: () => { const r = lastYearRange();  setFromDate(r.from); setToDate(r.to); } },
-  ];
 
   // ── Data Fetching ────────────────────────────────────────────────────────────
 
@@ -162,7 +139,7 @@ export default function ReportsPage() {
       setTeacherSals(prev => prev.map(s => s.id === id ? updated : s));
       toast.success("Maosh to'landi");
     } catch { toast.error('Xatolik'); }
-    finally { setMarkingPaid(null); }
+    finally { setMarkingPaid(null); setConfirmSal(null); }
   }
 
   async function handleCalculateSalaries() {
@@ -204,28 +181,29 @@ export default function ReportsPage() {
       }
       setShowExpModal(false);
       loadData();
-    } catch (err: any) {
-      toast.error(err?.response?.data?.detail || 'Xatolik');
+    } catch (err: unknown) {
+      const e = err as { response?: { data?: { detail?: string } } };
+      toast.error(e?.response?.data?.detail || 'Xatolik');
     } finally { setSavingExp(false); }
   }
 
   // ── Derived ──────────────────────────────────────────────────────────────────
 
-  const income   = Number(pnl?.income?.total      ?? 0);
-  const expTotal = Number(pnl?.expenses?.total    ?? 0);
-  const profit   = Number(pnl?.net_profit         ?? 0);
-  const debtAmt  = Number(debt?.total             ?? 0);
+  const income   = Number(pnl?.income?.total   ?? 0);
+  const expTotal = Number(pnl?.expenses?.total  ?? 0);
+  const profit   = Number(pnl?.net_profit       ?? 0);
+  const debtAmt  = Number(debt?.total           ?? 0);
   const stats    = pnl?.stats;
 
   const expBreakdown = useMemo(() => {
     if (!pnl?.expenses) return [];
     const { teacher_salaries, staff_salaries, rent, utility, other } = pnl.expenses;
     return [
-      { key: 'teacher_salary', name: "O'q. maoshi",   value: Number(teacher_salaries) },
-      { key: 'staff_salary',   name: 'Xodim maoshi',  value: Number(staff_salaries) },
-      { key: 'rent',           name: 'Ijara',          value: Number(rent) },
-      { key: 'utility',        name: 'Kommunal',       value: Number(utility) },
-      { key: 'other',          name: 'Boshqa',         value: Number(other) },
+      { key: 'teacher_salary', name: "O'q. maoshi",  value: Number(teacher_salaries) },
+      { key: 'staff_salary',   name: 'Xodim maoshi', value: Number(staff_salaries) },
+      { key: 'rent',           name: 'Ijara',         value: Number(rent) },
+      { key: 'utility',        name: 'Kommunal',      value: Number(utility) },
+      { key: 'other',          name: 'Boshqa',        value: Number(other) },
     ].filter(d => d.value > 0).sort((a, b) => b.value - a.value);
   }, [pnl]);
 
@@ -235,17 +213,30 @@ export default function ReportsPage() {
     expenses: Number(h.expenses),
   }));
 
-  const totalLeads = conversion
-    ? conversion.total_leads + conversion.converted
-    : 0;
-
+  const funnelBase = conversion?.total ?? 0;
   const funnelRows = conversion ? [
-    { label: 'Jami leadlar',  value: conversion.total_leads,  color: '#6366f1', max: totalLeads },
-    { label: 'Sinov muddati', value: conversion.trial,        color: '#f59e0b', max: totalLeads },
-    { label: 'Faol talabaga', value: conversion.converted,    color: '#10b981', max: totalLeads },
-    { label: 'Rad etdilar',   value: conversion.ignored,      color: '#ef4444', max: totalLeads },
-    { label: 'Kutilmoqda',    value: conversion.still_pending, color: '#6b7280', max: totalLeads },
+    { label: 'Jami leadlar',      value: conversion.total,   color: '#6366f1' },
+    { label: "Faol o'quvchilar",  value: conversion.active,  color: '#10b981' },
+    { label: 'Sinovdagilar',      value: conversion.trial,   color: '#f59e0b' },
+    { label: 'Rad etganlar',      value: conversion.ignored, color: '#ef4444' },
   ] : [];
+
+  // Group teacher_salary expenses into one row for display
+  const displayExpenses = useMemo(() => {
+    const teacherTotal = expenses
+      .filter(e => e.category === 'teacher_salary')
+      .reduce((s, e) => s + Number(e.amount), 0);
+    const others = expenses.filter(e => e.category !== 'teacher_salary');
+    if (teacherTotal > 0) {
+      const grouped: Expense = {
+        id: '__teacher_sal__', category: 'teacher_salary',
+        amount: teacherTotal, description: "O'qituvchilar maoshi",
+        expense_date: '', source: 'auto',
+      };
+      return [grouped, ...others];
+    }
+    return others;
+  }, [expenses]);
 
   const Skel = ({ className }: { className?: string }) => (
     <Skeleton className={cn('rounded-lg', className)} />
@@ -264,16 +255,20 @@ export default function ReportsPage() {
           <p className="text-sm text-gray-500 mt-0.5">Moliyaviy tahlil va statistika</p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          {/* Preset buttons */}
+          {/* 2 preset buttons */}
           <div className="flex rounded-lg border border-gray-200 overflow-hidden text-xs font-medium">
-            {presets.map(({ label, action }) => (
-              <button key={label} onClick={action}
+            {([
+              { label: 'Joriy oy',  from: monthStartStr(), to: todayStr() },
+              { label: 'Joriy yil', from: thisYearStart(), to: todayStr() },
+            ] as const).map(({ label, from, to }) => (
+              <button key={label}
+                onClick={() => { setFromDate(from); setToDate(to); }}
                 className="px-3 py-2 bg-white text-gray-600 hover:bg-blue-50 hover:text-blue-600 transition-colors border-r border-gray-200 last:border-0">
                 {label}
               </button>
             ))}
           </div>
-          {/* Custom range inputs */}
+          {/* Custom range */}
           <div className="flex items-center gap-1.5">
             <input type="date" value={fromDate} onChange={e => setFromDate(e.target.value)}
               className="px-2.5 py-2 border border-gray-200 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white" />
@@ -328,11 +323,11 @@ export default function ReportsPage() {
       {/* ── Section 2: 5 Stat Cards ── */}
       <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-5 gap-3">
         {([
-          { label: 'Leadlar',            value: stats?.total_leads,    icon: Lightbulb,    color: 'text-yellow-600 bg-yellow-50 border-yellow-200' },
-          { label: "Faol o'quvchilar",   value: stats?.active_students, icon: Users,        color: 'text-emerald-600 bg-emerald-50 border-emerald-200' },
-          { label: "O'qituvchilar",      value: stats?.active_teachers, icon: GraduationCap, color: 'text-blue-600 bg-blue-50 border-blue-200' },
-          { label: 'Faol guruhlar',      value: stats?.active_groups,  icon: Users2,       color: 'text-purple-600 bg-purple-50 border-purple-200' },
-          { label: 'Qarzdorlar',         value: stats?.total_debtors,  icon: AlertCircle,  color: 'text-red-600 bg-red-50 border-red-200' },
+          { label: 'Leadlar',           value: stats?.total_leads,    icon: Lightbulb,     color: 'text-yellow-600 bg-yellow-50 border-yellow-200' },
+          { label: "Faol o'quvchilar",  value: stats?.active_students, icon: Users,         color: 'text-emerald-600 bg-emerald-50 border-emerald-200' },
+          { label: "O'qituvchilar",     value: stats?.active_teachers, icon: GraduationCap, color: 'text-blue-600 bg-blue-50 border-blue-200' },
+          { label: 'Faol guruhlar',     value: stats?.active_groups,  icon: Users2,        color: 'text-purple-600 bg-purple-50 border-purple-200' },
+          { label: 'Qarzdorlar',        value: stats?.total_debtors,  icon: AlertCircle,   color: 'text-red-600 bg-red-50 border-red-200' },
         ] as const).map(({ label, value, icon: Icon, color }) => {
           const [tc, bgc, bc] = color.split(' ');
           return (
@@ -353,7 +348,7 @@ export default function ReportsPage() {
 
       {/* ── Section 3: Trend + Course Pie ── */}
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
-        {/* Progress Trendi */}
+        {/* Progress trendi */}
         <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-5">
           <h2 className="text-sm font-semibold text-gray-900 mb-4">Progress trendi</h2>
           {loading ? <Skel className="h-52 w-full" /> : trendData.length === 0 ? (
@@ -377,7 +372,7 @@ export default function ReportsPage() {
                   <YAxis tick={{ fontSize: 10, fill: '#9CA3AF' }} axisLine={false} tickLine={false} width={58}
                     tickFormatter={v => v >= 1_000_000 ? `${(v/1_000_000).toFixed(1)}M` : v >= 1000 ? `${(v/1000).toFixed(0)}K` : String(v)} />
                   <Tooltip contentStyle={{ border: '1px solid #E5E7EB', borderRadius: 8, fontSize: 12 }}
-                    formatter={(v: any) => formatCurrency(Number(v))} />
+                    formatter={(v: unknown) => formatCurrency(Number(v))} />
                   <Area type="monotone" dataKey="income"   stroke="#10b981" strokeWidth={2} fill="url(#gInc)" name="Daromad" />
                   <Area type="monotone" dataKey="expenses" stroke="#ef4444" strokeWidth={2} fill="url(#gExp)" name="Harajat" />
                 </AreaChart>
@@ -394,43 +389,40 @@ export default function ReportsPage() {
           )}
         </div>
 
-        {/* Course income pie — pie LEFT, legend RIGHT */}
+        {/* Course income pie — larger pie LEFT, legend RIGHT (dot + name + % only) */}
         <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6">
           <h2 className="text-sm font-semibold text-gray-900 mb-4">Kurs bo&apos;yicha daromad</h2>
-          {loading ? <Skel className="h-52 w-full" /> : courseIncome.length === 0 ? (
-            <div className="h-52 flex items-center justify-center text-sm text-gray-400">
+          {loading ? <Skel className="h-64 w-full" /> : courseIncome.length === 0 ? (
+            <div className="h-64 flex items-center justify-center text-sm text-gray-400">
               Bu davrda to&apos;lov mavjud emas
             </div>
           ) : (
-            <div className="flex items-center gap-6">
-              <div className="w-44 h-44 shrink-0">
+            <div className="flex items-center gap-8 min-h-[260px]">
+              {/* Pie — fixed 280px, left */}
+              <div className="shrink-0" style={{ width: 280, height: 260 }}>
                 <ResponsiveContainer width="100%" height="100%">
                   <PieChart>
                     <Pie data={courseIncome} dataKey="amount" nameKey="course"
-                      cx="50%" cy="50%" outerRadius={72} innerRadius={36}>
+                      cx="50%" cy="50%" outerRadius={110} innerRadius={52}>
                       {courseIncome.map((_, i) => (
                         <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />
                       ))}
                     </Pie>
                     <Tooltip contentStyle={{ border: '1px solid #E5E7EB', borderRadius: 8, fontSize: 12 }}
-                      formatter={(v: any) => formatCurrency(Number(v))} />
+                      formatter={(v: unknown) => formatCurrency(Number(v))} />
                   </PieChart>
                 </ResponsiveContainer>
               </div>
-              <div className="flex-1 space-y-2.5 min-w-0">
+              {/* Legend — dot + name + % only */}
+              <div className="flex-1 space-y-3 min-w-0">
                 {courseIncome.map((c, i) => {
                   const pct = income > 0 ? (Number(c.amount) / income * 100).toFixed(1) : '0';
                   return (
-                    <div key={i} className="flex items-center justify-between gap-2 text-xs">
-                      <div className="flex items-center gap-2 min-w-0">
-                        <span className="w-2.5 h-2.5 rounded-full shrink-0 inline-block"
-                          style={{ background: PIE_COLORS[i % PIE_COLORS.length] }} />
-                        <span className="text-gray-700 truncate">{c.course}</span>
-                      </div>
-                      <div className="shrink-0 text-right">
-                        <span className="text-gray-400 mr-1.5">{pct}%</span>
-                        <span className="font-semibold text-gray-900">{formatCurrency(Number(c.amount))}</span>
-                      </div>
+                    <div key={i} className="flex items-center gap-2.5 text-sm">
+                      <span className="w-3 h-3 rounded-full shrink-0 inline-block"
+                        style={{ background: PIE_COLORS[i % PIE_COLORS.length] }} />
+                      <span className="text-gray-700 truncate flex-1">{c.course}</span>
+                      <span className="shrink-0 font-semibold text-gray-500 text-xs">{pct}%</span>
                     </div>
                   );
                 })}
@@ -470,27 +462,20 @@ export default function ReportsPage() {
           )}
         </div>
 
-        {/* Leads conversion funnel */}
+        {/* Leads conversion funnel — 4 rows only */}
         <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-5">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-sm font-semibold text-gray-900">Lidlar konversiyasi</h2>
-            {!loading && conversion && (
-              <span className="text-xs font-medium text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
-                {conversion.conversion_rate}% konversiya
-              </span>
-            )}
-          </div>
+          <h2 className="text-sm font-semibold text-gray-900 mb-4">Lidlar konversiyasi</h2>
           {loading ? (
-            <div className="space-y-3">{Array(5).fill(0).map((_, i) => <Skel key={i} className="h-8 w-full" />)}</div>
+            <div className="space-y-3">{Array(4).fill(0).map((_, i) => <Skel key={i} className="h-8 w-full" />)}</div>
           ) : !conversion ? (
             <div className="h-40 flex items-center justify-center text-sm text-gray-400">Ma&apos;lumot yo&apos;q</div>
           ) : (
             <div className="space-y-3">
-              {funnelRows.map(({ label, value, color, max }) => {
-                const pct = max > 0 ? (value / max) * 100 : 0;
+              {funnelRows.map(({ label, value, color }) => {
+                const pct = funnelBase > 0 ? (value / funnelBase) * 100 : 0;
                 return (
                   <div key={label} className="flex items-center gap-3">
-                    <span className="w-34 text-xs text-gray-600 shrink-0 w-36">{label}</span>
+                    <span className="text-xs text-gray-600 shrink-0 w-36">{label}</span>
                     <div className="flex-1 h-5 bg-gray-100 rounded overflow-hidden">
                       <div className="h-full rounded transition-all duration-700"
                         style={{ width: `${pct}%`, backgroundColor: color }} />
@@ -558,8 +543,11 @@ export default function ReportsPage() {
                       </td>
                       <td className="px-4 py-3">
                         {!s.paid_at && (
-                          <button onClick={() => handleMarkPaid(s.id)} disabled={markingPaid === s.id}
-                            className="text-xs text-blue-600 hover:underline disabled:opacity-50">
+                          <button
+                            onClick={() => setConfirmSal(s)}
+                            disabled={markingPaid === s.id}
+                            className="text-xs text-blue-600 hover:underline disabled:opacity-50"
+                          >
                             {markingPaid === s.id ? '...' : 'Tasdiqlash'}
                           </button>
                         )}
@@ -573,7 +561,7 @@ export default function ReportsPage() {
         )}
       </div>
 
-      {/* ── Section 6: All Expenses ── */}
+      {/* ── Section 6: All Expenses (teacher salaries grouped) ── */}
       <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
         <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
           <h2 className="text-sm font-semibold text-gray-900">Harajatlar</h2>
@@ -584,7 +572,7 @@ export default function ReportsPage() {
         </div>
         {loading ? (
           <div className="p-4 space-y-2">{Array(4).fill(0).map((_, i) => <Skel key={i} className="h-10 w-full" />)}</div>
-        ) : expenses.length === 0 ? (
+        ) : displayExpenses.length === 0 ? (
           <p className="px-5 py-8 text-sm text-gray-400 text-center">Bu davrda harajat yo&apos;q</p>
         ) : (
           <div className="overflow-x-auto">
@@ -597,30 +585,39 @@ export default function ReportsPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
-                {expenses.map(e => (
-                  <tr key={e.id} className="hover:bg-gray-50 transition-colors">
-                    <td className="px-4 py-3">
-                      <span className="inline-flex items-center px-2 py-0.5 text-xs font-medium rounded-full bg-gray-100 text-gray-700">
-                        {EXPENSE_LABELS[e.category] ?? e.category}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3 text-gray-600 max-w-48 truncate">{e.description || '—'}</td>
-                    <td className="px-4 py-3 text-gray-500 text-xs">{e.expense_date}</td>
-                    <td className="px-4 py-3">
-                      {e.source === 'auto'
-                        ? <span className="text-xs text-blue-500 bg-blue-50 px-1.5 py-0.5 rounded">avto</span>
-                        : <span className="text-xs text-gray-400 bg-gray-50 px-1.5 py-0.5 rounded">qo&apos;l</span>}
-                    </td>
-                    <td className="px-4 py-3 font-semibold text-red-600">−{formatCurrency(e.amount)}</td>
-                    <td className="px-4 py-3">
-                      {e.source !== 'auto' && (
-                        <button onClick={() => openEditExp(e)} className="text-xs text-blue-600 hover:underline">
-                          Tahrirlash
-                        </button>
-                      )}
-                    </td>
-                  </tr>
-                ))}
+                {displayExpenses.map(e => {
+                  const isGrouped = e.id === '__teacher_sal__';
+                  return (
+                    <tr key={e.id} className="hover:bg-gray-50 transition-colors">
+                      <td className="px-4 py-3">
+                        <span className={cn(
+                          'inline-flex items-center gap-1.5 px-2 py-0.5 text-xs font-medium rounded-full',
+                          isGrouped ? 'bg-blue-50 text-blue-700' : 'bg-gray-100 text-gray-700'
+                        )}>
+                          {isGrouped && <GraduationCap className="w-3 h-3" />}
+                          {EXPENSE_LABELS[e.category] ?? e.category}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 text-gray-600 max-w-48 truncate">{e.description || '—'}</td>
+                      <td className="px-4 py-3 text-gray-500 text-xs">{e.expense_date || '—'}</td>
+                      <td className="px-4 py-3">
+                        {isGrouped
+                          ? <span className="text-xs text-blue-500 bg-blue-50 px-1.5 py-0.5 rounded">avto</span>
+                          : e.source === 'auto'
+                            ? <span className="text-xs text-blue-500 bg-blue-50 px-1.5 py-0.5 rounded">avto</span>
+                            : <span className="text-xs text-gray-400 bg-gray-50 px-1.5 py-0.5 rounded">qo&apos;l</span>}
+                      </td>
+                      <td className="px-4 py-3 font-semibold text-red-600">−{formatCurrency(e.amount)}</td>
+                      <td className="px-4 py-3">
+                        {!isGrouped && e.source !== 'auto' && (
+                          <button onClick={() => openEditExp(e)} className="text-xs text-blue-600 hover:underline">
+                            Tahrirlash
+                          </button>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
@@ -647,7 +644,7 @@ export default function ReportsPage() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="bg-gray-50 border-b border-gray-200">
-                  {['#', "O'quvchi", 'Telefon', 'Kurs', 'Arxivlangan sana'].map((h, i) => (
+                  {['#', "O'quvchi", 'Telefon', 'Guruh', 'Kurs', 'Arxivlangan sana'].map((h, i) => (
                     <th key={i} className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">{h}</th>
                   ))}
                 </tr>
@@ -655,11 +652,12 @@ export default function ReportsPage() {
               <tbody className="divide-y divide-gray-100">
                 {churn.map((s, idx) => (
                   <tr key={s.id} className="hover:bg-gray-50 transition-colors">
-                    <td className="px-4 py-3 text-gray-400 text-xs">{idx + 1}</td>
-                    <td className="px-4 py-3 font-medium text-gray-900">{s.first_name} {s.last_name}</td>
-                    <td className="px-4 py-3 text-gray-500 text-xs">{s.phone || '—'}</td>
-                    <td className="px-4 py-3 text-gray-500 text-xs">{s.course_name || '—'}</td>
-                    <td className="px-4 py-3 text-gray-500 text-xs">
+                    <td className="px-4 py-3 text-gray-400 text-xs font-medium">{idx + 1}</td>
+                    <td className="px-4 py-3 font-semibold text-gray-900 text-sm">{s.first_name} {s.last_name}</td>
+                    <td className="px-4 py-3 text-gray-600 text-sm font-medium">{s.phone || '—'}</td>
+                    <td className="px-4 py-3 text-gray-600 text-sm font-medium">{s.last_group || '—'}</td>
+                    <td className="px-4 py-3 text-gray-500 text-sm font-medium">{s.course_name || '—'}</td>
+                    <td className="px-4 py-3 text-gray-500 text-sm font-medium">
                       {s.archived_at ? s.archived_at.slice(0, 10) : '—'}
                     </td>
                   </tr>
@@ -669,6 +667,40 @@ export default function ReportsPage() {
           </div>
         )}
       </div>
+
+      {/* ── Salary Confirm Dialog ── */}
+      <Dialog open={!!confirmSal} onOpenChange={open => { if (!open) setConfirmSal(null); }}>
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Maosh to&apos;landi</DialogTitle>
+          </DialogHeader>
+          {confirmSal && (
+            <div className="mt-2 space-y-4">
+              <p className="text-sm text-gray-600">
+                <span className="font-semibold text-gray-900">{confirmSal.teacher_name}</span>
+                {' '}ga{' '}
+                <span className="font-semibold text-gray-900">{formatCurrency(confirmSal.total_amount)}</span>
+                {' '}so&apos;m maosh berilganini tasdiqlaysizmi?
+              </p>
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setConfirmSal(null)}
+                  className="flex-1 px-4 py-2 border border-gray-300 text-sm font-medium rounded-lg hover:bg-gray-50 transition-colors"
+                >
+                  Bekor qilish
+                </button>
+                <button
+                  onClick={() => handleMarkPaid(confirmSal.id)}
+                  disabled={markingPaid === confirmSal.id}
+                  className="flex-1 px-4 py-2 bg-emerald-600 text-white text-sm font-medium rounded-lg hover:bg-emerald-700 transition-colors disabled:opacity-60"
+                >
+                  {markingPaid === confirmSal.id ? 'Saqlanmoqda...' : 'Ha, tasdiqlash'}
+                </button>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
 
       {/* ── Expense Modal ── */}
       <Dialog open={showExpModal} onOpenChange={setShowExpModal}>

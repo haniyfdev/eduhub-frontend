@@ -40,10 +40,14 @@ interface ConversionStats {
 interface TeacherSalary {
   id: string;
   teacher_name: string;
-  teacher_phone: string;
   teacher_subject: string;
+  salary_type: string;
   students_count: number;
-  base_amount: number; kpi_amount: number; total_amount: number;
+  base_amount: number; kpi_amount: number;
+  calculated_amount: number; carry_over: number; total_owed: number;
+  paid_amount: number;
+  status: 'unpaid' | 'partial' | 'paid';
+  is_paid: boolean;
   paid_at: string | null;
 }
 interface Expense {
@@ -132,9 +136,10 @@ export default function ReportsPage() {
   const [salaryOpen,  setSalaryOpen]  = useState(true);
   const [expOpen,     setExpOpen]     = useState(true);
 
-  // Salary confirm dialog
+  // Salary pay modal
   const [markingPaid,  setMarkingPaid]  = useState<string | null>(null);
   const [confirmSal,   setConfirmSal]   = useState<TeacherSalary | null>(null);
+  const [payAmount,    setPayAmount]    = useState('');
   const [calculating,  setCalculating]  = useState(false);
 
   // Expense modal
@@ -178,14 +183,29 @@ export default function ReportsPage() {
 
   // ── Handlers ────────────────────────────────────────────────────────────────
 
-  async function handleMarkPaid(id: string) {
-    setMarkingPaid(id);
+  function openPayModal(s: TeacherSalary) {
+    const remaining = Number(s.total_owed) - Number(s.paid_amount);
+    setConfirmSal(s);
+    setPayAmount(String(remaining > 0 ? remaining : s.total_owed));
+  }
+
+  async function handlePay() {
+    if (!confirmSal) return;
+    const amount = parseFloat(payAmount);
+    if (!amount || amount <= 0) { toast.error('Summani kiriting'); return; }
+    setMarkingPaid(confirmSal.id);
     try {
-      const { data: updated } = await api.post<TeacherSalary>(`/api/v1/teacher-salaries/${id}/mark-paid/`);
-      setTeacherSals(prev => prev.map(s => s.id === id ? { ...s, ...updated } : s));
+      const { data: updated } = await api.post<TeacherSalary>(
+        `/api/v1/teacher-salaries/${confirmSal.id}/pay/`,
+        { amount }
+      );
+      setTeacherSals(prev => prev.map(s => s.id === confirmSal.id ? updated : s));
       toast.success("Maosh to'landi");
-    } catch { toast.error('Xatolik'); }
-    finally { setMarkingPaid(null); setConfirmSal(null); }
+      setConfirmSal(null);
+    } catch (err: unknown) {
+      const e = err as { response?: { data?: { error?: string } } };
+      toast.error(e?.response?.data?.error || 'Xatolik');
+    } finally { setMarkingPaid(null); }
   }
 
   async function handleCalculateSalaries() {
@@ -579,53 +599,78 @@ export default function ReportsPage() {
               <table className="w-full text-sm">
                 <thead>
                   <tr className="bg-gray-50 border-b border-gray-200">
-                    {['#', "O'qituvchi", 'Telefon', "O'quvchilar", 'Fan', 'Asosiy maosh', 'KPI', 'Jami', 'Holat'].map((h, i) => (
+                    {['№', "O'qituvchi", "O'quvchilar", 'Maosh turi', 'Fan', 'Asosiy', 'KPI', 'Jami', 'Holat'].map((h, i) => (
                       <th key={i} className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap">{h}</th>
                     ))}
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100">
-                  {teacherSals.map((s, idx) => (
-                    <tr
-                      key={s.id}
-                      className={cn(
-                        'transition-colors group',
-                        s.paid_at ? 'bg-white hover:bg-gray-50' : 'bg-amber-50/60 hover:bg-amber-50'
-                      )}
-                    >
-                      <td className="px-4 py-3 text-gray-400 text-xs font-medium">{idx + 1}</td>
-                      <td className="px-4 py-3 font-semibold text-gray-900 whitespace-nowrap">{s.teacher_name}</td>
-                      <td className="px-4 py-3 text-gray-500 text-xs font-medium whitespace-nowrap">{s.teacher_phone || '—'}</td>
-                      <td className="px-4 py-3 text-center">
-                        <span className="inline-flex items-center justify-center w-7 h-7 rounded-full bg-blue-50 text-blue-700 text-xs font-bold">
-                          {s.students_count}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3 text-gray-600 text-xs font-medium">{s.teacher_subject || '—'}</td>
-                      <td className="px-4 py-3 text-gray-700 font-medium">{formatCurrency(s.base_amount)}</td>
-                      <td className="px-4 py-3 text-gray-700 font-medium">{formatCurrency(s.kpi_amount)}</td>
-                      <td className="px-4 py-3 font-bold text-gray-900">{formatCurrency(s.total_amount)}</td>
-                      {/* Holat: hover transforms To'lanmagan → To'lash */}
-                      <td className="px-4 py-3 min-w-[110px]">
-                        {s.paid_at ? (
-                          <span className="text-emerald-600 font-medium text-xs">To&apos;langan ✓</span>
-                        ) : (
-                          <span className="relative inline-block">
-                            <span className="group-hover:hidden text-amber-500 font-medium text-xs">
-                              To&apos;lanmagan
-                            </span>
-                            <button
-                              className="hidden group-hover:inline-flex items-center px-2.5 py-1 bg-emerald-500 text-white text-xs font-semibold rounded-lg hover:bg-emerald-600 transition-colors disabled:opacity-50"
-                              onClick={() => setConfirmSal(s)}
-                              disabled={markingPaid === s.id}
-                            >
-                              {markingPaid === s.id ? '...' : "To'lash"}
-                            </button>
-                          </span>
+                  {teacherSals.map((s, idx) => {
+                    const totalOwed = Number(s.total_owed ?? s.calculated_amount);
+                    const isEmpty = !s.calculated_amount && !s.kpi_amount && !s.students_count;
+                    return (
+                      <tr
+                        key={s.id}
+                        className={cn(
+                          'transition-colors group',
+                          s.status === 'paid' ? 'bg-white hover:bg-gray-50' : 'bg-yellow-50 hover:bg-yellow-100/70'
                         )}
-                      </td>
-                    </tr>
-                  ))}
+                      >
+                        <td className="px-4 py-3 text-gray-400 text-xs font-medium">{idx + 1}</td>
+                        <td className="px-4 py-3 font-semibold text-gray-900 whitespace-nowrap">{s.teacher_name}</td>
+                        <td className="px-4 py-3 text-center">
+                          <span className="inline-flex items-center justify-center w-7 h-7 rounded-full bg-blue-50 text-blue-700 text-xs font-bold">
+                            {s.students_count}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3">
+                          {s.salary_type === 'fixed' && (
+                            <span className="inline-flex items-center px-2 py-0.5 text-xs font-medium rounded-full bg-gray-100 text-gray-600">Belgilangan</span>
+                          )}
+                          {s.salary_type === 'percent' && (
+                            <span className="inline-flex items-center px-2 py-0.5 text-xs font-medium rounded-full bg-blue-50 text-blue-600">Foizli</span>
+                          )}
+                          {s.salary_type === 'per_student' && (
+                            <span className="inline-flex items-center px-2 py-0.5 text-xs font-medium rounded-full bg-green-50 text-green-600">O&apos;quvchi boshiga</span>
+                          )}
+                          {!s.salary_type && <span className="text-gray-400 text-xs">—</span>}
+                        </td>
+                        <td className="px-4 py-3 text-gray-600 text-xs font-medium">{s.teacher_subject || '—'}</td>
+                        <td className="px-4 py-3 text-gray-700 font-medium">{formatCurrency(s.base_amount)}</td>
+                        <td className="px-4 py-3 text-gray-700 font-medium">{formatCurrency(s.kpi_amount)}</td>
+                        <td className="px-4 py-3 font-bold text-gray-900">{formatCurrency(totalOwed)}</td>
+                        <td className="px-4 py-3 min-w-[130px]">
+                          {isEmpty ? (
+                            <span className="text-gray-400 text-xs">—</span>
+                          ) : s.status === 'paid' ? (
+                            <span className="text-emerald-600 font-medium text-xs">To&apos;langan ✓</span>
+                          ) : s.status === 'partial' ? (
+                            <span className="relative inline-block">
+                              <span className="group-hover:hidden text-blue-500 font-medium text-xs">Qisman</span>
+                              <button
+                                className="hidden group-hover:inline-flex items-center px-2.5 py-1 bg-blue-500 text-white text-xs font-semibold rounded-lg hover:bg-blue-600 transition-colors disabled:opacity-50"
+                                onClick={() => openPayModal(s)}
+                                disabled={markingPaid === s.id}
+                              >
+                                {markingPaid === s.id ? '...' : "To'lash"}
+                              </button>
+                            </span>
+                          ) : (
+                            <span className="relative inline-block">
+                              <span className="group-hover:hidden text-amber-500 font-medium text-xs">To&apos;lanmagan</span>
+                              <button
+                                className="hidden group-hover:inline-flex items-center px-2.5 py-1 bg-emerald-500 text-white text-xs font-semibold rounded-lg hover:bg-emerald-600 transition-colors disabled:opacity-50"
+                                onClick={() => openPayModal(s)}
+                                disabled={markingPaid === s.id}
+                              >
+                                {markingPaid === s.id ? '...' : "To'lash"}
+                              </button>
+                            </span>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
@@ -651,7 +696,7 @@ export default function ReportsPage() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="bg-gray-50 border-b border-gray-200">
-                  {['#', 'Kategoriya', 'Miqdor', 'Sana', 'Izoh', ''].map((h, i) => (
+                  {['№', 'Kategoriya', 'Miqdor', 'Sana', 'Izoh', ''].map((h, i) => (
                     <th key={i} className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">{h}</th>
                   ))}
                 </tr>
@@ -710,7 +755,7 @@ export default function ReportsPage() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="bg-gray-50 border-b border-gray-200">
-                  {['#', "O'quvchi", 'Telefon', 'Ota-ona tel', 'Guruh', 'Kurs', 'Arxivlangan sana'].map((h, i) => (
+                  {['№', "O'quvchi", 'Telefon', 'Ota-ona tel', 'Guruh', 'Kurs', 'Arxivlangan sana'].map((h, i) => (
                     <th key={i} className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">{h}</th>
                   ))}
                 </tr>
@@ -735,35 +780,72 @@ export default function ReportsPage() {
         )}
       </div>
 
-      {/* ── Salary Confirm Dialog ── */}
+      {/* ── Pay Modal ── */}
       <Dialog open={!!confirmSal} onOpenChange={open => { if (!open) setConfirmSal(null); }}>
         <DialogContent className="sm:max-w-sm">
           <DialogHeader>
-            <DialogTitle>Maosh to&apos;landi</DialogTitle>
+            <DialogTitle>{confirmSal?.teacher_name}ga maosh to&apos;lash</DialogTitle>
           </DialogHeader>
-          {confirmSal && (
-            <div className="mt-2 space-y-4">
-              <p className="text-sm text-gray-600">
-                <span className="font-semibold text-gray-900">{confirmSal.teacher_name}</span>
-                {' '}ga{' '}
-                <span className="font-semibold text-gray-900">{formatCurrency(confirmSal.total_amount)}</span>
-                {' '}so&apos;m maosh berilganini tasdiqlaysizmi?
-              </p>
-              <div className="flex gap-3">
-                <button onClick={() => setConfirmSal(null)}
-                  className="flex-1 px-4 py-2 border border-gray-300 text-sm font-medium rounded-lg hover:bg-gray-50 transition-colors">
-                  Bekor qilish
-                </button>
-                <button
-                  onClick={() => handleMarkPaid(confirmSal.id)}
-                  disabled={markingPaid === confirmSal.id}
-                  className="flex-1 px-4 py-2 bg-emerald-600 text-white text-sm font-medium rounded-lg hover:bg-emerald-700 transition-colors disabled:opacity-60"
-                >
-                  {markingPaid === confirmSal.id ? 'Saqlanmoqda...' : 'Ha, tasdiqlash'}
-                </button>
+          {confirmSal && (() => {
+            const totalOwed = Number(confirmSal.total_owed ?? confirmSal.calculated_amount);
+            const remaining = totalOwed - Number(confirmSal.paid_amount);
+            const amt = parseFloat(payAmount);
+            const preview = amt >= remaining ? 'paid' : amt > 0 ? 'partial' : null;
+            return (
+              <div className="mt-2 space-y-4">
+                <div className="text-sm text-gray-600 space-y-1.5 bg-gray-50 rounded-lg px-3 py-3">
+                  <div className="flex justify-between">
+                    <span>Jami qarzdorlik</span>
+                    <span className="font-semibold text-gray-900">{formatCurrency(totalOwed)}</span>
+                  </div>
+                  {Number(confirmSal.carry_over) > 0 && (
+                    <div className="flex justify-between text-amber-600 text-xs">
+                      <span>Shu jumladan o&apos;tgan oy</span>
+                      <span className="font-semibold">{formatCurrency(Number(confirmSal.carry_over))}</span>
+                    </div>
+                  )}
+                  <div className="flex justify-between">
+                    <span>To&apos;langan</span>
+                    <span className="font-semibold text-emerald-600">{formatCurrency(Number(confirmSal.paid_amount))}</span>
+                  </div>
+                  <div className="flex justify-between font-semibold border-t border-gray-200 pt-1.5">
+                    <span>Qolgan</span>
+                    <span className="text-red-600">{formatCurrency(remaining)}</span>
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">To&apos;lov summasi</label>
+                  <input
+                    type="number"
+                    value={payAmount}
+                    onChange={e => setPayAmount(e.target.value)}
+                    min={1}
+                    max={remaining}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+                    placeholder="0"
+                  />
+                  {preview && (
+                    <p className={cn('text-xs mt-1', preview === 'paid' ? 'text-emerald-600' : 'text-blue-500')}>
+                      {preview === 'paid' ? "✓ To'liq to'lanadi" : "◑ Qisman to'langan bo'ladi"}
+                    </p>
+                  )}
+                </div>
+                <div className="flex gap-3">
+                  <button onClick={() => setConfirmSal(null)}
+                    className="flex-1 px-4 py-2 border border-gray-300 text-sm font-medium rounded-lg hover:bg-gray-50 transition-colors">
+                    Bekor qilish
+                  </button>
+                  <button
+                    onClick={handlePay}
+                    disabled={markingPaid === confirmSal.id}
+                    className="flex-1 px-4 py-2 bg-emerald-600 text-white text-sm font-medium rounded-lg hover:bg-emerald-700 transition-colors disabled:opacity-60"
+                  >
+                    {markingPaid === confirmSal.id ? 'Saqlanmoqda...' : 'Ha, tasdiqlash'}
+                  </button>
+                </div>
               </div>
-            </div>
-          )}
+            );
+          })()}
         </DialogContent>
       </Dialog>
 

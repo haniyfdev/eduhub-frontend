@@ -376,45 +376,28 @@ export default function ReportsPage() {
         })}
       </div>
 
-      {/* ── Section 3: Trend + Course Pie ── */}
+      {/* ── Section 3: Conversion Funnel + Course Pie ── */}
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
         <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-5">
-          <h2 className="text-sm font-semibold text-gray-900 mb-4">Progress trendi</h2>
-          {loading ? <Skel className="h-52 w-full" /> : trendData.length === 0 ? (
-            <div className="h-52 flex items-center justify-center text-sm text-gray-400">Ma&apos;lumot yo&apos;q</div>
+          <h2 className="text-sm font-semibold text-gray-900 mb-4">Lidlar konversiyasi</h2>
+          {loading ? (
+            <div className="space-y-3">{Array(5).fill(0).map((_, i) => <Skel key={i} className="h-7 w-full" />)}</div>
+          ) : !conversion ? (
+            <div className="h-40 flex items-center justify-center text-sm text-gray-400">Ma&apos;lumot yo&apos;q</div>
           ) : (
-            <>
-              <ResponsiveContainer width="100%" height={200}>
-                <AreaChart data={trendData} margin={{ top: 4, right: 4, bottom: 0, left: 0 }}>
-                  <defs>
-                    <linearGradient id="gInc" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%"  stopColor="#10b981" stopOpacity={0.2} />
-                      <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
-                    </linearGradient>
-                    <linearGradient id="gExp" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%"  stopColor="#ef4444" stopOpacity={0.15} />
-                      <stop offset="95%" stopColor="#ef4444" stopOpacity={0} />
-                    </linearGradient>
-                  </defs>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#F3F4F6" vertical={false} />
-                  <XAxis dataKey="period" tick={{ fontSize: 11, fill: '#9CA3AF' }} axisLine={false} tickLine={false} />
-                  <YAxis tick={{ fontSize: 10, fill: '#9CA3AF' }} axisLine={false} tickLine={false} width={58}
-                    tickFormatter={v => v >= 1_000_000 ? `${(v/1_000_000).toFixed(1)}M` : v >= 1000 ? `${(v/1000).toFixed(0)}K` : String(v)} />
-                  <Tooltip contentStyle={{ border: '1px solid #E5E7EB', borderRadius: 8, fontSize: 12 }}
-                    formatter={(v: unknown) => formatCurrency(Number(v))} />
-                  <Area type="monotone" dataKey="income"   stroke="#10b981" strokeWidth={2} fill="url(#gInc)" name="Daromad" />
-                  <Area type="monotone" dataKey="expenses" stroke="#ef4444" strokeWidth={2} fill="url(#gExp)" name="Harajat" />
-                </AreaChart>
-              </ResponsiveContainer>
-              <div className="flex items-center gap-5 mt-2 justify-center">
-                <span className="flex items-center gap-1.5 text-xs text-gray-500">
-                  <span className="w-3 h-3 rounded-full bg-emerald-500 inline-block" /> Daromad
-                </span>
-                <span className="flex items-center gap-1.5 text-xs text-gray-500">
-                  <span className="w-3 h-3 rounded-full bg-red-500 inline-block" /> Harajat
-                </span>
-              </div>
-            </>
+            <div className="space-y-2.5">
+              {funnelRows.map(({ label, value, percent, color }) => (
+                <div key={label} className="flex items-center gap-3">
+                  <span className="text-xs text-gray-600 shrink-0 w-40">{label}</span>
+                  <div className="flex-1 h-5 bg-gray-100 rounded overflow-hidden">
+                    <div className="h-full rounded transition-all duration-700"
+                      style={{ width: `${percent}%`, backgroundColor: color }} />
+                  </div>
+                  <span className="w-12 text-xs font-bold text-gray-900 text-right shrink-0">{value}</span>
+                  <span className="w-14 text-xs text-gray-400 text-right shrink-0">{percent.toFixed(1)}%</span>
+                </div>
+              ))}
+            </div>
           )}
         </div>
 
@@ -458,27 +441,44 @@ export default function ReportsPage() {
         </div>
       </div>
 
-      {/* ── Section 4: Leads Conversion Funnel ── */}
+      {/* ── Section 4: Progress Trend (full-width) ── */}
       <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-5">
-        <h2 className="text-sm font-semibold text-gray-900 mb-4">Lidlar konversiyasi</h2>
-        {loading ? (
-          <div className="space-y-3">{Array(5).fill(0).map((_, i) => <Skel key={i} className="h-7 w-full" />)}</div>
-        ) : !conversion ? (
-          <div className="h-40 flex items-center justify-center text-sm text-gray-400">Ma&apos;lumot yo&apos;q</div>
+        <h2 className="text-sm font-semibold text-gray-900 mb-4">Progress trendi</h2>
+        {loading ? <Skel className="h-52 w-full" /> : trendData.length === 0 ? (
+          <div className="h-52 flex items-center justify-center text-sm text-gray-400">Ma&apos;lumot yo&apos;q</div>
         ) : (
-          <div className="space-y-2.5">
-            {funnelRows.map(({ label, value, percent, color }) => (
-              <div key={label} className="flex items-center gap-3">
-                <span className="text-xs text-gray-600 shrink-0 w-40">{label}</span>
-                <div className="flex-1 h-5 bg-gray-100 rounded overflow-hidden">
-                  <div className="h-full rounded transition-all duration-700"
-                    style={{ width: `${percent}%`, backgroundColor: color }} />
-                </div>
-                <span className="w-12 text-xs font-bold text-gray-900 text-right shrink-0">{value}</span>
-                <span className="w-14 text-xs text-gray-400 text-right shrink-0">{percent.toFixed(1)}%</span>
-              </div>
-            ))}
-          </div>
+          <>
+            <ResponsiveContainer width="100%" height={220}>
+              <AreaChart data={trendData} margin={{ top: 4, right: 4, bottom: 0, left: 0 }}>
+                <defs>
+                  <linearGradient id="gInc" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%"  stopColor="#10b981" stopOpacity={0.2} />
+                    <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
+                  </linearGradient>
+                  <linearGradient id="gExp" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%"  stopColor="#ef4444" stopOpacity={0.15} />
+                    <stop offset="95%" stopColor="#ef4444" stopOpacity={0} />
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" stroke="#F3F4F6" vertical={false} />
+                <XAxis dataKey="period" tick={{ fontSize: 11, fill: '#9CA3AF' }} axisLine={false} tickLine={false} />
+                <YAxis tick={{ fontSize: 10, fill: '#9CA3AF' }} axisLine={false} tickLine={false} width={58}
+                  tickFormatter={v => v >= 1_000_000 ? `${(v/1_000_000).toFixed(1)}M` : v >= 1000 ? `${(v/1000).toFixed(0)}K` : String(v)} />
+                <Tooltip contentStyle={{ border: '1px solid #E5E7EB', borderRadius: 8, fontSize: 12 }}
+                  formatter={(v: unknown) => formatCurrency(Number(v))} />
+                <Area type="monotone" dataKey="income"   stroke="#10b981" strokeWidth={2} fill="url(#gInc)" name="Daromad" />
+                <Area type="monotone" dataKey="expenses" stroke="#ef4444" strokeWidth={2} fill="url(#gExp)" name="Harajat" />
+              </AreaChart>
+            </ResponsiveContainer>
+            <div className="flex items-center gap-5 mt-2 justify-center">
+              <span className="flex items-center gap-1.5 text-xs text-gray-500">
+                <span className="w-3 h-3 rounded-full bg-emerald-500 inline-block" /> Daromad
+              </span>
+              <span className="flex items-center gap-1.5 text-xs text-gray-500">
+                <span className="w-3 h-3 rounded-full bg-red-500 inline-block" /> Harajat
+              </span>
+            </div>
+          </>
         )}
       </div>
 

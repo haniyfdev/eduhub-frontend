@@ -547,7 +547,7 @@ export default function SalariesPage() {
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="bg-gray-50 border-b border-gray-200">
-                      {['№', 'Ism', 'Lavozim/Fan', 'Tur', 'Hisoblangan', "O'tgan oy qarzi", 'Jami', "To'langan", 'Qoldiq', 'Holat'].map((h, i) => (
+                      {['№', 'Ism', 'Fan', 'Tur', 'Hisoblangan', "O'tgan oy qarzi", 'Jami', "To'langan", 'Qoldiq', 'Holat'].map((h, i) => (
                         <th key={i} className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap">{h}</th>
                       ))}
                     </tr>

@@ -6,7 +6,7 @@ import { useLocale, useTranslations } from 'next-intl';
 import {
   LayoutDashboard, Users, Users2, GraduationCap, BookOpen,
   CreditCard, AlertCircle, BarChart3, Settings, Building2, Archive,
-  Lightbulb, CalendarCheck, DoorOpen,
+  Lightbulb, CalendarCheck, DoorOpen, Banknote,
 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { cn } from '@/lib/utils';
@@ -35,6 +35,7 @@ const sections = [
     items: [
       { key: 'payments', icon: CreditCard, href: '/payments' },
       { key: 'debts', icon: AlertCircle, href: '/debts' },
+      { key: 'salaries', icon: Banknote, href: '/salaries', roles: ['boss', 'manager'] },
       { key: 'reports', icon: BarChart3, href: '/reports' },
     ],
   },

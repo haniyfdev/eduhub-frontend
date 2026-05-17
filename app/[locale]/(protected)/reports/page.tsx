@@ -37,19 +37,6 @@ interface DebtForecast { total: number; }
 interface ConversionStats {
   total: number; trial: number; active: number; ignored: number;
 }
-interface TeacherSalary {
-  id: string;
-  teacher_name: string;
-  teacher_subject: string;
-  salary_type: string;
-  students_count: number;
-  base_amount: number; kpi_amount: number;
-  calculated_amount: number; carry_over: number; total_owed: number;
-  paid_amount: number;
-  status: 'unpaid' | 'partial' | 'paid';
-  is_paid: boolean;
-  paid_at: string | null;
-}
 interface Expense {
   id: string; category: string; amount: number;
   description: string; expense_date: string; source: string;
@@ -128,19 +115,11 @@ export default function ReportsPage() {
   const [courseIncome, setCourseIncome] = useState<CourseIncome[]>([]);
   const [debt,         setDebt]         = useState<DebtForecast | null>(null);
   const [conversion,   setConversion]   = useState<ConversionStats | null>(null);
-  const [teacherSals,  setTeacherSals]  = useState<TeacherSalary[]>([]);
   const [expenses,     setExpenses]     = useState<Expense[]>([]);
   const [churn,        setChurn]        = useState<ArchivedStudent[]>([]);
 
   // Collapsible sections
-  const [salaryOpen,  setSalaryOpen]  = useState(true);
-  const [expOpen,     setExpOpen]     = useState(true);
-
-  // Salary pay modal
-  const [markingPaid,  setMarkingPaid]  = useState<string | null>(null);
-  const [confirmSal,   setConfirmSal]   = useState<TeacherSalary | null>(null);
-  const [payAmount,    setPayAmount]    = useState('');
-  const [calculating,  setCalculating]  = useState(false);
+  const [expOpen, setExpOpen] = useState(true);
 
   // Expense modal
   const [showExpModal, setShowExpModal] = useState(false);
@@ -161,18 +140,16 @@ export default function ReportsPage() {
       api.get(`/api/v1/profit-loss/income-by-course/?${q}`),
       api.get(`/api/v1/profit-loss/debt-forecast/`),
       api.get(`/api/v1/leads/conversion-stats/?${q}`),
-      api.get(`/api/v1/teacher-salaries/?${q}`),
       api.get(`/api/v1/expenses/?${q}`),
       api.get(`/api/v1/students/?status=archived&${q}`),
     ]);
 
-    const [pnlR, histR, courseR, debtR, convR, salR, expR, churnR] = results;
+    const [pnlR, histR, courseR, debtR, convR, expR, churnR] = results;
     if (pnlR.status    === 'fulfilled') setPnl(pnlR.value.data);
     if (histR.status   === 'fulfilled') setHistory(histR.value.data);
     if (courseR.status === 'fulfilled') setCourseIncome(courseR.value.data);
     if (debtR.status   === 'fulfilled') setDebt(debtR.value.data);
     if (convR.status   === 'fulfilled') setConversion(convR.value.data);
-    if (salR.status    === 'fulfilled') setTeacherSals(salR.value.data.results ?? salR.value.data);
     if (expR.status    === 'fulfilled') setExpenses(expR.value.data.results ?? expR.value.data);
     if (churnR.status  === 'fulfilled') setChurn(churnR.value.data.results ?? churnR.value.data);
 
@@ -182,42 +159,6 @@ export default function ReportsPage() {
   useEffect(() => { loadData(); }, [loadData]);
 
   // ── Handlers ────────────────────────────────────────────────────────────────
-
-  function openPayModal(s: TeacherSalary) {
-    const remaining = Number(s.total_owed) - Number(s.paid_amount);
-    setConfirmSal(s);
-    setPayAmount(String(remaining > 0 ? remaining : s.total_owed));
-  }
-
-  async function handlePay() {
-    if (!confirmSal) return;
-    const amount = parseFloat(payAmount);
-    if (!amount || amount <= 0) { toast.error('Summani kiriting'); return; }
-    setMarkingPaid(confirmSal.id);
-    try {
-      const { data: updated } = await api.post<TeacherSalary>(
-        `/api/v1/teacher-salaries/${confirmSal.id}/pay/`,
-        { amount }
-      );
-      setTeacherSals(prev => prev.map(s => s.id === confirmSal.id ? updated : s));
-      toast.success("Maosh to'landi");
-      setConfirmSal(null);
-    } catch (err: unknown) {
-      const e = err as { response?: { data?: { error?: string } } };
-      toast.error(e?.response?.data?.error || 'Xatolik');
-    } finally { setMarkingPaid(null); }
-  }
-
-  async function handleCalculateSalaries() {
-    setCalculating(true);
-    const month = fromDate.slice(0, 7);
-    try {
-      const { data } = await api.post(`/api/v1/teacher-salaries/calculate/?month=${month}`);
-      toast.success(`${data.created.length} ta maosh yaratildi`);
-      loadData();
-    } catch { toast.error('Xatolik'); }
-    finally { setCalculating(false); }
-  }
 
   function openAddExp() {
     setEditingExp(null);
@@ -321,7 +262,6 @@ export default function ReportsPage() {
           <p className="text-sm text-gray-500 mt-0.5">Moliyaviy tahlil va statistika</p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          {/* 2 preset buttons */}
           <div className="flex rounded-lg border border-gray-200 overflow-hidden text-xs font-medium">
             {([
               { label: 'Joriy oy',  from: monthStartStr, to: todayStr },
@@ -334,7 +274,6 @@ export default function ReportsPage() {
               </button>
             ))}
           </div>
-          {/* Date range — dd/mm/yyyy display */}
           <div className="flex items-center gap-1.5">
             <DateField value={fromDate} onChange={setFromDate} />
             <span className="text-gray-400 text-sm">—</span>
@@ -412,7 +351,6 @@ export default function ReportsPage() {
 
       {/* ── Section 3: Trend + Course Pie ── */}
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
-        {/* Progress trendi */}
         <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-5">
           <h2 className="text-sm font-semibold text-gray-900 mb-4">Progress trendi</h2>
           {loading ? <Skel className="h-52 w-full" /> : trendData.length === 0 ? (
@@ -453,7 +391,6 @@ export default function ReportsPage() {
           )}
         </div>
 
-        {/* Course income pie — 280px left, legend right (dot + name + % only) */}
         <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6">
           <h2 className="text-sm font-semibold text-gray-900 mb-4">Kurs bo&apos;yicha daromad</h2>
           {loading ? <Skel className="h-64 w-full" /> : courseIncome.length === 0 ? (
@@ -496,7 +433,6 @@ export default function ReportsPage() {
 
       {/* ── Section 4: Expense breakdown (collapsible) + Leads funnel ── */}
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
-        {/* Expense breakdown — collapsible */}
         <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
           <button
             onClick={() => setExpOpen(o => !o)}
@@ -536,7 +472,6 @@ export default function ReportsPage() {
           )}
         </div>
 
-        {/* Leads conversion funnel — 4 rows */}
         <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-5">
           <h2 className="text-sm font-semibold text-gray-900 mb-4">Lidlar konversiyasi</h2>
           {loading ? (
@@ -564,121 +499,7 @@ export default function ReportsPage() {
         </div>
       </div>
 
-      {/* ── Section 5: Teacher Salaries (collapsible, redesigned) ── */}
-      <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
-        <button
-          onClick={() => setSalaryOpen(o => !o)}
-          className="w-full flex items-center justify-between px-5 py-4 hover:bg-gray-50 transition-colors"
-        >
-          <h2 className="text-sm font-semibold text-gray-900">O&apos;qituvchilar maoshi</h2>
-          <div className="flex items-center gap-2">
-            <button
-              onClick={e => { e.stopPropagation(); handleCalculateSalaries(); }}
-              disabled={calculating}
-              className="text-xs px-2.5 py-1 bg-blue-50 text-blue-600 border border-blue-200 rounded-lg hover:bg-blue-100 transition-colors disabled:opacity-50"
-            >
-              {calculating ? 'Hisoblanmoqda...' : 'Hisoblash'}
-            </button>
-            {salaryOpen
-              ? <ChevronUp className="w-4 h-4 text-gray-400" />
-              : <ChevronDown className="w-4 h-4 text-gray-400" />}
-          </div>
-        </button>
-
-        {salaryOpen && (
-          loading ? (
-            <div className="p-4 space-y-2 border-t border-gray-100">
-              {Array(3).fill(0).map((_, i) => <Skel key={i} className="h-10 w-full" />)}
-            </div>
-          ) : teacherSals.length === 0 ? (
-            <p className="px-5 py-8 text-sm text-gray-400 text-center border-t border-gray-100">
-              Bu davr uchun maosh mavjud emas
-            </p>
-          ) : (
-            <div className="overflow-x-auto border-t border-gray-100">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="bg-gray-50 border-b border-gray-200">
-                    {['№', "O'qituvchi", "O'quvchilar", 'Maosh turi', 'Fan', 'Asosiy', 'KPI', 'Jami', 'Holat'].map((h, i) => (
-                      <th key={i} className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap">{h}</th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-100">
-                  {teacherSals.map((s, idx) => {
-                    const totalOwed = Number(s.total_owed ?? s.calculated_amount);
-                    const isEmpty = !s.calculated_amount && !s.kpi_amount && !s.students_count;
-                    return (
-                      <tr
-                        key={s.id}
-                        className={cn(
-                          'transition-colors group',
-                          s.status === 'paid' ? 'bg-white hover:bg-gray-50' : 'bg-yellow-50 hover:bg-yellow-100/70'
-                        )}
-                      >
-                        <td className="px-4 py-3 text-gray-400 text-xs font-medium">{idx + 1}</td>
-                        <td className="px-4 py-3 font-semibold text-gray-900 whitespace-nowrap">{s.teacher_name}</td>
-                        <td className="px-4 py-3 text-center">
-                          <span className="inline-flex items-center justify-center w-7 h-7 rounded-full bg-blue-50 text-blue-700 text-xs font-bold">
-                            {s.students_count}
-                          </span>
-                        </td>
-                        <td className="px-4 py-3">
-                          {s.salary_type === 'fixed' && (
-                            <span className="inline-flex items-center px-2 py-0.5 text-xs font-medium rounded-full bg-gray-100 text-gray-600">Belgilangan</span>
-                          )}
-                          {s.salary_type === 'percent' && (
-                            <span className="inline-flex items-center px-2 py-0.5 text-xs font-medium rounded-full bg-blue-50 text-blue-600">Foizli</span>
-                          )}
-                          {s.salary_type === 'per_student' && (
-                            <span className="inline-flex items-center px-2 py-0.5 text-xs font-medium rounded-full bg-green-50 text-green-600">O&apos;quvchi boshiga</span>
-                          )}
-                          {!s.salary_type && <span className="text-gray-400 text-xs">—</span>}
-                        </td>
-                        <td className="px-4 py-3 text-gray-600 text-xs font-medium">{s.teacher_subject || '—'}</td>
-                        <td className="px-4 py-3 text-gray-700 font-medium">{formatCurrency(s.base_amount)}</td>
-                        <td className="px-4 py-3 text-gray-700 font-medium">{formatCurrency(s.kpi_amount)}</td>
-                        <td className="px-4 py-3 font-bold text-gray-900">{formatCurrency(totalOwed)}</td>
-                        <td className="px-4 py-3 min-w-[130px]">
-                          {isEmpty ? (
-                            <span className="text-gray-400 text-xs">—</span>
-                          ) : s.status === 'paid' ? (
-                            <span className="text-emerald-600 font-medium text-xs">To&apos;langan ✓</span>
-                          ) : s.status === 'partial' ? (
-                            <span className="relative inline-block">
-                              <span className="group-hover:hidden text-blue-500 font-medium text-xs">Qisman</span>
-                              <button
-                                className="hidden group-hover:inline-flex items-center px-2.5 py-1 bg-blue-500 text-white text-xs font-semibold rounded-lg hover:bg-blue-600 transition-colors disabled:opacity-50"
-                                onClick={() => openPayModal(s)}
-                                disabled={markingPaid === s.id}
-                              >
-                                {markingPaid === s.id ? '...' : "To'lash"}
-                              </button>
-                            </span>
-                          ) : (
-                            <span className="relative inline-block">
-                              <span className="group-hover:hidden text-amber-500 font-medium text-xs">To&apos;lanmagan</span>
-                              <button
-                                className="hidden group-hover:inline-flex items-center px-2.5 py-1 bg-emerald-500 text-white text-xs font-semibold rounded-lg hover:bg-emerald-600 transition-colors disabled:opacity-50"
-                                onClick={() => openPayModal(s)}
-                                disabled={markingPaid === s.id}
-                              >
-                                {markingPaid === s.id ? '...' : "To'lash"}
-                              </button>
-                            </span>
-                          )}
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-          )
-        )}
-      </div>
-
-      {/* ── Section 6: Expenses (numbered, no source, teacher salary grouped) ── */}
+      {/* ── Section 5: Expenses ── */}
       <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
         <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
           <h2 className="text-sm font-semibold text-gray-900">Harajatlar</h2>
@@ -735,7 +556,7 @@ export default function ReportsPage() {
         )}
       </div>
 
-      {/* ── Section 7: Churn Table ── */}
+      {/* ── Section 6: Churn Table ── */}
       <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
         <div className="flex items-center gap-2 px-5 py-4 border-b border-gray-100">
           <UserMinus className="w-4 h-4 text-red-500 shrink-0" />
@@ -779,75 +600,6 @@ export default function ReportsPage() {
           </div>
         )}
       </div>
-
-      {/* ── Pay Modal ── */}
-      <Dialog open={!!confirmSal} onOpenChange={open => { if (!open) setConfirmSal(null); }}>
-        <DialogContent className="sm:max-w-sm">
-          <DialogHeader>
-            <DialogTitle>{confirmSal?.teacher_name}ga maosh to&apos;lash</DialogTitle>
-          </DialogHeader>
-          {confirmSal && (() => {
-            const totalOwed = Number(confirmSal.total_owed ?? confirmSal.calculated_amount);
-            const remaining = totalOwed - Number(confirmSal.paid_amount);
-            const amt = parseFloat(payAmount);
-            const preview = amt >= remaining ? 'paid' : amt > 0 ? 'partial' : null;
-            return (
-              <div className="mt-2 space-y-4">
-                <div className="text-sm text-gray-600 space-y-1.5 bg-gray-50 rounded-lg px-3 py-3">
-                  <div className="flex justify-between">
-                    <span>Jami qarzdorlik</span>
-                    <span className="font-semibold text-gray-900">{formatCurrency(totalOwed)}</span>
-                  </div>
-                  {Number(confirmSal.carry_over) > 0 && (
-                    <div className="flex justify-between text-amber-600 text-xs">
-                      <span>Shu jumladan o&apos;tgan oy</span>
-                      <span className="font-semibold">{formatCurrency(Number(confirmSal.carry_over))}</span>
-                    </div>
-                  )}
-                  <div className="flex justify-between">
-                    <span>To&apos;langan</span>
-                    <span className="font-semibold text-emerald-600">{formatCurrency(Number(confirmSal.paid_amount))}</span>
-                  </div>
-                  <div className="flex justify-between font-semibold border-t border-gray-200 pt-1.5">
-                    <span>Qolgan</span>
-                    <span className="text-red-600">{formatCurrency(remaining)}</span>
-                  </div>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">To&apos;lov summasi</label>
-                  <input
-                    type="number"
-                    value={payAmount}
-                    onChange={e => setPayAmount(e.target.value)}
-                    min={1}
-                    max={remaining}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none"
-                    placeholder="0"
-                  />
-                  {preview && (
-                    <p className={cn('text-xs mt-1', preview === 'paid' ? 'text-emerald-600' : 'text-blue-500')}>
-                      {preview === 'paid' ? "✓ To'liq to'lanadi" : "◑ Qisman to'langan bo'ladi"}
-                    </p>
-                  )}
-                </div>
-                <div className="flex gap-3">
-                  <button onClick={() => setConfirmSal(null)}
-                    className="flex-1 px-4 py-2 border border-gray-300 text-sm font-medium rounded-lg hover:bg-gray-50 transition-colors">
-                    Bekor qilish
-                  </button>
-                  <button
-                    onClick={handlePay}
-                    disabled={markingPaid === confirmSal.id}
-                    className="flex-1 px-4 py-2 bg-emerald-600 text-white text-sm font-medium rounded-lg hover:bg-emerald-700 transition-colors disabled:opacity-60"
-                  >
-                    {markingPaid === confirmSal.id ? 'Saqlanmoqda...' : 'Ha, tasdiqlash'}
-                  </button>
-                </div>
-              </div>
-            );
-          })()}
-        </DialogContent>
-      </Dialog>
 
       {/* ── Expense Modal ── */}
       <Dialog open={showExpModal} onOpenChange={setShowExpModal}>

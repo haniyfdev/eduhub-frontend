@@ -2,8 +2,7 @@
 
 import { useEffect, useState, useCallback, useMemo } from 'react';
 import {
-  Banknote, ChevronDown, ChevronUp, Plus, Search,
-  X, Check, AlertCircle,
+  Banknote, ChevronDown, ChevronUp, Plus, AlertCircle,
 } from 'lucide-react';
 import toast, { Toaster } from 'react-hot-toast';
 import { Skeleton } from '@/components/ui/skeleton';

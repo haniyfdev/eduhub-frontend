@@ -679,7 +679,7 @@ export default function DashboardPage() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-gray-200 bg-gray-50">
-                  {['#', 'O\'quvchi', 'O\'rt. ball', 'Guruh'].map((h) => (
+                  {['№', 'O\'quvchi', 'O\'rt. ball', 'Guruh'].map((h) => (
                     <th key={h} className="text-left px-3 py-2.5 text-xs font-semibold text-gray-500 uppercase tracking-wide">{h}</th>
                   ))}
                 </tr>

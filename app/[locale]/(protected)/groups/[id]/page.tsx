@@ -164,7 +164,7 @@ export default function GroupDetailPage() {
     const timer = setTimeout(async () => {
       setSearchLoading(true);
       try {
-        const params: Record<string, string | number> = { page_size: 50 };
+        const params: Record<string, string | number> = { page_size: 50, status: 'pending' };
         if (studentSearch.trim()) params.search = studentSearch.trim();
         if (courseFilter) params.course = courseFilter;
         const { data } = await api.get<PaginatedResponse<Student>>('/api/v1/leads/', { params });

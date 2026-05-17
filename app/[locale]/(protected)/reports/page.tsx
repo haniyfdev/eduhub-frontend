@@ -8,7 +8,7 @@ import {
 import {
   TrendingUp, TrendingDown, DollarSign, AlertTriangle,
   Users, GraduationCap, Users2, Lightbulb, AlertCircle,
-  Check, ChevronDown, ChevronUp, Plus, UserMinus,
+  ChevronDown, ChevronUp, Plus, UserMinus,
 } from 'lucide-react';
 import toast, { Toaster } from 'react-hot-toast';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -38,8 +38,13 @@ interface ConversionStats {
   total: number; trial: number; active: number; ignored: number;
 }
 interface TeacherSalary {
-  id: string; teacher_name: string;
-  base_amount: number; kpi_amount: number; total_amount: number; paid_at: string | null;
+  id: string;
+  teacher_name: string;
+  teacher_phone: string;
+  teacher_subject: string;
+  students_count: number;
+  base_amount: number; kpi_amount: number; total_amount: number;
+  paid_at: string | null;
 }
 interface Expense {
   id: string; category: string; amount: number;
@@ -47,8 +52,8 @@ interface Expense {
 }
 interface ArchivedStudent {
   id: string; first_name: string; last_name: string;
-  course_name: string | null; archived_at: string | null;
-  phone: string; last_group?: string;
+  phone: string; second_phone: string | null;
+  course_name: string | null; archived_at: string | null; last_group?: string;
 }
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -72,6 +77,41 @@ function shortMonth(m: string) {
   return MONTH_LABELS[parseInt(mo, 10) - 1] ?? m;
 }
 
+// ─── DateField — shows dd/mm/yyyy, stores yyyy-mm-dd ─────────────────────────
+
+function DateField({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+  const toDisplay = (iso: string) => {
+    if (!iso) return '';
+    const [y, m, d] = iso.split('-');
+    return `${d}/${m}/${y}`;
+  };
+  const [text, setText] = useState(() => toDisplay(value));
+
+  useEffect(() => { setText(toDisplay(value)); }, [value]);
+
+  const commit = (raw: string) => {
+    const parts = raw.split('/');
+    if (parts.length === 3) {
+      const [d, m, y] = parts;
+      const iso = `${y.padStart(4,'0')}-${m.padStart(2,'0')}-${d.padStart(2,'0')}`;
+      if (/^\d{4}-\d{2}-\d{2}$/.test(iso)) { onChange(iso); setText(toDisplay(iso)); return; }
+    }
+    setText(toDisplay(value));
+  };
+
+  return (
+    <input
+      type="text"
+      value={text}
+      placeholder="dd/mm/yyyy"
+      onChange={e => setText(e.target.value)}
+      onBlur={e => commit(e.target.value)}
+      onKeyDown={e => { if (e.key === 'Enter') commit(text); }}
+      className="px-2.5 py-2 border border-gray-200 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white w-28"
+    />
+  );
+}
+
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function ReportsPage() {
@@ -88,13 +128,19 @@ export default function ReportsPage() {
   const [expenses,     setExpenses]     = useState<Expense[]>([]);
   const [churn,        setChurn]        = useState<ArchivedStudent[]>([]);
 
-  const [showTeachers,  setShowTeachers]  = useState(true);
-  const [markingPaid,   setMarkingPaid]   = useState<string | null>(null);
-  const [confirmSal,    setConfirmSal]    = useState<TeacherSalary | null>(null);
-  const [calculating,   setCalculating]  = useState(false);
-  const [showExpModal,  setShowExpModal]  = useState(false);
-  const [editingExp,    setEditingExp]   = useState<Expense | null>(null);
-  const [expForm,       setExpForm]      = useState({
+  // Collapsible sections
+  const [salaryOpen,  setSalaryOpen]  = useState(true);
+  const [expOpen,     setExpOpen]     = useState(true);
+
+  // Salary confirm dialog
+  const [markingPaid,  setMarkingPaid]  = useState<string | null>(null);
+  const [confirmSal,   setConfirmSal]   = useState<TeacherSalary | null>(null);
+  const [calculating,  setCalculating]  = useState(false);
+
+  // Expense modal
+  const [showExpModal, setShowExpModal] = useState(false);
+  const [editingExp,   setEditingExp]   = useState<Expense | null>(null);
+  const [expForm,      setExpForm]      = useState({
     category: 'rent', amount: '', description: '', expense_date: todayStr(),
   });
   const [savingExp, setSavingExp] = useState(false);
@@ -136,7 +182,7 @@ export default function ReportsPage() {
     setMarkingPaid(id);
     try {
       const { data: updated } = await api.post<TeacherSalary>(`/api/v1/teacher-salaries/${id}/mark-paid/`);
-      setTeacherSals(prev => prev.map(s => s.id === id ? updated : s));
+      setTeacherSals(prev => prev.map(s => s.id === id ? { ...s, ...updated } : s));
       toast.success("Maosh to'landi");
     } catch { toast.error('Xatolik'); }
     finally { setMarkingPaid(null); setConfirmSal(null); }
@@ -215,13 +261,13 @@ export default function ReportsPage() {
 
   const funnelBase = conversion?.total ?? 0;
   const funnelRows = conversion ? [
-    { label: 'Jami leadlar',      value: conversion.total,   color: '#6366f1' },
-    { label: "Faol o'quvchilar",  value: conversion.active,  color: '#10b981' },
-    { label: 'Sinovdagilar',      value: conversion.trial,   color: '#f59e0b' },
-    { label: 'Rad etganlar',      value: conversion.ignored, color: '#ef4444' },
+    { label: 'Jami leadlar',     value: conversion.total,   color: '#6366f1' },
+    { label: "Faol o'quvchilar", value: conversion.active,  color: '#10b981' },
+    { label: 'Sinovdagilar',     value: conversion.trial,   color: '#f59e0b' },
+    { label: 'Rad etganlar',     value: conversion.ignored, color: '#ef4444' },
   ] : [];
 
-  // Group teacher_salary expenses into one row for display
+  // Expenses: teacher_salary grouped into one row
   const displayExpenses = useMemo(() => {
     const teacherTotal = expenses
       .filter(e => e.category === 'teacher_salary')
@@ -258,23 +304,21 @@ export default function ReportsPage() {
           {/* 2 preset buttons */}
           <div className="flex rounded-lg border border-gray-200 overflow-hidden text-xs font-medium">
             {([
-              { label: 'Joriy oy',  from: monthStartStr(), to: todayStr() },
-              { label: 'Joriy yil', from: thisYearStart(), to: todayStr() },
+              { label: 'Joriy oy',  from: monthStartStr, to: todayStr },
+              { label: 'Joriy yil', from: thisYearStart, to: todayStr },
             ] as const).map(({ label, from, to }) => (
               <button key={label}
-                onClick={() => { setFromDate(from); setToDate(to); }}
+                onClick={() => { setFromDate(from()); setToDate(to()); }}
                 className="px-3 py-2 bg-white text-gray-600 hover:bg-blue-50 hover:text-blue-600 transition-colors border-r border-gray-200 last:border-0">
                 {label}
               </button>
             ))}
           </div>
-          {/* Custom range */}
+          {/* Date range — dd/mm/yyyy display */}
           <div className="flex items-center gap-1.5">
-            <input type="date" value={fromDate} onChange={e => setFromDate(e.target.value)}
-              className="px-2.5 py-2 border border-gray-200 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white" />
+            <DateField value={fromDate} onChange={setFromDate} />
             <span className="text-gray-400 text-sm">—</span>
-            <input type="date" value={toDate} onChange={e => setToDate(e.target.value)}
-              className="px-2.5 py-2 border border-gray-200 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white" />
+            <DateField value={toDate} onChange={setToDate} />
           </div>
         </div>
       </div>
@@ -323,11 +367,11 @@ export default function ReportsPage() {
       {/* ── Section 2: 5 Stat Cards ── */}
       <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-5 gap-3">
         {([
-          { label: 'Leadlar',           value: stats?.total_leads,    icon: Lightbulb,     color: 'text-yellow-600 bg-yellow-50 border-yellow-200' },
-          { label: "Faol o'quvchilar",  value: stats?.active_students, icon: Users,         color: 'text-emerald-600 bg-emerald-50 border-emerald-200' },
-          { label: "O'qituvchilar",     value: stats?.active_teachers, icon: GraduationCap, color: 'text-blue-600 bg-blue-50 border-blue-200' },
-          { label: 'Faol guruhlar',     value: stats?.active_groups,  icon: Users2,        color: 'text-purple-600 bg-purple-50 border-purple-200' },
-          { label: 'Qarzdorlar',        value: stats?.total_debtors,  icon: AlertCircle,   color: 'text-red-600 bg-red-50 border-red-200' },
+          { label: 'Leadlar',          value: stats?.total_leads,     icon: Lightbulb,     color: 'text-yellow-600 bg-yellow-50 border-yellow-200' },
+          { label: "Faol o'quvchilar", value: stats?.active_students, icon: Users,         color: 'text-emerald-600 bg-emerald-50 border-emerald-200' },
+          { label: "O'qituvchilar",    value: stats?.active_teachers, icon: GraduationCap, color: 'text-blue-600 bg-blue-50 border-blue-200' },
+          { label: 'Faol guruhlar',    value: stats?.active_groups,   icon: Users2,        color: 'text-purple-600 bg-purple-50 border-purple-200' },
+          { label: 'Qarzdorlar',       value: stats?.total_debtors,   icon: AlertCircle,   color: 'text-red-600 bg-red-50 border-red-200' },
         ] as const).map(({ label, value, icon: Icon, color }) => {
           const [tc, bgc, bc] = color.split(' ');
           return (
@@ -389,7 +433,7 @@ export default function ReportsPage() {
           )}
         </div>
 
-        {/* Course income pie — larger pie LEFT, legend RIGHT (dot + name + % only) */}
+        {/* Course income pie — 280px left, legend right (dot + name + % only) */}
         <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6">
           <h2 className="text-sm font-semibold text-gray-900 mb-4">Kurs bo&apos;yicha daromad</h2>
           {loading ? <Skel className="h-64 w-full" /> : courseIncome.length === 0 ? (
@@ -398,7 +442,6 @@ export default function ReportsPage() {
             </div>
           ) : (
             <div className="flex items-center gap-8 min-h-[260px]">
-              {/* Pie — fixed 280px, left */}
               <div className="shrink-0" style={{ width: 280, height: 260 }}>
                 <ResponsiveContainer width="100%" height="100%">
                   <PieChart>
@@ -413,13 +456,12 @@ export default function ReportsPage() {
                   </PieChart>
                 </ResponsiveContainer>
               </div>
-              {/* Legend — dot + name + % only */}
               <div className="flex-1 space-y-3 min-w-0">
                 {courseIncome.map((c, i) => {
                   const pct = income > 0 ? (Number(c.amount) / income * 100).toFixed(1) : '0';
                   return (
                     <div key={i} className="flex items-center gap-2.5 text-sm">
-                      <span className="w-3 h-3 rounded-full shrink-0 inline-block"
+                      <span className="w-3 h-3 rounded-full shrink-0"
                         style={{ background: PIE_COLORS[i % PIE_COLORS.length] }} />
                       <span className="text-gray-700 truncate flex-1">{c.course}</span>
                       <span className="shrink-0 font-semibold text-gray-500 text-xs">{pct}%</span>
@@ -432,37 +474,49 @@ export default function ReportsPage() {
         </div>
       </div>
 
-      {/* ── Section 4: Expense breakdown + Leads funnel ── */}
+      {/* ── Section 4: Expense breakdown (collapsible) + Leads funnel ── */}
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
-        {/* Expense breakdown */}
-        <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-5">
-          <h2 className="text-sm font-semibold text-gray-900 mb-4">Harajatlar tafsiloti</h2>
-          {loading ? (
-            <div className="space-y-3">{Array(4).fill(0).map((_, i) => <Skel key={i} className="h-8 w-full" />)}</div>
-          ) : expBreakdown.length === 0 ? (
-            <div className="h-40 flex items-center justify-center text-sm text-gray-400">Bu davrda harajat yo&apos;q</div>
-          ) : (
-            <div className="space-y-3">
-              {expBreakdown.map(({ key, name, value }) => {
-                const pct = expTotal > 0 ? (value / expTotal) * 100 : 0;
-                return (
-                  <div key={key}>
-                    <div className="flex items-center justify-between mb-1">
-                      <span className="text-xs text-gray-600 font-medium">{name}</span>
-                      <span className="text-xs font-semibold text-gray-900">{formatCurrency(value)}</span>
-                    </div>
-                    <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
-                      <div className="h-full rounded-full transition-all duration-500 bg-blue-500"
-                        style={{ width: `${pct}%` }} />
-                    </div>
-                  </div>
-                );
-              })}
+        {/* Expense breakdown — collapsible */}
+        <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+          <button
+            onClick={() => setExpOpen(o => !o)}
+            className="w-full flex items-center justify-between px-5 py-4 hover:bg-gray-50 transition-colors"
+          >
+            <h2 className="text-sm font-semibold text-gray-900">Harajatlar tafsiloti</h2>
+            {expOpen
+              ? <ChevronUp className="w-4 h-4 text-gray-400" />
+              : <ChevronDown className="w-4 h-4 text-gray-400" />}
+          </button>
+          {expOpen && (
+            <div className="px-5 pb-5 border-t border-gray-100">
+              {loading ? (
+                <div className="space-y-3 pt-4">{Array(4).fill(0).map((_, i) => <Skel key={i} className="h-8 w-full" />)}</div>
+              ) : expBreakdown.length === 0 ? (
+                <div className="h-40 flex items-center justify-center text-sm text-gray-400">Bu davrda harajat yo&apos;q</div>
+              ) : (
+                <div className="space-y-3 pt-4">
+                  {expBreakdown.map(({ key, name, value }) => {
+                    const pct = expTotal > 0 ? (value / expTotal) * 100 : 0;
+                    return (
+                      <div key={key}>
+                        <div className="flex items-center justify-between mb-1">
+                          <span className="text-xs text-gray-600 font-medium">{name}</span>
+                          <span className="text-xs font-semibold text-gray-900">{formatCurrency(value)}</span>
+                        </div>
+                        <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                          <div className="h-full rounded-full transition-all duration-500 bg-blue-500"
+                            style={{ width: `${pct}%` }} />
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
             </div>
           )}
         </div>
 
-        {/* Leads conversion funnel — 4 rows only */}
+        {/* Leads conversion funnel — 4 rows */}
         <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-5">
           <h2 className="text-sm font-semibold text-gray-900 mb-4">Lidlar konversiyasi</h2>
           {loading ? (
@@ -490,10 +544,12 @@ export default function ReportsPage() {
         </div>
       </div>
 
-      {/* ── Section 5: Teacher Salaries ── */}
+      {/* ── Section 5: Teacher Salaries (collapsible, redesigned) ── */}
       <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
-        <button onClick={() => setShowTeachers(t => !t)}
-          className="w-full flex items-center justify-between px-5 py-4 hover:bg-gray-50 transition-colors">
+        <button
+          onClick={() => setSalaryOpen(o => !o)}
+          className="w-full flex items-center justify-between px-5 py-4 hover:bg-gray-50 transition-colors"
+        >
           <h2 className="text-sm font-semibold text-gray-900">O&apos;qituvchilar maoshi</h2>
           <div className="flex items-center gap-2">
             <button
@@ -503,10 +559,13 @@ export default function ReportsPage() {
             >
               {calculating ? 'Hisoblanmoqda...' : 'Hisoblash'}
             </button>
-            {showTeachers ? <ChevronUp className="w-4 h-4 text-gray-400" /> : <ChevronDown className="w-4 h-4 text-gray-400" />}
+            {salaryOpen
+              ? <ChevronUp className="w-4 h-4 text-gray-400" />
+              : <ChevronDown className="w-4 h-4 text-gray-400" />}
           </div>
         </button>
-        {showTeachers && (
+
+        {salaryOpen && (
           loading ? (
             <div className="p-4 space-y-2 border-t border-gray-100">
               {Array(3).fill(0).map((_, i) => <Skel key={i} className="h-10 w-full" />)}
@@ -520,36 +579,49 @@ export default function ReportsPage() {
               <table className="w-full text-sm">
                 <thead>
                   <tr className="bg-gray-50 border-b border-gray-200">
-                    {["O'qituvchi", 'Asosiy', 'KPI', 'Jami', 'Holat', ''].map((h, i) => (
-                      <th key={i} className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">{h}</th>
+                    {['#', "O'qituvchi", 'Telefon', "O'quvchilar", 'Fan', 'Asosiy maosh', 'KPI', 'Jami', 'Holat'].map((h, i) => (
+                      <th key={i} className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap">{h}</th>
                     ))}
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100">
-                  {teacherSals.map(s => (
-                    <tr key={s.id} className="hover:bg-gray-50 transition-colors">
-                      <td className="px-4 py-3 font-medium text-gray-900">{s.teacher_name}</td>
-                      <td className="px-4 py-3 text-gray-600">{formatCurrency(s.base_amount)}</td>
-                      <td className="px-4 py-3 text-gray-600">{formatCurrency(s.kpi_amount)}</td>
-                      <td className="px-4 py-3 font-semibold text-gray-900">{formatCurrency(s.total_amount)}</td>
-                      <td className="px-4 py-3">
-                        {s.paid_at
-                          ? <span className="inline-flex items-center gap-1 px-2 py-0.5 text-xs font-medium bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-full">
-                              <Check className="w-3 h-3" /> To&apos;langan
-                            </span>
-                          : <span className="inline-flex items-center px-2 py-0.5 text-xs font-medium bg-amber-50 text-amber-700 border border-amber-200 rounded-full">
-                              Kutilmoqda
-                            </span>}
+                  {teacherSals.map((s, idx) => (
+                    <tr
+                      key={s.id}
+                      className={cn(
+                        'transition-colors group',
+                        s.paid_at ? 'bg-white hover:bg-gray-50' : 'bg-amber-50/60 hover:bg-amber-50'
+                      )}
+                    >
+                      <td className="px-4 py-3 text-gray-400 text-xs font-medium">{idx + 1}</td>
+                      <td className="px-4 py-3 font-semibold text-gray-900 whitespace-nowrap">{s.teacher_name}</td>
+                      <td className="px-4 py-3 text-gray-500 text-xs font-medium whitespace-nowrap">{s.teacher_phone || '—'}</td>
+                      <td className="px-4 py-3 text-center">
+                        <span className="inline-flex items-center justify-center w-7 h-7 rounded-full bg-blue-50 text-blue-700 text-xs font-bold">
+                          {s.students_count}
+                        </span>
                       </td>
-                      <td className="px-4 py-3">
-                        {!s.paid_at && (
-                          <button
-                            onClick={() => setConfirmSal(s)}
-                            disabled={markingPaid === s.id}
-                            className="text-xs text-blue-600 hover:underline disabled:opacity-50"
-                          >
-                            {markingPaid === s.id ? '...' : 'Tasdiqlash'}
-                          </button>
+                      <td className="px-4 py-3 text-gray-600 text-xs font-medium">{s.teacher_subject || '—'}</td>
+                      <td className="px-4 py-3 text-gray-700 font-medium">{formatCurrency(s.base_amount)}</td>
+                      <td className="px-4 py-3 text-gray-700 font-medium">{formatCurrency(s.kpi_amount)}</td>
+                      <td className="px-4 py-3 font-bold text-gray-900">{formatCurrency(s.total_amount)}</td>
+                      {/* Holat: hover transforms To'lanmagan → To'lash */}
+                      <td className="px-4 py-3 min-w-[110px]">
+                        {s.paid_at ? (
+                          <span className="text-emerald-600 font-medium text-xs">To&apos;langan ✓</span>
+                        ) : (
+                          <span className="relative inline-block">
+                            <span className="group-hover:hidden text-amber-500 font-medium text-xs">
+                              To&apos;lanmagan
+                            </span>
+                            <button
+                              className="hidden group-hover:inline-flex items-center px-2.5 py-1 bg-emerald-500 text-white text-xs font-semibold rounded-lg hover:bg-emerald-600 transition-colors disabled:opacity-50"
+                              onClick={() => setConfirmSal(s)}
+                              disabled={markingPaid === s.id}
+                            >
+                              {markingPaid === s.id ? '...' : "To'lash"}
+                            </button>
+                          </span>
                         )}
                       </td>
                     </tr>
@@ -561,7 +633,7 @@ export default function ReportsPage() {
         )}
       </div>
 
-      {/* ── Section 6: All Expenses (teacher salaries grouped) ── */}
+      {/* ── Section 6: Expenses (numbered, no source, teacher salary grouped) ── */}
       <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
         <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
           <h2 className="text-sm font-semibold text-gray-900">Harajatlar</h2>
@@ -579,16 +651,17 @@ export default function ReportsPage() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="bg-gray-50 border-b border-gray-200">
-                  {['Kategoriya', 'Tavsif', 'Sana', 'Manba', 'Summa', ''].map((h, i) => (
+                  {['#', 'Kategoriya', 'Miqdor', 'Sana', 'Izoh', ''].map((h, i) => (
                     <th key={i} className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">{h}</th>
                   ))}
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
-                {displayExpenses.map(e => {
+                {displayExpenses.map((e, idx) => {
                   const isGrouped = e.id === '__teacher_sal__';
                   return (
                     <tr key={e.id} className="hover:bg-gray-50 transition-colors">
+                      <td className="px-4 py-3 text-gray-400 text-xs font-medium">{idx + 1}</td>
                       <td className="px-4 py-3">
                         <span className={cn(
                           'inline-flex items-center gap-1.5 px-2 py-0.5 text-xs font-medium rounded-full',
@@ -598,16 +671,9 @@ export default function ReportsPage() {
                           {EXPENSE_LABELS[e.category] ?? e.category}
                         </span>
                       </td>
-                      <td className="px-4 py-3 text-gray-600 max-w-48 truncate">{e.description || '—'}</td>
-                      <td className="px-4 py-3 text-gray-500 text-xs">{e.expense_date || '—'}</td>
-                      <td className="px-4 py-3">
-                        {isGrouped
-                          ? <span className="text-xs text-blue-500 bg-blue-50 px-1.5 py-0.5 rounded">avto</span>
-                          : e.source === 'auto'
-                            ? <span className="text-xs text-blue-500 bg-blue-50 px-1.5 py-0.5 rounded">avto</span>
-                            : <span className="text-xs text-gray-400 bg-gray-50 px-1.5 py-0.5 rounded">qo&apos;l</span>}
-                      </td>
                       <td className="px-4 py-3 font-semibold text-red-600">−{formatCurrency(e.amount)}</td>
+                      <td className="px-4 py-3 text-gray-500 text-xs">{e.expense_date || '—'}</td>
+                      <td className="px-4 py-3 text-gray-600 max-w-48 truncate text-xs">{e.description || '—'}</td>
                       <td className="px-4 py-3">
                         {!isGrouped && e.source !== 'auto' && (
                           <button onClick={() => openEditExp(e)} className="text-xs text-blue-600 hover:underline">
@@ -624,7 +690,7 @@ export default function ReportsPage() {
         )}
       </div>
 
-      {/* ── Section 7: Churn Table (full width) ── */}
+      {/* ── Section 7: Churn Table ── */}
       <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
         <div className="flex items-center gap-2 px-5 py-4 border-b border-gray-100">
           <UserMinus className="w-4 h-4 text-red-500 shrink-0" />
@@ -644,7 +710,7 @@ export default function ReportsPage() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="bg-gray-50 border-b border-gray-200">
-                  {['#', "O'quvchi", 'Telefon', 'Guruh', 'Kurs', 'Arxivlangan sana'].map((h, i) => (
+                  {['#', "O'quvchi", 'Telefon', 'Ota-ona tel', 'Guruh', 'Kurs', 'Arxivlangan sana'].map((h, i) => (
                     <th key={i} className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">{h}</th>
                   ))}
                 </tr>
@@ -655,6 +721,7 @@ export default function ReportsPage() {
                     <td className="px-4 py-3 text-gray-400 text-xs font-medium">{idx + 1}</td>
                     <td className="px-4 py-3 font-semibold text-gray-900 text-sm">{s.first_name} {s.last_name}</td>
                     <td className="px-4 py-3 text-gray-600 text-sm font-medium">{s.phone || '—'}</td>
+                    <td className="px-4 py-3 text-gray-500 text-sm font-medium">{s.second_phone || '—'}</td>
                     <td className="px-4 py-3 text-gray-600 text-sm font-medium">{s.last_group || '—'}</td>
                     <td className="px-4 py-3 text-gray-500 text-sm font-medium">{s.course_name || '—'}</td>
                     <td className="px-4 py-3 text-gray-500 text-sm font-medium">
@@ -683,10 +750,8 @@ export default function ReportsPage() {
                 {' '}so&apos;m maosh berilganini tasdiqlaysizmi?
               </p>
               <div className="flex gap-3">
-                <button
-                  onClick={() => setConfirmSal(null)}
-                  className="flex-1 px-4 py-2 border border-gray-300 text-sm font-medium rounded-lg hover:bg-gray-50 transition-colors"
-                >
+                <button onClick={() => setConfirmSal(null)}
+                  className="flex-1 px-4 py-2 border border-gray-300 text-sm font-medium rounded-lg hover:bg-gray-50 transition-colors">
                   Bekor qilish
                 </button>
                 <button
@@ -718,22 +783,19 @@ export default function ReportsPage() {
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Summa</label>
-              <input type="number" value={expForm.amount}
-                onChange={e => setExpForm({ ...expForm, amount: e.target.value })}
+              <input type="number" value={expForm.amount} onChange={e => setExpForm({ ...expForm, amount: e.target.value })}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none"
                 placeholder="0" required />
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Tavsif</label>
-              <input type="text" value={expForm.description}
-                onChange={e => setExpForm({ ...expForm, description: e.target.value })}
+              <input type="text" value={expForm.description} onChange={e => setExpForm({ ...expForm, description: e.target.value })}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none"
                 placeholder="Harajat haqida..." />
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Sana</label>
-              <input type="date" value={expForm.expense_date}
-                onChange={e => setExpForm({ ...expForm, expense_date: e.target.value })}
+              <input type="date" value={expForm.expense_date} onChange={e => setExpForm({ ...expForm, expense_date: e.target.value })}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none"
                 required />
             </div>

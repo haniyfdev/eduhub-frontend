@@ -18,12 +18,23 @@ import { cn, formatCurrency } from '@/lib/utils';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
+interface ExpenseRow {
+  id: string | null;
+  category: string;
+  amount: number;
+  date: string | null;
+  note: string | null;
+  source: string;
+}
+
 interface PnLData {
   from_date: string; to_date: string;
   income: { total: number };
   expenses: {
     total: number; teacher_salaries: number; staff_salaries: number;
-    rent: number; utility: number; other: number;
+    rent: number; utility: number; tax: number; fine: number;
+    discount: number; other: number;
+    breakdown: ExpenseRow[];
   };
   net_profit: number; net_profit_percent: number; expense_percent: number;
   stats: {
@@ -43,10 +54,6 @@ interface ConversionStats {
 }
 interface ReferralItem { source: string; label: string; count: number; percent: number; }
 interface ReferralData { total: number; data: ReferralItem[]; }
-interface Expense {
-  id: string; category: string; amount: number;
-  description: string; expense_date: string; source: string;
-}
 interface ArchivedStudent {
   id: string; first_name: string; last_name: string;
   phone: string; second_phone: string | null;
@@ -67,13 +74,14 @@ const EXPENSE_PIE_COLORS: Record<string, string> = {
   utility:        '#10B981',
   tax:            '#EF4444',
   fine:           '#F97316',
+  discount:       '#EC4899',
   other:          '#6B7280',
 };
 const EXPENSE_LABELS: Record<string, string> = {
   rent: 'Ijara', utility: 'Kommunal', tax: 'Soliq', fine: 'Jarima',
   discount: 'Chegirma', teacher_salary: "O'qituvchi maoshi", staff_salary: 'Xodim maoshi', other: 'Boshqa',
 };
-const MANUAL_CATS = ['rent', 'utility', 'tax', 'fine', 'staff_salary', 'other'];
+const MANUAL_CATS = ['rent', 'utility', 'tax', 'fine', 'discount', 'staff_salary', 'other'];
 const MONTH_LABELS = ['Yan','Fev','Mar','Apr','May','Iyn','Iyl','Avg','Sen','Okt','Noy','Dek'];
 
 function todayStr()      { return new Date().toISOString().slice(0, 10); }
@@ -135,17 +143,14 @@ export default function ReportsPage() {
   const [debt,         setDebt]         = useState<DebtForecast | null>(null);
   const [conversion,   setConversion]   = useState<ConversionStats | null>(null);
   const [referral,     setReferral]     = useState<ReferralData | null>(null);
-  const [expenses,     setExpenses]     = useState<Expense[]>([]);
   const [churn,        setChurn]        = useState<ArchivedStudent[]>([]);
 
-  // Collapsible sections
   const [activePreset, setActivePreset] = useState<'current_month' | 'current_year' | 'custom'>('current_month');
-  const [expOpen, setExpOpen] = useState(false);
   const [churnOpen, setChurnOpen] = useState(false);
 
   // Expense modal
   const [showExpModal, setShowExpModal] = useState(false);
-  const [editingExp,   setEditingExp]   = useState<Expense | null>(null);
+  const [editingExp,   setEditingExp]   = useState<ExpenseRow | null>(null);
   const [expForm,      setExpForm]      = useState({
     category: 'rent', amount: '', description: '', expense_date: todayStr(),
   });
@@ -163,18 +168,16 @@ export default function ReportsPage() {
       api.get(`/api/v1/profit-loss/debt-forecast/`),
       api.get(`/api/v1/leads/conversion-stats/`),
       api.get(`/api/v1/leads/referral-stats/`),
-      api.get(`/api/v1/expenses/?${q}`),
       api.get(`/api/v1/students/?status=archived&archive_reason=dropped_out&${q}`),
     ]);
 
-    const [pnlR, histR, courseR, debtR, convR, refR, expR, churnR] = results;
+    const [pnlR, histR, courseR, debtR, convR, refR, churnR] = results;
     if (pnlR.status    === 'fulfilled') setPnl(pnlR.value.data);
     if (histR.status   === 'fulfilled') setHistory(histR.value.data);
     if (courseR.status === 'fulfilled') setCourseIncome(courseR.value.data);
     if (debtR.status   === 'fulfilled') setDebt(debtR.value.data);
     if (convR.status   === 'fulfilled') setConversion(convR.value.data);
     if (refR.status    === 'fulfilled') setReferral(refR.value.data);
-    if (expR.status    === 'fulfilled') setExpenses(expR.value.data.results ?? expR.value.data);
     if (churnR.status  === 'fulfilled') setChurn(churnR.value.data.results ?? churnR.value.data);
 
     setLoading(false);
@@ -189,9 +192,14 @@ export default function ReportsPage() {
     setExpForm({ category: 'rent', amount: '', description: '', expense_date: todayStr() });
     setShowExpModal(true);
   }
-  function openEditExp(e: Expense) {
+  function openEditExp(e: ExpenseRow) {
     setEditingExp(e);
-    setExpForm({ category: e.category, amount: String(e.amount), description: e.description, expense_date: e.expense_date });
+    setExpForm({
+      category: e.category,
+      amount: String(e.amount),
+      description: e.note ?? '',
+      expense_date: e.date ?? todayStr(),
+    });
     setShowExpModal(true);
   }
   async function handleSaveExp(ev: React.FormEvent) {
@@ -203,7 +211,7 @@ export default function ReportsPage() {
         category: expForm.category, amount: parseFloat(expForm.amount),
         description: expForm.description || '', expense_date: expForm.expense_date,
       };
-      if (editingExp) {
+      if (editingExp?.id) {
         await api.patch(`/api/v1/expenses/${editingExp.id}/`, body);
         toast.success('Yangilandi');
       } else {
@@ -228,15 +236,20 @@ export default function ReportsPage() {
 
   const expBreakdown = useMemo(() => {
     if (!pnl?.expenses) return [];
-    const { teacher_salaries, staff_salaries, rent, utility, other } = pnl.expenses;
+    const { teacher_salaries, staff_salaries, rent, utility, tax, fine, discount, other } = pnl.expenses;
     return [
-      { key: 'teacher_salary', name: "O'qituvchi maoshi",  value: Number(teacher_salaries) },
-      { key: 'staff_salary',   name: 'Xodim maoshi', value: Number(staff_salaries) },
-      { key: 'rent',           name: 'Ijara',         value: Number(rent) },
-      { key: 'utility',        name: 'Kommunal',      value: Number(utility) },
-      { key: 'other',          name: 'Boshqa',        value: Number(other) },
+      { key: 'teacher_salary', name: "O'qituvchi maoshi", value: Number(teacher_salaries) },
+      { key: 'staff_salary',   name: 'Xodim maoshi',       value: Number(staff_salaries) },
+      { key: 'rent',           name: 'Ijara',               value: Number(rent) },
+      { key: 'utility',        name: 'Kommunal',            value: Number(utility) },
+      { key: 'tax',            name: 'Soliq',               value: Number(tax) },
+      { key: 'fine',           name: 'Jarima',              value: Number(fine) },
+      { key: 'discount',       name: 'Chegirma',            value: Number(discount) },
+      { key: 'other',          name: 'Boshqa',              value: Number(other) },
     ].filter(d => d.value > 0).sort((a, b) => b.value - a.value);
   }, [pnl]);
+
+  const displayExpenses = useMemo(() => pnl?.expenses?.breakdown ?? [], [pnl]);
 
   const trendData = history.map(h => ({
     period: shortMonth(h.month),
@@ -251,21 +264,6 @@ export default function ReportsPage() {
     { label: 'Muzlatilgan',           value: conversion.frozen.count,  percent: conversion.frozen.percent,  color: '#06B6D4' },
     { label: 'Rad etdi',              value: conversion.ignored.count, percent: conversion.ignored.percent, color: '#EF4444' },
   ] : [];
-
-  // Expenses: teacher_salary row uses paid_amount from P&L (not auto-expense total_amount)
-  const displayExpenses = useMemo(() => {
-    const teacherPaid = Number(pnl?.expenses?.teacher_salaries ?? 0);
-    const others = expenses.filter(e => e.category !== 'teacher_salary');
-    if (teacherPaid > 0) {
-      const grouped: Expense = {
-        id: '__teacher_sal__', category: 'teacher_salary',
-        amount: teacherPaid, description: "O'qituvchilar maoshi",
-        expense_date: '', source: 'auto',
-      };
-      return [grouped, ...others];
-    }
-    return others;
-  }, [expenses, pnl]);
 
   const debtPct = (income + debtAmt) > 0 ? (debtAmt / (income + debtAmt)) * 100 : 0;
   const debtPctColor = debtPct > 10 ? 'text-red-500' : debtPct >= 5 ? 'text-orange-500' : 'text-green-500';
@@ -416,11 +414,11 @@ export default function ReportsPage() {
             </div>
           ) : (
             <div className="flex items-center gap-8 min-h-[260px]">
-              <div className="shrink-0" style={{ width: 280, height: 260 }}>
+              <div className="shrink-0" style={{ width: 240, height: 260 }}>
                 <ResponsiveContainer width="100%" height="100%">
                   <PieChart>
                     <Pie data={courseIncome} dataKey="amount" nameKey="course"
-                      cx="50%" cy="50%" outerRadius={110} innerRadius={52}>
+                      cx="50%" cy="50%" outerRadius={110} innerRadius={50}>
                       {courseIncome.map((_, i) => (
                         <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />
                       ))}
@@ -435,7 +433,7 @@ export default function ReportsPage() {
                   const pct = income > 0 ? (Number(c.amount) / income * 100).toFixed(1) : '0';
                   return (
                     <div key={i} className="flex items-center gap-2.5 text-sm">
-                      <span className="w-3 h-3 rounded-full shrink-0"
+                      <span className="w-2.5 h-2.5 rounded-full shrink-0"
                         style={{ background: PIE_COLORS[i % PIE_COLORS.length] }} />
                       <span className="text-gray-700 truncate flex-1">{c.course}</span>
                       <span className="shrink-0 font-semibold text-gray-500 text-xs">{pct}%</span>
@@ -489,60 +487,21 @@ export default function ReportsPage() {
         )}
       </div>
 
-      {/* ── Section 5: Expense Breakdown + Referral Chart ── */}
+      {/* ── Section 5: Referral Pie + Expense Breakdown Pie ── */}
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
-        {/* LEFT: Harajatlar tafsiloti (collapsible) */}
-        <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
-          <button
-            onClick={() => setExpOpen(o => !o)}
-            className="w-full flex items-center justify-between px-5 py-4 hover:bg-gray-50 transition-colors"
-          >
-            <h2 className="text-sm font-semibold text-gray-900">Harajatlar tafsiloti</h2>
-            {expOpen
-              ? <ChevronUp className="w-4 h-4 text-gray-400" />
-              : <ChevronDown className="w-4 h-4 text-gray-400" />}
-          </button>
-          {expOpen && (
-            <div className="px-5 pb-5 border-t border-gray-100">
-              {loading ? (
-                <div className="space-y-3 pt-4">{Array(4).fill(0).map((_, i) => <Skel key={i} className="h-8 w-full" />)}</div>
-              ) : expBreakdown.length === 0 ? (
-                <div className="h-40 flex items-center justify-center text-sm text-gray-400">Bu davrda harajat yo&apos;q</div>
-              ) : (
-                <div className="space-y-3 pt-4">
-                  {expBreakdown.map(({ key, name, value }) => {
-                    const pct = expTotal > 0 ? (value / expTotal) * 100 : 0;
-                    return (
-                      <div key={key}>
-                        <div className="flex items-center justify-between mb-1">
-                          <span className="text-xs text-gray-600 font-medium">{name}</span>
-                          <span className="text-xs font-semibold text-gray-900">{formatCurrency(value)}</span>
-                        </div>
-                        <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
-                          <div className="h-full rounded-full transition-all duration-500 bg-blue-500"
-                            style={{ width: `${pct}%` }} />
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
-          )}
-        </div>
 
-        {/* RIGHT: Qayerdan kelishdi? (referral pie) */}
+        {/* LEFT: Qayerdan kelishdi? */}
         <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-5">
           <h2 className="text-sm font-semibold text-gray-900 mb-4">Qayerdan kelishdi?</h2>
-          {loading ? <Skel className="h-48 w-full" /> : !referral || referral.data.length === 0 ? (
-            <div className="h-48 flex items-center justify-center text-sm text-gray-400">Ma&apos;lumot yo&apos;q</div>
+          {loading ? <Skel className="h-60 w-full" /> : !referral || referral.data.length === 0 ? (
+            <div className="h-60 flex items-center justify-center text-sm text-gray-400">Ma&apos;lumot yo&apos;q</div>
           ) : (
-            <div className="flex items-center gap-6 min-h-[200px]">
-              <div className="shrink-0" style={{ width: 200, height: 200 }}>
+            <div className="flex items-center gap-8 min-h-[240px]">
+              <div className="shrink-0" style={{ width: 240, height: 240 }}>
                 <ResponsiveContainer width="100%" height="100%">
                   <PieChart>
                     <Pie data={referral.data} dataKey="count" nameKey="label"
-                      cx="50%" cy="50%" outerRadius={90} innerRadius={42}>
+                      cx="50%" cy="50%" outerRadius={110} innerRadius={50}>
                       {referral.data.map((item, i) => (
                         <Cell key={i} fill={REFERRAL_COLORS[item.source] ?? '#6B7280'} />
                       ))}
@@ -564,30 +523,25 @@ export default function ReportsPage() {
                       style={{ background: REFERRAL_COLORS[item.source] ?? '#6B7280' }} />
                     <span className="text-xs text-gray-700 flex-1 truncate">{item.label}</span>
                     <span className="text-xs font-semibold text-gray-500 shrink-0">{item.percent}%</span>
-                    <span className="text-xs text-gray-400 shrink-0">({item.count} ta)</span>
                   </div>
                 ))}
               </div>
             </div>
           )}
         </div>
-      </div>
 
-      {/* ── Section 6: Expenses — pie (left) + table (right) ── */}
-      <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
-
-        {/* LEFT: Expense Pie Chart */}
+        {/* RIGHT: Harajatlar taqsimoti */}
         <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-5">
           <h2 className="text-sm font-semibold text-gray-900 mb-4">Harajatlar taqsimoti</h2>
           {loading ? <Skel className="h-60 w-full" /> : expBreakdown.length === 0 ? (
             <div className="h-60 flex items-center justify-center text-sm text-gray-400">Bu davrda harajat yo&apos;q</div>
           ) : (
-            <div className="flex items-center gap-6 min-h-[240px]">
-              <div className="shrink-0" style={{ width: 200, height: 240 }}>
+            <div className="flex items-center gap-8 min-h-[240px]">
+              <div className="shrink-0" style={{ width: 240, height: 240 }}>
                 <ResponsiveContainer width="100%" height="100%">
                   <PieChart>
                     <Pie data={expBreakdown} dataKey="value" nameKey="name"
-                      cx="50%" cy="50%" outerRadius={95} innerRadius={45}>
+                      cx="50%" cy="50%" outerRadius={110} innerRadius={50}>
                       {expBreakdown.map((item, i) => (
                         <Cell key={i} fill={EXPENSE_PIE_COLORS[item.key] ?? '#6B7280'} />
                       ))}
@@ -611,7 +565,6 @@ export default function ReportsPage() {
                         style={{ background: EXPENSE_PIE_COLORS[item.key] ?? '#6B7280' }} />
                       <span className="text-xs text-gray-700 flex-1 truncate">{item.name}</span>
                       <span className="text-xs font-semibold text-gray-500 shrink-0">{pct}%</span>
-                      <span className="text-xs text-gray-400 shrink-0">{formatCurrency(item.value)}</span>
                     </div>
                   );
                 })}
@@ -619,63 +572,64 @@ export default function ReportsPage() {
             </div>
           )}
         </div>
+      </div>
 
-        {/* RIGHT: Expenses Table */}
-        <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
-          <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
-            <h2 className="text-sm font-semibold text-gray-900">Harajatlar</h2>
-            <button onClick={openAddExp}
-              className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 text-white text-xs font-medium rounded-lg hover:bg-blue-700 transition-colors">
-              <Plus className="w-3.5 h-3.5" /> Qo&apos;shish
-            </button>
-          </div>
-          {loading ? (
-            <div className="p-4 space-y-2">{Array(4).fill(0).map((_, i) => <Skel key={i} className="h-10 w-full" />)}</div>
-          ) : displayExpenses.length === 0 ? (
-            <p className="px-5 py-8 text-sm text-gray-400 text-center">Bu davrda harajat yo&apos;q</p>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="bg-gray-50 border-b border-gray-200">
-                    {['№', 'Kategoriya', 'Miqdor', 'Sana', ''].map((h, i) => (
-                      <th key={i} className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">{h}</th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-100">
-                  {displayExpenses.map((e, idx) => {
-                    const isGrouped = e.id === '__teacher_sal__';
-                    return (
-                      <tr key={e.id} className="hover:bg-gray-50 transition-colors">
-                        <td className="px-4 py-3 text-gray-400 text-xs font-medium">{idx + 1}</td>
-                        <td className="px-4 py-3">
-                          <span className={cn(
-                            'inline-flex items-center gap-1.5 px-2 py-0.5 text-xs font-medium rounded-full',
-                            isGrouped ? 'bg-blue-50 text-blue-700' : 'bg-gray-100 text-gray-700'
-                          )}>
-                            {isGrouped && <GraduationCap className="w-3 h-3" />}
-                            {EXPENSE_LABELS[e.category] ?? e.category}
-                          </span>
-                        </td>
-                        <td className="px-4 py-3 font-semibold text-red-600">−{formatCurrency(e.amount)}</td>
-                        <td className="px-4 py-3 text-gray-500 text-xs">{e.expense_date || '—'}</td>
-                        <td className="px-4 py-3">
-                          {!isGrouped && e.source !== 'auto' && (
-                            <button onClick={() => openEditExp(e)}
-                              className="text-gray-400 hover:text-blue-600 transition-colors">
-                              <PencilLine className="w-4 h-4" />
-                            </button>
-                          )}
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-          )}
+      {/* ── Section 6: Expenses Table (full-width) ── */}
+      <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+        <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
+          <h2 className="text-sm font-semibold text-gray-900">Harajatlar</h2>
+          <button onClick={openAddExp}
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 text-white text-xs font-medium rounded-lg hover:bg-blue-700 transition-colors">
+            <Plus className="w-3.5 h-3.5" /> Qo&apos;shish
+          </button>
         </div>
+        {loading ? (
+          <div className="p-4 space-y-2">{Array(4).fill(0).map((_, i) => <Skel key={i} className="h-10 w-full" />)}</div>
+        ) : displayExpenses.length === 0 ? (
+          <p className="px-5 py-8 text-sm text-gray-400 text-center">Bu davrda harajat yo&apos;q</p>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="bg-gray-50 border-b border-gray-200">
+                  {['№', 'Kategoriya', 'Miqdor', 'Sana', 'Izoh', ''].map((h, i) => (
+                    <th key={i} className={cn(
+                      'text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide',
+                      i === 4 && 'w-1/3',
+                    )}>{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-100">
+                {displayExpenses.map((e, idx) => (
+                  <tr key={e.id ?? idx} className="hover:bg-gray-50 transition-colors">
+                    <td className="px-4 py-3 text-gray-400 text-xs font-medium align-top">{idx + 1}</td>
+                    <td className="px-4 py-3 align-top">
+                      <span className={cn(
+                        'inline-flex items-center gap-1.5 px-2 py-0.5 text-xs font-medium rounded-full',
+                        e.source === 'auto' ? 'bg-blue-50 text-blue-700' : 'bg-gray-100 text-gray-700'
+                      )}>
+                        {e.source === 'auto' && e.category === 'teacher_salary' && <GraduationCap className="w-3 h-3" />}
+                        {EXPENSE_LABELS[e.category] ?? e.category}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3 font-semibold text-red-600 align-top whitespace-nowrap">−{formatCurrency(e.amount)}</td>
+                    <td className="px-4 py-3 text-gray-500 text-xs align-top whitespace-nowrap">{e.date || '—'}</td>
+                    <td className="px-4 py-3 text-gray-600 text-xs align-top w-1/3 break-words">{e.note || '—'}</td>
+                    <td className="px-4 py-3 align-top">
+                      {e.source !== 'auto' && e.id && (
+                        <button onClick={() => openEditExp(e)}
+                          className="text-gray-400 hover:text-blue-600 transition-colors">
+                          <PencilLine className="w-4 h-4" />
+                        </button>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
 
       {/* ── Section 7: Churn Table ── */}
@@ -759,9 +713,9 @@ export default function ReportsPage() {
                 placeholder="0" required />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Tavsif</label>
-              <input type="text" value={expForm.description} onChange={e => setExpForm({ ...expForm, description: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+              <label className="block text-sm font-medium text-gray-700 mb-1">Izoh</label>
+              <textarea rows={3} value={expForm.description} onChange={e => setExpForm({ ...expForm, description: e.target.value })}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none resize-none"
                 placeholder="Harajat haqida..." />
             </div>
             <div>

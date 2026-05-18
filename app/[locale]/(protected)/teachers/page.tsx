@@ -1,13 +1,14 @@
 'use client';
 
 import { useEffect, useState, useCallback, useRef } from 'react';
-import { Plus, Search, Minus, Eye, EyeOff } from 'lucide-react';
+import { Plus, Search, Minus, Eye, EyeOff, Banknote, Percent, Users } from 'lucide-react';
 import toast, { Toaster } from 'react-hot-toast';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Pagination } from '@/components/pagination';
 import api from '@/lib/axios';
-import { cn, formatPhone, formatDMY } from '@/lib/utils';
+import { cn, formatPhone, formatDMY, formatCurrency } from '@/lib/utils';
 import { PaginatedResponse } from '@/types';
 
 interface Teacher {
@@ -18,6 +19,9 @@ interface Teacher {
   subject: string;
   birth_date: string | null;
   salary_type: 'fixed' | 'percent' | 'per_student';
+  fixed_amount: number | null;
+  salary_percent: number | null;
+  per_student_amt: number | null;
   hired_at: string;
   status: 'active' | 'archived';
 }
@@ -265,9 +269,37 @@ export default function TeachersPage() {
                       <td className="px-4 py-3 text-gray-500">{formatPhone(t.phone)}</td>
                       <td className="px-4 py-3 text-gray-600">{t.subject || '—'}</td>
                       <td className="px-4 py-3">
-                        <span className={cn('inline-flex items-center px-2 py-0.5 text-xs font-medium border rounded', SALARY_STYLES[t.salary_type])}>
-                          {SALARY_LABELS[t.salary_type]}
-                        </span>
+                        <Popover>
+                          <PopoverTrigger asChild>
+                            <button className={cn('inline-flex items-center gap-1 px-2 py-0.5 text-xs font-medium border rounded cursor-pointer hover:opacity-80 transition-opacity', SALARY_STYLES[t.salary_type])}>
+                              {t.salary_type === 'fixed'       && <Banknote className="w-3 h-3" />}
+                              {t.salary_type === 'percent'     && <Percent   className="w-3 h-3" />}
+                              {t.salary_type === 'per_student' && <Users     className="w-3 h-3" />}
+                              {SALARY_LABELS[t.salary_type]}
+                            </button>
+                          </PopoverTrigger>
+                          <PopoverContent className="w-56 p-3" side="right" align="start">
+                            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Maosh tafsiloti</p>
+                            {t.salary_type === 'fixed' && (
+                              <div className="flex justify-between items-center text-sm">
+                                <span className="text-gray-600">Belgilangan:</span>
+                                <span className="font-medium text-gray-900">{formatCurrency(t.fixed_amount ?? 0)}</span>
+                              </div>
+                            )}
+                            {t.salary_type === 'percent' && (
+                              <div className="flex justify-between items-center text-sm">
+                                <span className="text-gray-600">Foiz:</span>
+                                <span className="font-medium text-gray-900">{t.salary_percent ?? 0}%</span>
+                              </div>
+                            )}
+                            {t.salary_type === 'per_student' && (
+                              <div className="flex justify-between items-center text-sm">
+                                <span className="text-gray-600">O&apos;quvchi boshiga:</span>
+                                <span className="font-medium text-gray-900">{formatCurrency(t.per_student_amt ?? 0)}</span>
+                              </div>
+                            )}
+                          </PopoverContent>
+                        </Popover>
                       </td>
                       <td className="px-4 py-3 text-gray-500 text-xs">{formatDMY(t.birth_date)}</td>
                       <td className="px-4 py-3 text-gray-500 text-xs">{formatDMY(t.hired_at)}</td>

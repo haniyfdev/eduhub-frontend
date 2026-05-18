@@ -468,7 +468,7 @@ export default function SalariesPage() {
           <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
             <button onClick={() => setStaffOpen(o => !o)}
               className="w-full flex items-center justify-between px-5 py-4 hover:bg-gray-50 transition-colors">
-              <span className="text-sm font-semibold text-gray-900">Xodimlar ro&apos;yxati</span>
+              <span className="text-sm font-semibold text-gray-900">Xodimlar jadvali</span>
               <div className="flex items-center gap-2">
                 <button onClick={e => { e.stopPropagation(); setShowAddStaff(true); }}
                   className="flex items-center gap-1.5 text-xs px-2.5 py-1 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
@@ -534,7 +534,7 @@ export default function SalariesPage() {
           {/* Salary table */}
           <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
             <div className="px-5 py-4 border-b border-gray-100">
-              <h2 className="text-sm font-semibold text-gray-900">Maosh jadvali</h2>
+              <h2 className="text-sm font-semibold text-gray-900">O&apos;qituvchi jadvali</h2>
             </div>
             {loadingSals ? (
               <div className="p-4 space-y-2">{Array(5).fill(0).map((_, i) => <Skel key={i} />)}</div>

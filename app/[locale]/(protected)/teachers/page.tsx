@@ -276,24 +276,24 @@ export default function TeachersPage() {
                             {t.salary_type === 'per_student' && <Users     className="w-3 h-3" />}
                             {SALARY_LABELS[t.salary_type]}
                           </PopoverTrigger>
-                          <PopoverContent className="w-56 p-3" side="right" align="start">
-                            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Maosh tafsiloti</p>
+                          <PopoverContent className="w-56 p-3 bg-blue-600 text-white shadow-xl" side="right" align="start">
+                            <p className="text-xs font-semibold text-white/70 uppercase tracking-wide mb-2">Maosh tafsiloti</p>
                             {t.salary_type === 'fixed' && (
-                              <div className="flex justify-between items-center text-sm">
-                                <span className="text-gray-600">Belgilangan:</span>
-                                <span className="font-medium text-gray-900">{formatCurrency(t.fixed_amount ?? 0)}</span>
+                              <div className="flex justify-between items-center">
+                                <span className="text-sm text-white/80">Belgilangan:</span>
+                                <span className="text-base font-bold text-white">{formatCurrency(t.fixed_amount ?? 0)}</span>
                               </div>
                             )}
                             {t.salary_type === 'percent' && (
-                              <div className="flex justify-between items-center text-sm">
-                                <span className="text-gray-600">Foiz:</span>
-                                <span className="font-medium text-gray-900">{t.salary_percent ?? 0}%</span>
+                              <div className="flex justify-between items-center">
+                                <span className="text-sm text-white/80">Foiz:</span>
+                                <span className="text-base font-bold text-white">{t.salary_percent ?? 0}%</span>
                               </div>
                             )}
                             {t.salary_type === 'per_student' && (
-                              <div className="flex justify-between items-center text-sm">
-                                <span className="text-gray-600">O&apos;quvchi boshiga:</span>
-                                <span className="font-medium text-gray-900">{formatCurrency(t.per_student_amt ?? 0)}</span>
+                              <div className="flex justify-between items-center">
+                                <span className="text-sm text-white/80">O&apos;quvchi boshiga:</span>
+                                <span className="text-base font-bold text-white">{formatCurrency(t.per_student_amt ?? 0)}</span>
                               </div>
                             )}
                           </PopoverContent>

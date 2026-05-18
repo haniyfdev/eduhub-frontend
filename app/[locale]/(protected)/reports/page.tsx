@@ -8,7 +8,7 @@ import {
 import {
   TrendingUp, TrendingDown, DollarSign, AlertTriangle,
   Users, GraduationCap, Users2, Lightbulb, AlertCircle,
-  ChevronDown, ChevronUp, Plus, UserMinus,
+  ChevronDown, ChevronUp, Plus, UserMinus, PencilLine,
 } from 'lucide-react';
 import toast, { Toaster } from 'react-hot-toast';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -59,6 +59,15 @@ const PIE_COLORS = ['#6366f1','#8b5cf6','#ec4899','#3b82f6','#10b981','#f59e0b',
 const REFERRAL_COLORS: Record<string, string> = {
   banner: '#F59E0B', friend: '#3B82F6', parent: '#10B981',
   social_media: '#8B5CF6', other: '#6B7280',
+};
+const EXPENSE_PIE_COLORS: Record<string, string> = {
+  teacher_salary: '#3B82F6',
+  staff_salary:   '#8B5CF6',
+  rent:           '#F59E0B',
+  utility:        '#10B981',
+  tax:            '#EF4444',
+  fine:           '#F97316',
+  other:          '#6B7280',
 };
 const EXPENSE_LABELS: Record<string, string> = {
   rent: 'Ijara', utility: 'Kommunal', tax: 'Soliq', fine: 'Jarima',
@@ -221,7 +230,7 @@ export default function ReportsPage() {
     if (!pnl?.expenses) return [];
     const { teacher_salaries, staff_salaries, rent, utility, other } = pnl.expenses;
     return [
-      { key: 'teacher_salary', name: "O'q. maoshi",  value: Number(teacher_salaries) },
+      { key: 'teacher_salary', name: "O'qituvchi maoshi",  value: Number(teacher_salaries) },
       { key: 'staff_salary',   name: 'Xodim maoshi', value: Number(staff_salaries) },
       { key: 'rent',           name: 'Ijara',         value: Number(rent) },
       { key: 'utility',        name: 'Kommunal',      value: Number(utility) },
@@ -243,22 +252,20 @@ export default function ReportsPage() {
     { label: 'Rad etdi',              value: conversion.ignored.count, percent: conversion.ignored.percent, color: '#EF4444' },
   ] : [];
 
-  // Expenses: teacher_salary grouped into one row
+  // Expenses: teacher_salary row uses paid_amount from P&L (not auto-expense total_amount)
   const displayExpenses = useMemo(() => {
-    const teacherTotal = expenses
-      .filter(e => e.category === 'teacher_salary')
-      .reduce((s, e) => s + Number(e.amount), 0);
+    const teacherPaid = Number(pnl?.expenses?.teacher_salaries ?? 0);
     const others = expenses.filter(e => e.category !== 'teacher_salary');
-    if (teacherTotal > 0) {
+    if (teacherPaid > 0) {
       const grouped: Expense = {
         id: '__teacher_sal__', category: 'teacher_salary',
-        amount: teacherTotal, description: "O'qituvchilar maoshi",
+        amount: teacherPaid, description: "O'qituvchilar maoshi",
         expense_date: '', source: 'auto',
       };
       return [grouped, ...others];
     }
     return others;
-  }, [expenses]);
+  }, [expenses, pnl]);
 
   const debtPct = (income + debtAmt) > 0 ? (debtAmt / (income + debtAmt)) * 100 : 0;
   const debtPctColor = debtPct > 10 ? 'text-red-500' : debtPct >= 5 ? 'text-orange-500' : 'text-green-500';
@@ -388,12 +395,12 @@ export default function ReportsPage() {
             <div className="space-y-2.5">
               {funnelRows.map(({ label, value, percent, color }) => (
                 <div key={label} className="flex items-center gap-3">
-                  <span className="text-xs text-gray-600 shrink-0 w-40">{label}</span>
+                  <span className="text-xs text-gray-600 shrink-0 w-36">{label}</span>
                   <div className="flex-1 h-5 bg-gray-100 rounded overflow-hidden">
                     <div className="h-full rounded transition-all duration-700"
                       style={{ width: `${percent}%`, backgroundColor: color }} />
                   </div>
-                  <span className="w-12 text-xs font-bold text-gray-900 text-right shrink-0">{value}</span>
+                  <span className="w-10 text-xs font-bold text-gray-900 text-right shrink-0">{value}</span>
                   <span className="w-14 text-xs text-gray-400 text-right shrink-0">{percent.toFixed(1)}%</span>
                 </div>
               ))}
@@ -566,61 +573,109 @@ export default function ReportsPage() {
         </div>
       </div>
 
-      {/* ── Section 6: Expenses ── */}
-      <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
-        <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
-          <h2 className="text-sm font-semibold text-gray-900">Harajatlar</h2>
-          <button onClick={openAddExp}
-            className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 text-white text-xs font-medium rounded-lg hover:bg-blue-700 transition-colors">
-            <Plus className="w-3.5 h-3.5" /> Qo&apos;shish
-          </button>
-        </div>
-        {loading ? (
-          <div className="p-4 space-y-2">{Array(4).fill(0).map((_, i) => <Skel key={i} className="h-10 w-full" />)}</div>
-        ) : displayExpenses.length === 0 ? (
-          <p className="px-5 py-8 text-sm text-gray-400 text-center">Bu davrda harajat yo&apos;q</p>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="bg-gray-50 border-b border-gray-200">
-                  {['№', 'Kategoriya', 'Miqdor', 'Sana', 'Izoh', ''].map((h, i) => (
-                    <th key={i} className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">{h}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-100">
-                {displayExpenses.map((e, idx) => {
-                  const isGrouped = e.id === '__teacher_sal__';
+      {/* ── Section 6: Expenses — pie (left) + table (right) ── */}
+      <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+
+        {/* LEFT: Expense Pie Chart */}
+        <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-5">
+          <h2 className="text-sm font-semibold text-gray-900 mb-4">Harajatlar taqsimoti</h2>
+          {loading ? <Skel className="h-60 w-full" /> : expBreakdown.length === 0 ? (
+            <div className="h-60 flex items-center justify-center text-sm text-gray-400">Bu davrda harajat yo&apos;q</div>
+          ) : (
+            <div className="flex items-center gap-6 min-h-[240px]">
+              <div className="shrink-0" style={{ width: 200, height: 240 }}>
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Pie data={expBreakdown} dataKey="value" nameKey="name"
+                      cx="50%" cy="50%" outerRadius={95} innerRadius={45}>
+                      {expBreakdown.map((item, i) => (
+                        <Cell key={i} fill={EXPENSE_PIE_COLORS[item.key] ?? '#6B7280'} />
+                      ))}
+                    </Pie>
+                    <Tooltip
+                      contentStyle={{ border: '1px solid #E5E7EB', borderRadius: 8, fontSize: 12 }}
+                      formatter={(v: unknown, _n: unknown, props: { payload?: { key: string; name: string; value: number } }) => [
+                        `${formatCurrency(Number(v))} (${expTotal > 0 ? ((Number(v) / expTotal) * 100).toFixed(1) : 0}%)`,
+                        props.payload?.name ?? '',
+                      ]}
+                    />
+                  </PieChart>
+                </ResponsiveContainer>
+              </div>
+              <div className="flex-1 space-y-2.5 min-w-0">
+                {expBreakdown.map((item) => {
+                  const pct = expTotal > 0 ? ((item.value / expTotal) * 100).toFixed(1) : '0';
                   return (
-                    <tr key={e.id} className="hover:bg-gray-50 transition-colors">
-                      <td className="px-4 py-3 text-gray-400 text-xs font-medium">{idx + 1}</td>
-                      <td className="px-4 py-3">
-                        <span className={cn(
-                          'inline-flex items-center gap-1.5 px-2 py-0.5 text-xs font-medium rounded-full',
-                          isGrouped ? 'bg-blue-50 text-blue-700' : 'bg-gray-100 text-gray-700'
-                        )}>
-                          {isGrouped && <GraduationCap className="w-3 h-3" />}
-                          {EXPENSE_LABELS[e.category] ?? e.category}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3 font-semibold text-red-600">−{formatCurrency(e.amount)}</td>
-                      <td className="px-4 py-3 text-gray-500 text-xs">{e.expense_date || '—'}</td>
-                      <td className="px-4 py-3 text-gray-600 max-w-48 truncate text-xs">{e.description || '—'}</td>
-                      <td className="px-4 py-3">
-                        {!isGrouped && e.source !== 'auto' && (
-                          <button onClick={() => openEditExp(e)} className="text-xs text-blue-600 hover:underline">
-                            Tahrirlash
-                          </button>
-                        )}
-                      </td>
-                    </tr>
+                    <div key={item.key} className="flex items-center gap-2">
+                      <span className="w-2.5 h-2.5 rounded-full shrink-0"
+                        style={{ background: EXPENSE_PIE_COLORS[item.key] ?? '#6B7280' }} />
+                      <span className="text-xs text-gray-700 flex-1 truncate">{item.name}</span>
+                      <span className="text-xs font-semibold text-gray-500 shrink-0">{pct}%</span>
+                      <span className="text-xs text-gray-400 shrink-0">{formatCurrency(item.value)}</span>
+                    </div>
                   );
                 })}
-              </tbody>
-            </table>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* RIGHT: Expenses Table */}
+        <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+          <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
+            <h2 className="text-sm font-semibold text-gray-900">Harajatlar</h2>
+            <button onClick={openAddExp}
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 text-white text-xs font-medium rounded-lg hover:bg-blue-700 transition-colors">
+              <Plus className="w-3.5 h-3.5" /> Qo&apos;shish
+            </button>
           </div>
-        )}
+          {loading ? (
+            <div className="p-4 space-y-2">{Array(4).fill(0).map((_, i) => <Skel key={i} className="h-10 w-full" />)}</div>
+          ) : displayExpenses.length === 0 ? (
+            <p className="px-5 py-8 text-sm text-gray-400 text-center">Bu davrda harajat yo&apos;q</p>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="bg-gray-50 border-b border-gray-200">
+                    {['№', 'Kategoriya', 'Miqdor', 'Sana', ''].map((h, i) => (
+                      <th key={i} className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">{h}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-100">
+                  {displayExpenses.map((e, idx) => {
+                    const isGrouped = e.id === '__teacher_sal__';
+                    return (
+                      <tr key={e.id} className="hover:bg-gray-50 transition-colors">
+                        <td className="px-4 py-3 text-gray-400 text-xs font-medium">{idx + 1}</td>
+                        <td className="px-4 py-3">
+                          <span className={cn(
+                            'inline-flex items-center gap-1.5 px-2 py-0.5 text-xs font-medium rounded-full',
+                            isGrouped ? 'bg-blue-50 text-blue-700' : 'bg-gray-100 text-gray-700'
+                          )}>
+                            {isGrouped && <GraduationCap className="w-3 h-3" />}
+                            {EXPENSE_LABELS[e.category] ?? e.category}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3 font-semibold text-red-600">−{formatCurrency(e.amount)}</td>
+                        <td className="px-4 py-3 text-gray-500 text-xs">{e.expense_date || '—'}</td>
+                        <td className="px-4 py-3">
+                          {!isGrouped && e.source !== 'auto' && (
+                            <button onClick={() => openEditExp(e)}
+                              className="text-gray-400 hover:text-blue-600 transition-colors">
+                              <PencilLine className="w-4 h-4" />
+                            </button>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
       </div>
 
       {/* ── Section 7: Churn Table ── */}

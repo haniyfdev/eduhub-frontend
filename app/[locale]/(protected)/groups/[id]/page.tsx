@@ -560,9 +560,11 @@ export default function GroupDetailPage() {
               className="px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-700"
             >
               <option value="">Barcha kurslar</option>
-              {courses.map((c) => (
-                <option key={c.id} value={c.id}>{c.name}</option>
-              ))}
+              {courses
+                ?.filter((c: any) => !c.is_archived) // 💡 c: any qildik va crash bo'lmasligi uchun ?. qo'shdik
+                .map((c) => (
+                  <option key={c.id} value={c.id}>{c.name}</option>
+                ))}
             </select>
           </div>
 

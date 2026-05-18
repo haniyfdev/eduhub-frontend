@@ -383,14 +383,14 @@ export default function ReportsPage() {
 
       {/* ── Section 3: Conversion Funnel + Course Pie ── */}
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
-        <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-5">
-          <h2 className="text-sm font-semibold text-gray-900 mb-4">Lidlar konversiyasi</h2>
-          {loading ? (
-            <div className="space-y-3">{Array(5).fill(0).map((_, i) => <Skel key={i} className="h-7 w-full" />)}</div>
-          ) : !conversion ? (
-            <div className="h-40 flex items-center justify-center text-sm text-gray-400">Ma&apos;lumot yo&apos;q</div>
-          ) : (
-            <div className="space-y-2.5">
+      <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-5 flex flex-col">
+        <h2 className="text-sm font-semibold text-gray-900 mb-4">Lidlar konversiyasi</h2>
+        {loading ? (
+          <div className="space-y-3">{Array(5).fill(0).map((_, i) => <Skel key={i} className="h-7 w-full" />)}</div>
+        ) : !conversion ? (
+          <div className="flex-1 flex items-center justify-center text-sm text-gray-400">Ma&apos;lumot yo&apos;q</div>
+        ) : (
+          <div className="flex-1 flex flex-col justify-center space-y-2.5">
               {funnelRows.map(({ label, value, percent, color }) => (
                 <div key={label} className="flex items-center gap-3">
                   <span className="text-xs text-gray-600 shrink-0 w-36">{label}</span>
@@ -509,7 +509,7 @@ export default function ReportsPage() {
                     <Tooltip
                       contentStyle={{ border: '1px solid #E5E7EB', borderRadius: 8, fontSize: 12 }}
                       formatter={(_v: unknown, _n: unknown, props: { payload?: ReferralItem }) => [
-                        `${props.payload?.count ?? 0} ta (${props.payload?.percent ?? 0}%)`,
+                        `${props.payload?.count ?? 0} ta`,
                         props.payload?.label ?? '',
                       ]}
                     />
@@ -549,7 +549,7 @@ export default function ReportsPage() {
                     <Tooltip
                       contentStyle={{ border: '1px solid #E5E7EB', borderRadius: 8, fontSize: 12 }}
                       formatter={(v: unknown, _n: unknown, props: { payload?: { key: string; name: string; value: number } }) => [
-                        `${formatCurrency(Number(v))} (${expTotal > 0 ? ((Number(v) / expTotal) * 100).toFixed(1) : 0}%)`,
+                        `${formatCurrency(Number(v))}`,
                         props.payload?.name ?? '',
                       ]}
                     />

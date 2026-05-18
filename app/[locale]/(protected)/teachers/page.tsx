@@ -270,13 +270,11 @@ export default function TeachersPage() {
                       <td className="px-4 py-3 text-gray-600">{t.subject || '—'}</td>
                       <td className="px-4 py-3">
                         <Popover>
-                          <PopoverTrigger asChild>
-                            <button className={cn('inline-flex items-center gap-1 px-2 py-0.5 text-xs font-medium border rounded cursor-pointer hover:opacity-80 transition-opacity', SALARY_STYLES[t.salary_type])}>
-                              {t.salary_type === 'fixed'       && <Banknote className="w-3 h-3" />}
-                              {t.salary_type === 'percent'     && <Percent   className="w-3 h-3" />}
-                              {t.salary_type === 'per_student' && <Users     className="w-3 h-3" />}
-                              {SALARY_LABELS[t.salary_type]}
-                            </button>
+                          <PopoverTrigger className={cn('inline-flex items-center gap-1 px-2 py-0.5 text-xs font-medium border rounded cursor-pointer hover:opacity-80 transition-opacity', SALARY_STYLES[t.salary_type])}>
+                            {t.salary_type === 'fixed'       && <Banknote className="w-3 h-3" />}
+                            {t.salary_type === 'percent'     && <Percent   className="w-3 h-3" />}
+                            {t.salary_type === 'per_student' && <Users     className="w-3 h-3" />}
+                            {SALARY_LABELS[t.salary_type]}
                           </PopoverTrigger>
                           <PopoverContent className="w-56 p-3" side="right" align="start">
                             <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Maosh tafsiloti</p>

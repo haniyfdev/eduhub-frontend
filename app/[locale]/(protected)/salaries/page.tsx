@@ -18,6 +18,7 @@ interface TeacherSalaryData {
   teacher_subject: string;
   salary_type: string;
   students_count: number;
+  kpi_amount: number;
   calculated_amount: number;
   carry_over: number;
   paid_amount: number;
@@ -70,6 +71,7 @@ interface SalaryRow {
   badgeStyle: string;
   salaryTypeText: string;
   salaryTypeStyle: string;
+  kpiAmount: number;
   calculatedAmount: number;
   carryOver: number;
   paidAmount: number;
@@ -124,6 +126,11 @@ const PAYMENT_TYPE_LABELS: Record<string, string> = {
   cash: 'Naqd', card: 'Karta', transfer: "O'tkazma",
 };
 
+const formatAmount = (val: string) =>
+  val.replace(/\D/g, '').replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+
+const parseAmount = (val: string) => Number(val.replace(/,/g, ''));
+
 function currentMonthStr() {
   const d = new Date();
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
@@ -144,7 +151,6 @@ export default function SalariesPage() {
 
   // ── Tab 1 state ──────────────────────────────────────────────────────────────
   const [month, setMonth]               = useState(currentMonthStr);
-  const [typeFilter, setTypeFilter]     = useState('all');
   const [statusFilter, setStatusFilter] = useState('all');
   const [teacherSals, setTeacherSals]   = useState<TeacherSalaryData[]>([]);
   const [staffSals, setStaffSals]       = useState<StaffSalaryData[]>([]);
@@ -232,13 +238,13 @@ export default function SalariesPage() {
   function openPayModal(row: SalaryRow) {
     const remaining = row.totalOwed - row.paidAmount;
     setPayTarget(row);
-    setPayAmount(String(remaining > 0 ? remaining : row.totalOwed));
+    setPayAmount(formatAmount(String(remaining > 0 ? remaining : row.totalOwed)));
     setPayType('cash');
   }
 
   async function handlePay() {
     if (!payTarget) return;
-    const amount = parseFloat(payAmount);
+    const amount = parseAmount(payAmount);
     if (!amount || amount <= 0) { toast.error('Summani kiriting'); return; }
     if (amount < 10000) { toast.error("Minimal to'lov 10,000 so'm"); return; }
     setPaying(true);
@@ -267,23 +273,33 @@ export default function SalariesPage() {
 
   async function handleAddStaff(e: React.FormEvent) {
     e.preventDefault();
-    if (!staffForm.salary_amount || parseFloat(staffForm.salary_amount) < 100000) {
+    const salaryNum = parseAmount(staffForm.salary_amount);
+    if (!staffForm.salary_amount || salaryNum < 100000) {
       toast.error("Oylik kamida 100,000 so'm bo'lishi kerak"); return;
+    }
+    if (staffForm.phone.replace(/\D/g, '').length !== 9) {
+      toast.error("To'liq 9 raqam kiriting"); return;
     }
     setSavingStaff(true);
     try {
+      // dd/mm/yyyy → yyyy-mm-dd
+      let contractStartIso = '';
+      if (staffForm.contract_type === 'contract' && staffForm.contract_start.length === 10) {
+        const [d, m, y] = staffForm.contract_start.split('/');
+        contractStartIso = `${y}-${m}-${d}`;
+      }
       const body: Record<string, unknown> = {
         first_name: staffForm.first_name,
         last_name:  staffForm.last_name,
-        phone:      staffForm.phone,
+        phone:      '+998' + staffForm.phone.replace(/\D/g, ''),
         role:       staffForm.role,
         contract_type: staffForm.contract_type,
-        salary_amount: parseFloat(staffForm.salary_amount),
+        salary_amount: salaryNum,
         notes: staffForm.notes || null,
       };
       if (staffForm.contract_type === 'contract') {
         body.contract_months = parseInt(staffForm.contract_months);
-        body.contract_start  = staffForm.contract_start;
+        body.contract_start  = contractStartIso;
       }
       await api.post('/api/v1/staff/', body);
       toast.success("Xodim qo'shildi");
@@ -325,6 +341,7 @@ export default function SalariesPage() {
       badgeStyle:       ROLE_BADGE.teacher,
       salaryTypeText:   s.salary_type === 'fixed' ? 'Belgilangan' : s.salary_type === 'percent' ? 'Foizli' : "O'quvchi boshiga",
       salaryTypeStyle:  s.salary_type === 'fixed' ? 'bg-gray-100 text-gray-600' : s.salary_type === 'percent' ? 'bg-blue-50 text-blue-600' : 'bg-green-50 text-green-600',
+      kpiAmount:        Number(s.kpi_amount) || 0,
       calculatedAmount: Number(s.calculated_amount),
       carryOver:        Number(s.carry_over),
       paidAmount:       Number(s.paid_amount),
@@ -341,6 +358,7 @@ export default function SalariesPage() {
       badgeStyle:       ROLE_BADGE[s.staff_role_key] ?? ROLE_BADGE.other,
       salaryTypeText:   s.contract_type === 'monthly' ? 'Oylik' : 'Shartnomaviy',
       salaryTypeStyle:  s.contract_type === 'monthly' ? 'bg-gray-100 text-gray-600' : 'bg-purple-50 text-purple-600',
+      kpiAmount:        0,
       calculatedAmount: Number(s.calculated_amount),
       carryOver:        Number(s.carry_over),
       paidAmount:       Number(s.paid_amount),
@@ -353,11 +371,9 @@ export default function SalariesPage() {
 
   const filteredRows = useMemo(() => {
     let rows = allRows;
-    if (typeFilter === 'teachers') rows = rows.filter(r => r.entityType === 'teacher');
-    if (typeFilter === 'staff')    rows = rows.filter(r => r.entityType === 'staff');
-    if (statusFilter !== 'all')    rows = rows.filter(r => r.status === statusFilter);
+    if (statusFilter !== 'all') rows = rows.filter(r => r.status === statusFilter);
     return rows;
-  }, [allRows, typeFilter, statusFilter]);
+  }, [allRows, statusFilter]);
 
   const totalCalculated = allRows.reduce((s, r) => s + r.calculatedAmount + r.carryOver, 0);
   const totalPaid       = allRows.reduce((s, r) => s + r.paidAmount, 0);
@@ -418,34 +434,13 @@ export default function SalariesPage() {
               {generating ? 'Hisoblanmoqda...' : 'Hisoblash'}
             </button>
 
-            <div className="flex rounded-lg border border-gray-200 overflow-hidden text-xs font-medium ml-auto">
-              {([
-                { v: 'all',      label: 'Barchasi' },
-                { v: 'teachers', label: "O'qituvchilar" },
-                { v: 'staff',    label: 'Xodimlar' },
-              ] as const).map(({ v, label }) => (
-                <button key={v} onClick={() => setTypeFilter(v)}
-                  className={cn('px-3 py-2 transition-colors border-r border-gray-200 last:border-0',
-                    typeFilter === v ? 'bg-blue-600 text-white' : 'bg-white text-gray-600 hover:bg-blue-50')}>
-                  {label}
-                </button>
-              ))}
-            </div>
-
-            <div className="flex rounded-lg border border-gray-200 overflow-hidden text-xs font-medium">
-              {([
-                { v: 'all',     label: 'Barchasi' },
-                { v: 'unpaid',  label: "To'lanmagan" },
-                { v: 'partial', label: 'Qisman' },
-                { v: 'paid',    label: "To'langan" },
-              ] as const).map(({ v, label }) => (
-                <button key={v} onClick={() => setStatusFilter(v)}
-                  className={cn('px-3 py-2 transition-colors border-r border-gray-200 last:border-0',
-                    statusFilter === v ? 'bg-blue-600 text-white' : 'bg-white text-gray-600 hover:bg-blue-50')}>
-                  {label}
-                </button>
-              ))}
-            </div>
+            <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)}
+              className="px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white focus:ring-2 focus:ring-blue-500 outline-none text-gray-700">
+              <option value="all">Barchasi</option>
+              <option value="unpaid">To&apos;lanmagan</option>
+              <option value="partial">Qisman</option>
+              <option value="paid">To&apos;langan</option>
+            </select>
           </div>
 
           {/* Summary cards */}
@@ -534,7 +529,7 @@ export default function SalariesPage() {
           {/* Salary table */}
           <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
             <div className="px-5 py-4 border-b border-gray-100">
-              <h2 className="text-sm font-semibold text-gray-900">O&apos;qituvchi jadvali</h2>
+              <h2 className="text-sm font-semibold text-gray-900">O&apos;qituvchilar jadvali</h2>
             </div>
             {loadingSals ? (
               <div className="p-4 space-y-2">{Array(5).fill(0).map((_, i) => <Skel key={i} />)}</div>
@@ -547,7 +542,7 @@ export default function SalariesPage() {
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="bg-gray-50 border-b border-gray-200">
-                      {['№', 'Ism', 'Fan', 'Tur', 'Hisoblangan', "Eski qarz", 'Jami', "To'langan", 'Qoldiq', 'Holat'].map((h, i) => (
+                      {['№', 'Ism', 'Lavozim/Fan', 'Maosh turi', 'Hisoblangan', 'KPI', "Eski qarzlar", 'Jami', "To'langan", 'Qoldiq', 'Holat'].map((h, i) => (
                         <th key={i} className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap">{h}</th>
                       ))}
                     </tr>
@@ -563,11 +558,16 @@ export default function SalariesPage() {
                           <td className="px-4 py-3 font-semibold text-gray-900 whitespace-nowrap">{row.name}</td>
                           <td className="px-4 py-3 text-gray-600 text-xs">{row.roleDisplay}</td>
                           <td className="px-4 py-3">
-                            <span className={cn('inline-flex items-center px-2 py-0.5 text-xs font-medium rounded-full', row.badgeStyle)}>
-                              {row.badgeText}
+                            <span className={cn('inline-flex items-center px-2 py-0.5 text-xs font-medium rounded-full', row.salaryTypeStyle)}>
+                              {row.salaryTypeText}
                             </span>
                           </td>
                           <td className="px-4 py-3 text-gray-700 font-medium">{formatCurrency(row.calculatedAmount)}</td>
+                          <td className="px-4 py-3">
+                            {row.kpiAmount > 0
+                              ? <span className="text-blue-600 font-semibold">{formatCurrency(row.kpiAmount)}</span>
+                              : <span className="text-gray-400">—</span>}
+                          </td>
                           <td className="px-4 py-3">
                             {row.carryOver > 0
                               ? <span className="text-orange-600 font-semibold">{formatCurrency(row.carryOver)}</span>
@@ -675,7 +675,7 @@ export default function SalariesPage() {
           </DialogHeader>
           {payTarget && (() => {
             const remaining = payTarget.totalOwed - payTarget.paidAmount;
-            const amt = parseFloat(payAmount);
+            const amt = parseAmount(payAmount);
             const preview = amt >= remaining ? 'paid' : amt >= 10000 ? 'partial' : null;
             return (
               <div className="mt-2 space-y-4">
@@ -713,9 +713,8 @@ export default function SalariesPage() {
                     To&apos;lov summasi (so&apos;m)
                   </label>
                   <input
-                    type="number" value={payAmount}
-                    onChange={e => setPayAmount(e.target.value)}
-                    min={10000} max={remaining}
+                    type="text" inputMode="numeric" value={payAmount}
+                    onChange={e => setPayAmount(formatAmount(e.target.value))}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none"
                     placeholder="0" autoFocus
                   />
@@ -791,10 +790,13 @@ export default function SalariesPage() {
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Telefon *</label>
-              <input type="text" value={staffForm.phone} required
-                onChange={e => setStaffForm(f => ({ ...f, phone: e.target.value }))}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none"
-                placeholder="+998 ..." />
+              <div className="flex">
+                <span className="inline-flex items-center px-3 border border-r-0 border-gray-300 bg-gray-50 text-gray-500 text-sm rounded-l-lg">+998</span>
+                <input type="tel" value={staffForm.phone} required
+                  onChange={e => setStaffForm(f => ({ ...f, phone: e.target.value.replace(/\D/g, '').slice(0, 9) }))}
+                  className="flex-1 px-3 py-2 border border-gray-300 rounded-r-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+                  placeholder="XX XXX XX XX" maxLength={9} />
+              </div>
             </div>
 
             <div>
@@ -827,8 +829,8 @@ export default function SalariesPage() {
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Oylik miqdor (so&apos;m) *</label>
-              <input type="number" value={staffForm.salary_amount} required min={100000} max={50000000}
-                onChange={e => setStaffForm(f => ({ ...f, salary_amount: e.target.value }))}
+              <input type="text" inputMode="numeric" value={staffForm.salary_amount}
+                onChange={e => setStaffForm(f => ({ ...f, salary_amount: formatAmount(e.target.value) }))}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none"
                 placeholder="0" />
               <p className="text-xs text-gray-400 mt-0.5">Minimal: 100,000 so&apos;m</p>
@@ -846,14 +848,23 @@ export default function SalariesPage() {
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Boshlanish sanasi</label>
-                    <input type="date" value={staffForm.contract_start}
-                      onChange={e => setStaffForm(f => ({ ...f, contract_start: e.target.value }))}
+                    <input type="text" value={staffForm.contract_start} maxLength={10}
+                      placeholder="dd/mm/yyyy"
+                      onChange={e => {
+                        let val = e.target.value.replace(/\D/g, '');
+                        if (val.length > 8) val = val.slice(0, 8);
+                        let masked = val;
+                        if (val.length > 2) masked = val.slice(0, 2) + '/' + val.slice(2);
+                        if (val.length > 4) masked = masked.slice(0, 5) + '/' + masked.slice(5);
+                        setStaffForm(f => ({ ...f, contract_start: masked }));
+                      }}
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none"
                       required />
                   </div>
                 </div>
-                {staffForm.contract_months && staffForm.contract_start && (() => {
-                  const end = new Date(staffForm.contract_start);
+                {staffForm.contract_months && staffForm.contract_start.length === 10 && (() => {
+                  const [d, m, y] = staffForm.contract_start.split('/');
+                  const end = new Date(`${y}-${m}-${d}`);
                   end.setMonth(end.getMonth() + parseInt(staffForm.contract_months));
                   return (
                     <p className="text-xs text-gray-500">

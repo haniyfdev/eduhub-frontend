@@ -709,7 +709,8 @@ export default function SalariesPage() {
                   )}
                   {row.entityType === 'teacher' && row.rawSalaryType === 'percent' && (<>
                     <Row label="O'qitilgan talabalar" value={`${row.studentsCount} ta`} />
-                    <Row label="Hisoblangan" value={formatCurrency(row.baseAmount)} />
+                    <Row label="Har talaba uchun" value={formatCurrency(perStudent)} />
+                    <Row label="Hisoblangan" value={`${row.studentsCount} × ${formatCurrency(perStudent)} = ${formatCurrency(row.baseAmount)}`} />
                   </>)}
                   {row.entityType === 'teacher' && row.rawSalaryType === 'per_student' && (<>
                     <Row label="O'qitilgan talabalar" value={`${row.studentsCount} ta`} />

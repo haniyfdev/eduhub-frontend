@@ -19,6 +19,7 @@ interface TeacherSalaryData {
   salary_type: string;
   students_count: number;
   kpi_amount: number;
+  base_amount: number;
   calculated_amount: number;
   carry_over: number;
   paid_amount: number;
@@ -71,6 +72,9 @@ interface SalaryRow {
   badgeStyle: string;
   salaryTypeText: string;
   salaryTypeStyle: string;
+  rawSalaryType: string;
+  baseAmount: number;
+  studentsCount: number;
   kpiAmount: number;
   calculatedAmount: number;
   carryOver: number;
@@ -165,6 +169,9 @@ export default function SalariesPage() {
   const [savingStaff, setSavingStaff]   = useState(false);
   const [archivingId, setArchivingId]   = useState<string | null>(null);
   const [confirmArchive, setConfirmArchive] = useState<StaffMember | null>(null);
+
+  // Detail modal
+  const [detailTarget, setDetailTarget] = useState<SalaryRow | null>(null);
 
   // Payment modal
   const [payTarget, setPayTarget]       = useState<SalaryRow | null>(null);
@@ -341,6 +348,9 @@ export default function SalariesPage() {
       badgeStyle:       ROLE_BADGE.teacher,
       salaryTypeText:   s.salary_type === 'fixed' ? 'Belgilangan' : s.salary_type === 'percent' ? 'Foizli' : "O'quvchi boshiga",
       salaryTypeStyle:  s.salary_type === 'fixed' ? 'bg-gray-100 text-gray-600' : s.salary_type === 'percent' ? 'bg-blue-50 text-blue-600' : 'bg-green-50 text-green-600',
+      rawSalaryType:    s.salary_type,
+      baseAmount:       Number(s.base_amount) || 0,
+      studentsCount:    s.students_count || 0,
       kpiAmount:        Number(s.kpi_amount) || 0,
       calculatedAmount: Number(s.calculated_amount),
       carryOver:        Number(s.carry_over),
@@ -358,6 +368,9 @@ export default function SalariesPage() {
       badgeStyle:       ROLE_BADGE[s.staff_role_key] ?? ROLE_BADGE.other,
       salaryTypeText:   s.contract_type === 'monthly' ? 'Oylik' : 'Shartnomaviy',
       salaryTypeStyle:  s.contract_type === 'monthly' ? 'bg-gray-100 text-gray-600' : 'bg-purple-50 text-purple-600',
+      rawSalaryType:    s.contract_type,
+      baseAmount:       Number(s.calculated_amount),
+      studentsCount:    0,
       kpiAmount:        0,
       calculatedAmount: Number(s.calculated_amount),
       carryOver:        Number(s.carry_over),
@@ -542,7 +555,7 @@ export default function SalariesPage() {
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="bg-gray-50 border-b border-gray-200">
-                      {['№', 'Ism', 'Fan', 'Maosh turi', 'Hisoblangan', 'KPI', "Eski qarzlar", 'Jami', "To'langan", 'Qoldiq', 'Holat'].map((h, i) => (
+                      {['№', 'Ism', 'Lavozim/Fan', 'Hisoblangan', 'KPI', 'Jami', "To'langan", 'Qoldiq', 'Holat'].map((h, i) => (
                         <th key={i} className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap">{h}</th>
                       ))}
                     </tr>
@@ -557,11 +570,6 @@ export default function SalariesPage() {
                           <td className="px-4 py-3 text-gray-400 text-xs">{idx + 1}</td>
                           <td className="px-4 py-3 font-semibold text-gray-900 whitespace-nowrap">{row.name}</td>
                           <td className="px-4 py-3 text-gray-600 text-xs">{row.roleDisplay}</td>
-                          <td className="px-4 py-3">
-                            <span className={cn('inline-flex items-center px-2 py-0.5 text-xs font-medium rounded-full', row.salaryTypeStyle)}>
-                              {row.salaryTypeText}
-                            </span>
-                          </td>
                           <td className="px-4 py-3 text-gray-700 font-medium">{formatCurrency(row.calculatedAmount)}</td>
                           <td className="px-4 py-3">
                             {row.kpiAmount > 0
@@ -569,11 +577,12 @@ export default function SalariesPage() {
                               : <span className="text-gray-400">—</span>}
                           </td>
                           <td className="px-4 py-3">
-                            {row.carryOver > 0
-                              ? <span className="text-orange-600 font-semibold">{formatCurrency(row.carryOver)}</span>
-                              : <span className="text-gray-400">—</span>}
+                            <button
+                              onClick={() => setDetailTarget(row)}
+                              className="font-bold text-blue-600 underline underline-offset-2 cursor-pointer hover:text-blue-800 transition-colors">
+                              {formatCurrency(jami)}
+                            </button>
                           </td>
-                          <td className="px-4 py-3 font-bold text-gray-900">{formatCurrency(jami)}</td>
                           <td className="px-4 py-3 font-semibold text-emerald-600">
                             {row.paidAmount > 0 ? formatCurrency(row.paidAmount) : <span className="text-gray-400">—</span>}
                           </td>
@@ -666,6 +675,111 @@ export default function SalariesPage() {
           </div>
         </div>
       )}
+
+      {/* ══ Salary Detail Modal ══ */}
+      <Dialog open={!!detailTarget} onOpenChange={open => { if (!open) setDetailTarget(null); }}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>{detailTarget?.name} — Maosh tafsiloti</DialogTitle>
+          </DialogHeader>
+          {detailTarget && (() => {
+            const row = detailTarget;
+            const remaining = row.totalOwed - row.paidAmount;
+            const perStudent = row.studentsCount > 0 ? row.baseAmount / row.studentsCount : 0;
+            const Row = ({ label, value, valueClass }: { label: string; value: string; valueClass?: string }) => (
+              <div className="flex justify-between items-center py-1.5">
+                <span className="text-sm text-gray-500">{label}</span>
+                <span className={cn('text-sm font-medium text-gray-900', valueClass)}>{value}</span>
+              </div>
+            );
+            return (
+              <div className="mt-1 space-y-3">
+
+                {/* Section 1: Maosh turi */}
+                <div className="space-y-0.5">
+                  <Row label="Maosh turi" value={row.salaryTypeText} />
+                </div>
+
+                <hr className="border-gray-100" />
+
+                {/* Section 2: Hisoblash tartibi */}
+                <div className="space-y-0.5">
+                  {row.entityType === 'teacher' && row.rawSalaryType === 'fixed' && (
+                    <Row label="Belgilangan oylik" value={formatCurrency(row.baseAmount)} />
+                  )}
+                  {row.entityType === 'teacher' && row.rawSalaryType === 'percent' && (<>
+                    <Row label="O'qitilgan talabalar" value={`${row.studentsCount} ta`} />
+                    <Row label="Hisoblangan" value={formatCurrency(row.baseAmount)} />
+                  </>)}
+                  {row.entityType === 'teacher' && row.rawSalaryType === 'per_student' && (<>
+                    <Row label="O'qitilgan talabalar" value={`${row.studentsCount} ta`} />
+                    <Row label="Har talaba uchun" value={formatCurrency(perStudent)} />
+                    <Row label="Hisoblangan" value={`${row.studentsCount} × ${formatCurrency(perStudent)} = ${formatCurrency(row.baseAmount)}`} />
+                  </>)}
+                  {row.entityType === 'staff' && (
+                    <Row label={row.rawSalaryType === 'contract' ? 'Shartnomaviy' : 'Oylik belgilangan'} value={formatCurrency(row.baseAmount)} />
+                  )}
+                </div>
+
+                {/* Section 3: KPI */}
+                {row.kpiAmount > 0 && (<>
+                  <hr className="border-gray-100" />
+                  <div className="space-y-0.5">
+                    <Row label="KPI bonus" value={`+${formatCurrency(row.kpiAmount)}`} valueClass="text-blue-600" />
+                    <Row label="Sabab" value="Oylik KPI mukofoti" />
+                  </div>
+                </>)}
+
+                {/* Section 4: Eski qarzlar */}
+                {row.carryOver > 0 && (<>
+                  <hr className="border-gray-100" />
+                  <div>
+                    <Row label="O'tgan oylardan qarz" value={formatCurrency(row.carryOver)} valueClass="text-orange-600" />
+                  </div>
+                </>)}
+
+                <hr className="border-gray-100" />
+
+                {/* Section 5: Jami hisob */}
+                <div className="bg-gray-50 rounded-lg p-3 space-y-1">
+                  <Row label="Hisoblangan" value={formatCurrency(row.calculatedAmount)} />
+                  {row.kpiAmount > 0 && <Row label="+ KPI" value={formatCurrency(row.kpiAmount)} valueClass="text-blue-600" />}
+                  {row.carryOver > 0 && <Row label="+ Eski qarz" value={formatCurrency(row.carryOver)} valueClass="text-orange-600" />}
+                  <div className="flex justify-between items-center pt-1 border-t border-gray-200">
+                    <span className="text-sm font-bold text-gray-900">= Jami</span>
+                    <span className="text-base font-bold text-gray-900">{formatCurrency(row.totalOwed)}</span>
+                  </div>
+                </div>
+
+                {/* Section 6: To'lov holati */}
+                <div className="space-y-0.5">
+                  <Row label="To'langan" value={formatCurrency(row.paidAmount)} valueClass="text-emerald-600" />
+                  <Row
+                    label="Qoldiq"
+                    value={formatCurrency(remaining)}
+                    valueClass={remaining > 0 ? 'text-red-600' : 'text-emerald-600'}
+                  />
+                </div>
+
+                {/* Footer */}
+                <div className="flex gap-3 pt-1">
+                  <button onClick={() => setDetailTarget(null)}
+                    className="flex-1 px-4 py-2 border border-gray-300 text-sm font-medium rounded-lg hover:bg-gray-50 transition-colors">
+                    Yopish
+                  </button>
+                  {row.status !== 'paid' && (
+                    <button
+                      onClick={() => { setDetailTarget(null); openPayModal(row); }}
+                      className="flex-1 px-4 py-2 bg-emerald-600 text-white text-sm font-medium rounded-lg hover:bg-emerald-700 transition-colors">
+                      To&apos;lash
+                    </button>
+                  )}
+                </div>
+              </div>
+            );
+          })()}
+        </DialogContent>
+      </Dialog>
 
       {/* ══ Pay Modal ══ */}
       <Dialog open={!!payTarget} onOpenChange={open => { if (!open) setPayTarget(null); }}>

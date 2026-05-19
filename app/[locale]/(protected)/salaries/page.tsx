@@ -629,9 +629,8 @@ export default function SalariesPage() {
                             {teacher.groups.length <= 1 ? (
                               <span className="text-xs text-gray-600">
                                 {teacher.groups[0]?.first_active_date
-                                  ? fmtDate(teacher.groups[0].first_active_date)
-                                  : '—'}
-                                {teacher.groups[0]?.group_name ? ` (${teacher.groups[0].group_name})` : ''}
+                                  ? `${fmtDate(teacher.groups[0].first_active_date)} (${teacher.groups[0].group_name ?? '?'})`
+                                  : 'Hali hisob yo\'q'}
                               </span>
                             ) : (
                               <select
@@ -642,7 +641,9 @@ export default function SalariesPage() {
                                 <option value="all">Barcha guruhlar</option>
                                 {teacher.groups.map(g => (
                                   <option key={g.salary_id} value={g.salary_id}>
-                                    {g.first_active_date ? fmtDate(g.first_active_date) : '—'} ({g.group_name ?? '?'})
+                                    {g.first_active_date
+                                      ? `${fmtDate(g.first_active_date)} (${g.group_name ?? '?'})`
+                                      : `Hali hisob yo'q (${g.group_name ?? '?'})`}
                                   </option>
                                 ))}
                               </select>

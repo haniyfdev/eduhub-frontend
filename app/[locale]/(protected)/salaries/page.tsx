@@ -48,20 +48,18 @@ interface TeacherSalaryGrouped {
 interface StaffSalaryData {
   id: string;
   staff: string;
-  staff_name: string;
-  staff_role: string;
-  staff_role_key: string;
-  staff_phone: string;
-  contract_type: string;
+  user_name: string;
+  user_role: string;
+  month: string;
   calculated_amount: number;
-  carry_over: number;
   paid_amount: number;
+  carry_over: number;
   total_owed: number;
+  due_date: string | null;
   status: 'unpaid' | 'partial' | 'paid';
   is_paid: boolean;
   paid_at: string | null;
-  created_at?: string | null;
-  due_date?: string | null;
+  note?: string | null;
 }
 
 interface StaffMember {
@@ -96,7 +94,7 @@ interface SalaryRow {
   paidAmount: number;
   totalOwed: number;
   status: 'unpaid' | 'partial' | 'paid';
-  createdAt: string | null;
+  month: string | null;
   dueDate: string | null;
 }
 
@@ -438,19 +436,19 @@ export default function SalariesPage() {
   const staffRows = useMemo<SalaryRow[]>(() => staffSals.map(s => ({
     id:               s.id,
     entityType:       'staff',
-    name:             s.staff_name,
-    roleDisplay:      s.staff_role || '—',
-    badgeText:        s.staff_role || 'Xodim',
-    badgeStyle:       ROLE_BADGE[s.staff_role_key] ?? ROLE_BADGE.other,
-    salaryTypeText:   s.contract_type === 'monthly' ? 'Oylik' : 'Shartnomaviy',
-    salaryTypeStyle:  s.contract_type === 'monthly' ? 'bg-gray-100 text-gray-600' : 'bg-purple-50 text-purple-600',
-    rawSalaryType:    s.contract_type,
+    name:             s.user_name,
+    roleDisplay:      s.user_role || '—',
+    badgeText:        s.user_role || 'Xodim',
+    badgeStyle:       ROLE_BADGE.other,
+    salaryTypeText:   '',
+    salaryTypeStyle:  '',
+    rawSalaryType:    '',
     calculatedAmount: Number(s.calculated_amount),
     carryOver:        Number(s.carry_over),
     paidAmount:       Number(s.paid_amount),
-    totalOwed:        Number(s.calculated_amount) + Number(s.carry_over) - Number(s.paid_amount),
+    totalOwed:        Number(s.calculated_amount) + Number(s.carry_over),
     status:           s.status,
-    createdAt:        s.created_at ?? null,
+    month:            s.month ?? null,
     dueDate:          s.due_date ?? null,
   })), [staffSals]);
 
@@ -733,7 +731,7 @@ export default function SalariesPage() {
                             <p className="text-xs text-gray-500">{row.roleDisplay || '—'}</p>
                           </td>
                           <td className="px-4 py-3 text-xs text-gray-600 whitespace-nowrap">
-                            {fmtDate(row.createdAt)}
+                            {row.month ? `${row.month.slice(5, 7)}/${row.month.slice(0, 4)}` : '—'}
                           </td>
                           <td className="px-4 py-3 font-bold text-gray-900 whitespace-nowrap">
                             {formatCurrency(jami)}

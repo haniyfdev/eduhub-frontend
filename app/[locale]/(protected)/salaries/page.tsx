@@ -713,11 +713,14 @@ export default function SalariesPage() {
                   {row.entityType === 'teacher' && row.rawSalaryType === 'fixed' && (
                     <Row label="Belgilangan oylik" value={formatCurrency(row.baseAmount)} />
                   )}
+
+
                   {row.entityType === 'teacher' && row.rawSalaryType === 'percent' && (<>
                     <Row label="O'qitilgan talabalar" value={`${row.studentsCount} ta`} />
                     <Row label="Foiz" value={`${row.salaryPercent ?? '—'}%`} />
-                    <Row label="Hisoblangan" value={formatCurrency(row.baseAmount)} />
+                    <Row label="Hisoblangan" value={`${row.studentsCount} × (kurs narxi × ${row.salaryPercent ?? '—'}%) = ${formatCurrency(row.baseAmount)}`} />
                   </>)}
+
                   {row.entityType === 'teacher' && row.rawSalaryType === 'per_student' && (<>
                     <Row label="O'qitilgan talabalar" value={`${row.studentsCount} ta`} />
                     <Row label="Har talaba uchun" value={formatCurrency(perStudent)} />

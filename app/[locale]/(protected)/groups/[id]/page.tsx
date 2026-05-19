@@ -38,6 +38,7 @@ interface Student {
   status: string;
   joined_at?: string;
   created_at?: string;
+  left_at?: string | null;
 }
 
 interface Lesson {
@@ -371,7 +372,7 @@ export default function GroupDetailPage() {
               {label}
               {key === 'students' && (
                 <span className={cn('ml-2 inline-flex items-center justify-center px-1.5 py-0.5 text-xs rounded-full', tab === key ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-600')}>
-                  {students.length}
+                  {students.filter(s => !s.left_at).length}
                 </span>
               )}
               {key === 'lessons' && lessons.length > 0 && (
@@ -386,61 +387,87 @@ export default function GroupDetailPage() {
 
       {/* ══ TAB: O'quvchilar ══ */}
       {tab === 'students' && (
-        <div className="bg-white rounded border border-gray-200 shadow-sm overflow-hidden">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="bg-gray-50 border-b border-gray-200">
-                {['№', 'Ism', 'Telefon', 'Ota-ona tel', "Tug'ilgan sana", 'Holat', 'Amallar'].map((h) => (
-                  <th key={h} className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">{h}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-100">
-              {loadingStudents
-                ? Array(5).fill(0).map((_, i) => (
-                  <tr key={i}>{Array(7).fill(0).map((_, j) => (
-                    <td key={j} className="px-4 py-3"><Skeleton className="h-4 w-full" /></td>
-                  ))}</tr>
-                ))
-                : students.length === 0
-                  ? <tr><td colSpan={7} className="px-4 py-14 text-center text-gray-400 text-sm">O&apos;quvchilar yo&apos;q</td></tr>
-                  : students.map((s, idx) => (
-                    <tr key={s.id} className={cn('transition-colors', s.status === 'frozen' ? 'bg-[#F0F9FF] hover:bg-sky-100' : 'hover:bg-gray-50')}>
-                      <td className="px-4 py-3 text-gray-500">{idx + 1}</td>
-                      <td className="px-4 py-3 font-medium text-gray-900">{s.first_name} {s.last_name}</td>
-                      <td className="px-4 py-3 text-gray-600">{formatPhone(s.phone)}</td>
-                      <td className="px-4 py-3 text-gray-600">{s.second_phone ? formatPhone(s.second_phone) : '—'}</td>
-                      <td className="px-4 py-3 text-gray-600">{formatDMY(s.birth_date) || '—'}</td>
-                      <td className="px-4 py-3">
-                        <span className={cn('inline-flex items-center px-2 py-0.5 text-xs font-medium border rounded', STATUS_BADGE[s.status] ?? 'bg-gray-100 text-gray-600 border-gray-200')}>
-                          {STATUS_LABEL[s.status] ?? s.status}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3">
-                        {canEdit && (
-                          <div className="flex items-center gap-1">
-                            <button
-                              onClick={() => { setArchiveReason(''); setArchiveTarget({ studentId: s.id, name: `${s.first_name} ${s.last_name}`, status: s.status }); }}
-                              className="p-1 rounded text-red-400 hover:bg-red-50 hover:text-red-600 transition-colors"
-                              title="Arxivlash"
-                            >
-                              <Minus className="w-4 h-4" />
-                            </button>
-                            <button
-                              onClick={() => { setNewGroupId(''); setChangeGroupTarget({ studentId: s.id, name: `${s.first_name} ${s.last_name}` }); }}
-                              className="p-1 rounded text-blue-400 hover:bg-blue-50 hover:text-blue-600 transition-colors"
-                              title="Guruh o'zgartirish"
-                            >
-                              <ArrowLeftRight className="w-4 h-4" />
-                            </button>
-                          </div>
-                        )}
-                      </td>
-                    </tr>
+        <div className="space-y-3">
+          {students.length > 0 && (
+            <div className="flex flex-wrap items-center gap-4 px-4 py-2 bg-gray-50 border border-gray-200 rounded text-xs">
+              {students.filter(s => !s.left_at && s.status === 'active').length > 0 && (
+                <span className="text-gray-600"><span className="font-semibold text-green-700">{students.filter(s => !s.left_at && s.status === 'active').length}</span> faol</span>
+              )}
+              {students.filter(s => !s.left_at && s.status === 'trial').length > 0 && (
+                <span className="text-gray-600"><span className="font-semibold text-orange-600">{students.filter(s => !s.left_at && s.status === 'trial').length}</span> sinov</span>
+              )}
+              {students.filter(s => !s.left_at && s.status === 'frozen').length > 0 && (
+                <span className="text-gray-600"><span className="font-semibold text-sky-600">{students.filter(s => !s.left_at && s.status === 'frozen').length}</span> muzlatilgan</span>
+              )}
+              {students.filter(s => s.left_at).length > 0 && (
+                <span className="text-gray-500"><span className="font-semibold">{students.filter(s => s.left_at).length}</span> chiqib ketgan</span>
+              )}
+            </div>
+          )}
+          <div className="bg-white rounded border border-gray-200 shadow-sm overflow-hidden">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="bg-gray-50 border-b border-gray-200">
+                  {['№', 'Ism', 'Telefon', 'Ota-ona tel', "Tug'ilgan sana", 'Holat', 'Amallar'].map((h) => (
+                    <th key={h} className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-100">
+                {loadingStudents
+                  ? Array(5).fill(0).map((_, i) => (
+                    <tr key={i}>{Array(7).fill(0).map((_, j) => (
+                      <td key={j} className="px-4 py-3"><Skeleton className="h-4 w-full" /></td>
+                    ))}</tr>
                   ))
-              }
-            </tbody>
-          </table>
+                  : students.length === 0
+                    ? <tr><td colSpan={7} className="px-4 py-14 text-center text-gray-400 text-sm">O&apos;quvchilar yo&apos;q</td></tr>
+                    : students.map((s, idx) => {
+                      const isLeft = !!s.left_at;
+                      return (
+                        <tr key={s.id} className={cn(
+                          'transition-colors',
+                          isLeft ? 'bg-[#FFFBEB]' : s.status === 'frozen' ? 'bg-[#F0F9FF] hover:bg-sky-100' : 'hover:bg-gray-50'
+                        )}>
+                          <td className={cn('px-4 py-3', isLeft ? 'text-gray-400' : 'text-gray-500')}>{idx + 1}</td>
+                          <td className={cn('px-4 py-3 font-medium', isLeft ? 'text-gray-400' : 'text-gray-900')}>{s.first_name} {s.last_name}</td>
+                          <td className={cn('px-4 py-3', isLeft ? 'text-gray-400' : 'text-gray-600')}>{formatPhone(s.phone)}</td>
+                          <td className={cn('px-4 py-3', isLeft ? 'text-gray-400' : 'text-gray-600')}>{s.second_phone ? formatPhone(s.second_phone) : '—'}</td>
+                          <td className={cn('px-4 py-3', isLeft ? 'text-gray-400' : 'text-gray-600')}>{formatDMY(s.birth_date) || '—'}</td>
+                          <td className="px-4 py-3">
+                            <span className={cn('inline-flex items-center px-2 py-0.5 text-xs font-medium border rounded', STATUS_BADGE[s.status] ?? 'bg-gray-100 text-gray-600 border-gray-200')}>
+                              {STATUS_LABEL[s.status] ?? s.status}
+                            </span>
+                          </td>
+                          <td className="px-4 py-3">
+                            {isLeft ? (
+                              <span className="text-xs text-gray-400">Chiqdi: {formatDMY(s.left_at)}</span>
+                            ) : canEdit ? (
+                              <div className="flex items-center gap-1">
+                                <button
+                                  onClick={() => { setArchiveReason(''); setArchiveTarget({ studentId: s.id, name: `${s.first_name} ${s.last_name}`, status: s.status }); }}
+                                  className="p-1 rounded text-red-400 hover:bg-red-50 hover:text-red-600 transition-colors"
+                                  title="Arxivlash"
+                                >
+                                  <Minus className="w-4 h-4" />
+                                </button>
+                                <button
+                                  onClick={() => { setNewGroupId(''); setChangeGroupTarget({ studentId: s.id, name: `${s.first_name} ${s.last_name}` }); }}
+                                  className="p-1 rounded text-blue-400 hover:bg-blue-50 hover:text-blue-600 transition-colors"
+                                  title="Guruh o'zgartirish"
+                                >
+                                  <ArrowLeftRight className="w-4 h-4" />
+                                </button>
+                              </div>
+                            ) : null}
+                          </td>
+                        </tr>
+                      );
+                    })
+                }
+              </tbody>
+            </table>
+          </div>
         </div>
       )}
 

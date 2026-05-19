@@ -630,7 +630,7 @@ export default function SalariesPage() {
                               <span className="text-xs text-gray-600">
                                 {teacher.groups[0]?.first_active_date
                                   ? `${fmtDate(teacher.groups[0].first_active_date)} (${teacher.groups[0].group_name ?? '?'})`
-                                  : 'Hali hisob yo\'q'}
+                                  : '—'}
                               </span>
                             ) : (
                               <select
@@ -832,7 +832,9 @@ export default function SalariesPage() {
                   <Row label="Guruhlar" value={`${t.groups.length}ta (${t.groups.map(g => g.group_name).filter(Boolean).join(', ')})`} />
                 </div>
 
-                {t.groups.map((g, i) => (
+                {t.groups.filter(g => g.student_count > 0 || g.course_price > 0).length === 0 ? (
+                  <div className="py-3 text-sm text-gray-400 text-center">Hisob ma&apos;lumotlari yo&apos;q</div>
+                ) : t.groups.filter(g => g.student_count > 0 || g.course_price > 0).map((g, i) => (
                   <div key={g.salary_id}>
                     <hr className="border-gray-100" />
                     <div className="space-y-1 mt-2">

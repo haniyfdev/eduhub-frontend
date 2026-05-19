@@ -60,6 +60,8 @@ interface StaffSalaryData {
   status: 'unpaid' | 'partial' | 'paid';
   is_paid: boolean;
   paid_at: string | null;
+  created_at?: string | null;
+  due_date?: string | null;
 }
 
 interface StaffMember {
@@ -94,6 +96,8 @@ interface SalaryRow {
   paidAmount: number;
   totalOwed: number;
   status: 'unpaid' | 'partial' | 'paid';
+  createdAt: string | null;
+  dueDate: string | null;
 }
 
 interface ExpenseItem {
@@ -446,6 +450,8 @@ export default function SalariesPage() {
     paidAmount:       Number(s.paid_amount),
     totalOwed:        Number(s.calculated_amount) + Number(s.carry_over) - Number(s.paid_amount),
     status:           s.status,
+    createdAt:        s.created_at ?? null,
+    dueDate:          s.due_date ?? null,
   })), [staffSals]);
 
   const filteredTeachers = useMemo(() => (
@@ -707,29 +713,35 @@ export default function SalariesPage() {
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="bg-gray-50 border-b border-gray-200">
-                      {['№', 'Ism', 'Lavozim', 'Hisoblangan', 'Jami', "To'langan", 'Qoldiq', 'Holat'].map((h, i) => (
+                      {["№", "Xodim", 'Maosh qayd kuni', 'Jami', "To'langan", 'Qoldiq', 'Holat', 'Oxirgi muddat'].map((h, i) => (
                         <th key={i} className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap">{h}</th>
                       ))}
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-100">
                     {filteredStaffRows.map((row, idx) => {
-                      const jami   = row.calculatedAmount + row.carryOver;
-                      const qoldiq = row.totalOwed - row.paidAmount;
+                      const today   = new Date().toISOString().slice(0, 10);
+                      const jami    = row.calculatedAmount + row.carryOver;
+                      const qoldiq  = Math.max(jami - row.paidAmount, 0);
+                      const overdue = row.status !== 'paid' && !!row.dueDate && row.dueDate < today;
+                      const rowBg   = row.status === 'paid' ? 'bg-white' : overdue ? 'bg-[#FEF2F2]' : 'bg-[#FFFBEB]';
                       return (
-                        <tr key={row.id} className={cn(
-                          'transition-colors group',
-                          row.status === 'paid' ? 'bg-white' : row.status === 'partial' ? 'bg-orange-50' : 'bg-yellow-50',
-                        )}>
+                        <tr key={row.id} className={cn('transition-colors group', rowBg)}>
                           <td className="px-4 py-3 text-gray-400 text-xs">{idx + 1}</td>
-                          <td className="px-4 py-3 font-semibold text-gray-900 whitespace-nowrap">{row.name}</td>
-                          <td className="px-4 py-3 text-gray-600 text-xs">{row.roleDisplay}</td>
-                          <td className="px-4 py-3 text-gray-700 font-medium">{formatCurrency(row.calculatedAmount)}</td>
-                          <td className="px-4 py-3 font-bold text-gray-900">{formatCurrency(jami)}</td>
-                          <td className="px-4 py-3 font-semibold text-emerald-600">
+                          <td className="px-4 py-3">
+                            <p className="font-semibold text-gray-900 whitespace-nowrap">{row.name}</p>
+                            <p className="text-xs text-gray-500">{row.roleDisplay || '—'}</p>
+                          </td>
+                          <td className="px-4 py-3 text-xs text-gray-600 whitespace-nowrap">
+                            {fmtDate(row.createdAt)}
+                          </td>
+                          <td className="px-4 py-3 font-bold text-gray-900 whitespace-nowrap">
+                            {formatCurrency(jami)}
+                          </td>
+                          <td className="px-4 py-3 font-semibold text-emerald-600 whitespace-nowrap">
                             {row.paidAmount > 0 ? formatCurrency(row.paidAmount) : <span className="text-gray-400">—</span>}
                           </td>
-                          <td className="px-4 py-3 font-semibold">
+                          <td className="px-4 py-3 font-semibold whitespace-nowrap">
                             {qoldiq > 0 ? <span className="text-red-600">{formatCurrency(qoldiq)}</span> : <span className="text-gray-400">—</span>}
                           </td>
                           <td className="px-4 py-3 min-w-[130px]">
@@ -747,6 +759,9 @@ export default function SalariesPage() {
                                 </button>
                               </span>
                             )}
+                          </td>
+                          <td className="px-4 py-3 text-xs text-gray-500 whitespace-nowrap">
+                            {fmtDate(row.dueDate)}
                           </td>
                         </tr>
                       );

@@ -60,8 +60,6 @@ const PAYMENT_TYPE_LABELS: Record<string, string> = {
   cash: 'Naqd', card: 'Karta', transfer: "O'tkazma",
 };
 
-const PAGE_SIZE = 20;
-
 type PhoneSelection = Record<string, { phone1: boolean; phone2: boolean }>;
 
 export default function DebtsPage() {
@@ -72,6 +70,7 @@ export default function DebtsPage() {
   const [statusFilter, setStatusFilter] = useState('unpaid,overdue,partial');
   const [page, setPage]             = useState(1);
   const [count, setCount]           = useState(0);
+  const [pageSize, setPageSize]     = useState(25);
   const [totalAmount, setTotalAmount] = useState(0);
 
   const [phoneSelection, setPhoneSelection] = useState<PhoneSelection>({});
@@ -87,7 +86,7 @@ export default function DebtsPage() {
     setLoading(true);
     setError(false);
     try {
-      const params: Record<string, string | number> = { page, page_size: PAGE_SIZE };
+      const params: Record<string, string | number> = { page, page_size: pageSize };
       if (search)       params.search = search;
       if (statusFilter) params.status = statusFilter;
       const { data } = await api.get<PaginatedResponse<Debt> & { total_amount?: number }>(
@@ -105,7 +104,7 @@ export default function DebtsPage() {
     } finally {
       setLoading(false);
     }
-  }, [page, search, statusFilter]);
+  }, [page, pageSize, search, statusFilter]);
 
   useEffect(() => { fetchDebts(); }, [fetchDebts]);
   useEffect(() => { setPage(1); }, [search, statusFilter]);
@@ -264,7 +263,7 @@ export default function DebtsPage() {
                     const canSms = d.status !== 'paid';
                     return (
                       <tr key={d.id} className={cn('transition-colors hover:brightness-95', rowBg(d.status, d.student_status))}>
-                        <td className="px-4 py-3 text-gray-500">{(page - 1) * PAGE_SIZE + idx + 1}</td>
+                        <td className="px-4 py-3 text-gray-500">{(page - 1) * pageSize + idx + 1}</td>
                         <td className="px-4 py-3 font-medium text-gray-900">
                           <span className="flex items-center gap-2 flex-wrap">
                             {d.student_name}
@@ -338,13 +337,13 @@ export default function DebtsPage() {
         )}
       </div>
 
-      {!loading && count > PAGE_SIZE && (
+      {!loading && count > 0 && (
         <Pagination
           page={page}
-          pageSize={PAGE_SIZE}
+          pageSize={pageSize}
           count={count}
           onPageChange={setPage}
-          onPageSizeChange={() => {}}
+          onPageSizeChange={(size) => { setPageSize(size); setPage(1); }}
         />
       )}
 

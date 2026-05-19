@@ -31,8 +31,6 @@ const TYPE_STYLES: Record<string, string> = {
   transfer: 'bg-orange-50 text-orange-700 border-orange-200',
 };
 
-const PAGE_SIZE = 20;
-
 export default function PaymentsPage() {
   const [payments, setPayments]     = useState<Payment[]>([]);
   const [loading, setLoading]       = useState(true);
@@ -41,6 +39,7 @@ export default function PaymentsPage() {
   const [typeFilter, setTypeFilter] = useState('');
   const [page, setPage]             = useState(1);
   const [count, setCount]           = useState(0);
+  const [pageSize, setPageSize]     = useState(25);
 
   // SMS
   const [smsSelected, setSmsSelected]       = useState<Set<string>>(new Set());
@@ -51,7 +50,7 @@ export default function PaymentsPage() {
     setLoading(true);
     setError(false);
     try {
-      const params: Record<string, string | number> = { page, page_size: PAGE_SIZE };
+      const params: Record<string, string | number> = { page, page_size: pageSize };
       if (search)     params.search       = search;
       if (typeFilter) params.payment_type = typeFilter;
       const { data } = await api.get<PaginatedResponse<Payment>>('/api/v1/payments/', { params });
@@ -63,7 +62,7 @@ export default function PaymentsPage() {
     } finally {
       setLoading(false);
     }
-  }, [page, search, typeFilter]);
+  }, [page, pageSize, search, typeFilter]);
 
   useEffect(() => { fetchPayments(); }, [fetchPayments]);
   useEffect(() => { setPage(1); }, [search, typeFilter]);
@@ -156,7 +155,7 @@ export default function PaymentsPage() {
                   ? <tr><td colSpan={9} className="px-4 py-16 text-center text-gray-400">Natija topilmadi</td></tr>
                   : payments.map((p, idx) => (
                     <tr key={p.id} className={cn('transition-colors', smsSelected.has(p.id) ? 'bg-indigo-50' : 'hover:bg-gray-50')}>
-                      <td className="px-4 py-3 text-gray-400">{(page - 1) * PAGE_SIZE + idx + 1}</td>
+                      <td className="px-4 py-3 text-gray-400">{(page - 1) * pageSize + idx + 1}</td>
                       <td className="px-3 py-3">
                         <input
                           type="checkbox"
@@ -184,7 +183,7 @@ export default function PaymentsPage() {
         )}
       </div>
 
-      <Pagination page={page} pageSize={PAGE_SIZE} count={count} onPageChange={setPage} onPageSizeChange={() => {}} />
+      <Pagination page={page} pageSize={pageSize} count={count} onPageChange={setPage} onPageSizeChange={(size) => { setPageSize(size); setPage(1); }} />
 
       {/* ══ SMS Confirm ══ */}
       <Dialog open={showSmsConfirm} onOpenChange={setShowSmsConfirm}>

@@ -17,6 +17,9 @@ interface TeacherSalaryData {
   teacher_name: string;
   teacher_subject: string;
   salary_type: string;
+  salary_percent: number | null;
+  fixed_amount: number | null;
+  per_student_amt: number | null;
   students_count: number;
   kpi_amount: number;
   base_amount: number;
@@ -73,6 +76,7 @@ interface SalaryRow {
   salaryTypeText: string;
   salaryTypeStyle: string;
   rawSalaryType: string;
+  salaryPercent: number | null;
   baseAmount: number;
   studentsCount: number;
   kpiAmount: number;
@@ -349,6 +353,7 @@ export default function SalariesPage() {
       salaryTypeText:   s.salary_type === 'fixed' ? 'Belgilangan' : s.salary_type === 'percent' ? 'Foizli' : "O'quvchi boshiga",
       salaryTypeStyle:  s.salary_type === 'fixed' ? 'bg-gray-100 text-gray-600' : s.salary_type === 'percent' ? 'bg-blue-50 text-blue-600' : 'bg-green-50 text-green-600',
       rawSalaryType:    s.salary_type,
+      salaryPercent:    s.salary_percent ?? null,
       baseAmount:       Number(s.base_amount) || 0,
       studentsCount:    s.students_count || 0,
       kpiAmount:        Number(s.kpi_amount) || 0,
@@ -369,6 +374,7 @@ export default function SalariesPage() {
       salaryTypeText:   s.contract_type === 'monthly' ? 'Oylik' : 'Shartnomaviy',
       salaryTypeStyle:  s.contract_type === 'monthly' ? 'bg-gray-100 text-gray-600' : 'bg-purple-50 text-purple-600',
       rawSalaryType:    s.contract_type,
+      salaryPercent:    null,
       baseAmount:       Number(s.calculated_amount),
       studentsCount:    0,
       kpiAmount:        0,
@@ -709,8 +715,8 @@ export default function SalariesPage() {
                   )}
                   {row.entityType === 'teacher' && row.rawSalaryType === 'percent' && (<>
                     <Row label="O'qitilgan talabalar" value={`${row.studentsCount} ta`} />
-                    <Row label="Har talaba uchun" value={formatCurrency(perStudent)} />
-                    <Row label="Hisoblangan" value={`${row.studentsCount} × ${formatCurrency(perStudent)} = ${formatCurrency(row.baseAmount)}`} />
+                    <Row label="Foiz" value={`${row.salaryPercent ?? '—'}%`} />
+                    <Row label="Hisoblangan" value={formatCurrency(row.baseAmount)} />
                   </>)}
                   {row.entityType === 'teacher' && row.rawSalaryType === 'per_student' && (<>
                     <Row label="O'qitilgan talabalar" value={`${row.studentsCount} ta`} />

@@ -98,7 +98,7 @@ export default function GroupDetailPage() {
   const [addingBulk, setAddingBulk] = useState(false);
 
   // Actions
-  const [archiveTarget, setArchiveTarget] = useState<{ studentId: string; name: string } | null>(null);
+  const [archiveTarget, setArchiveTarget] = useState<{ studentId: string; name: string; status: string } | null>(null);
   const [archiveReason, setArchiveReason] = useState<'graduated' | 'dropped_out' | ''>('');
   const [changeGroupTarget, setChangeGroupTarget] = useState<{ studentId: string; name: string } | null>(null);
   const [groupOptions, setGroupOptions] = useState<GroupOption[]>([]);
@@ -420,7 +420,7 @@ export default function GroupDetailPage() {
                         {canEdit && (
                           <div className="flex items-center gap-1">
                             <button
-                              onClick={() => { setArchiveReason(''); setArchiveTarget({ studentId: s.id, name: `${s.first_name} ${s.last_name}` }); }}
+                              onClick={() => { setArchiveReason(''); setArchiveTarget({ studentId: s.id, name: `${s.first_name} ${s.last_name}`, status: s.status }); }}
                               className="p-1 rounded text-red-400 hover:bg-red-50 hover:text-red-600 transition-colors"
                               title="Arxivlash"
                             >
@@ -642,19 +642,21 @@ export default function GroupDetailPage() {
             <DialogTitle>{archiveTarget?.name}ni arxivlash</DialogTitle>
           </DialogHeader>
           <div className="mt-4 space-y-3">
-            <button
-              onClick={() => setArchiveReason('graduated')}
-              className={cn(
-                'w-full flex items-start gap-3 p-4 rounded-lg border-2 text-left transition-colors',
-                archiveReason === 'graduated' ? 'border-blue-600 bg-blue-50' : 'border-gray-200 hover:border-gray-300'
-              )}
-            >
-              <span className="text-2xl leading-none">🎓</span>
-              <div>
-                <p className="font-medium text-sm text-gray-900">Kursni bitirdi</p>
-                <p className="text-xs text-gray-500 mt-0.5">O&apos;quv rejasi to&apos;liq tugadi</p>
-              </div>
-            </button>
+            {archiveTarget?.status !== 'trial' && (
+              <button
+                onClick={() => setArchiveReason('graduated')}
+                className={cn(
+                  'w-full flex items-start gap-3 p-4 rounded-lg border-2 text-left transition-colors',
+                  archiveReason === 'graduated' ? 'border-blue-600 bg-blue-50' : 'border-gray-200 hover:border-gray-300'
+                )}
+              >
+                <span className="text-2xl leading-none">🎓</span>
+                <div>
+                  <p className="font-medium text-sm text-gray-900">Kursni bitirdi</p>
+                  <p className="text-xs text-gray-500 mt-0.5">O&apos;quv rejasi to&apos;liq tugadi</p>
+                </div>
+              </button>
+            )}
             <button
               onClick={() => setArchiveReason('dropped_out')}
               className={cn(

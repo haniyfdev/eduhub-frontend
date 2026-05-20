@@ -352,8 +352,9 @@ export default function SalariesPage() {
     + staffRows.reduce((s, r) => s + r.calculatedAmount + r.carryOver, 0);
   const totalPaid = teacherGrouped.reduce((s, t) => s + t.total_paid, 0)
     + staffRows.reduce((s, r) => s + r.paidAmount, 0);
-  const totalRemaining = teacherGrouped.reduce((s, t) => s + Math.max(t.total_owed - t.total_paid, 0), 0)
-    + staffRows.filter(r => r.status !== 'paid').reduce((s, r) => s + Math.max(r.totalOwed - r.paidAmount, 0), 0);
+  const totalRemaining =
+    teacherGrouped.reduce((s, t) => s + Math.max(t.total_owed - t.total_paid, 0), 0) +
+    staffRows.reduce((s, r) => s + Math.max(r.totalOwed - r.paidAmount, 0), 0);
 
   const Skel = ({ w }: { w?: string }) => <Skeleton className={cn('h-4 rounded', w ?? 'w-full')} />;
 

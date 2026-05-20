@@ -104,6 +104,7 @@ interface ExpenseItem {
   amount: number;
   description: string;
   expense_date: string;
+  source?: string;
 }
 
 interface StaffForm {
@@ -198,9 +199,10 @@ export default function SalariesPage() {
   const [paying, setPaying]                   = useState(false);
 
   // ── History state ─────────────────────────────────────────────────────────────
-  const [histMonth, setHistMonth]   = useState(currentMonthStr);
-  const [expenses, setExpenses]     = useState<ExpenseItem[]>([]);
-  const [loadingHist, setLoadingHist] = useState(false);
+  const [histMonth, setHistMonth]       = useState(currentMonthStr);
+  const [histCategory, setHistCategory] = useState('all');
+  const [expenses, setExpenses]         = useState<ExpenseItem[]>([]);
+  const [loadingHist, setLoadingHist]   = useState(false);
 
   // ── Fetchers ──────────────────────────────────────────────────────────────────
 
@@ -775,46 +777,76 @@ export default function SalariesPage() {
       {/* ════════════ TAB 2: TO'LOVLAR TARIXI ════════════ */}
       {activeTab === 'history' && (
         <div className="space-y-5">
-          <div className="flex items-center gap-3">
-            <input type="month" value={histMonth} onChange={e => setHistMonth(e.target.value)}
-              className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none" />
-            <span className="text-sm text-gray-500">{expenses.length} ta yozuv</span>
-          </div>
-          <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
-            {loadingHist ? (
-              <div className="p-4 space-y-2">{Array(5).fill(0).map((_, i) => <Skel key={i} />)}</div>
-            ) : expenses.length === 0 ? (
-              <p className="px-5 py-10 text-sm text-gray-400 text-center">Bu oy uchun to&apos;lov tarixi yo&apos;q</p>
-            ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="bg-gray-50 border-b border-gray-200">
-                      {['№', 'Kategoriya', 'Miqdor', 'Sana', 'Izoh'].map((h, i) => (
-                        <th key={i} className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">{h}</th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-gray-100">
-                    {expenses.map((exp, idx) => (
-                      <tr key={exp.id} className="hover:bg-gray-50 transition-colors">
-                        <td className="px-4 py-3 text-gray-400 text-xs">{idx + 1}</td>
-                        <td className="px-4 py-3">
-                          <span className={cn('inline-flex items-center px-2 py-0.5 text-xs font-medium rounded-full',
-                            exp.category === 'teacher_salary' ? 'bg-blue-50 text-blue-700' : 'bg-gray-100 text-gray-700')}>
-                            {exp.category === 'teacher_salary' ? "O'q. maoshi" : 'Xodim maoshi'}
-                          </span>
-                        </td>
-                        <td className="px-4 py-3 font-semibold text-emerald-600">{formatCurrency(exp.amount)}</td>
-                        <td className="px-4 py-3 text-gray-500 text-xs">{exp.expense_date || '—'}</td>
-                        <td className="px-4 py-3 text-gray-600 text-xs max-w-64 truncate">{exp.description || '—'}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
-          </div>
+          {(() => {
+            const filteredExp = histCategory === 'all'
+              ? expenses
+              : expenses.filter(e => e.category === histCategory);
+            const payLabel: Record<string, string> = { cash: 'Naqd', card: 'Karta', transfer: "O'tkazma" };
+            function payType(source?: string): string {
+              if (!source) return '—';
+              for (const k of ['cash', 'card', 'transfer']) {
+                if (source.includes(k)) return payLabel[k];
+              }
+              return '—';
+            }
+            function nameFromDesc(desc: string): string {
+              const idx = desc.indexOf(' — ');
+              return idx !== -1 ? desc.slice(0, idx) : desc;
+            }
+            return (
+              <>
+                <div className="flex flex-wrap items-center gap-3">
+                  <input type="month" value={histMonth} onChange={e => setHistMonth(e.target.value)}
+                    className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none" />
+                  <select value={histCategory} onChange={e => setHistCategory(e.target.value)}
+                    className="px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white focus:ring-2 focus:ring-blue-500 outline-none text-gray-700">
+                    <option value="all">Barchasi</option>
+                    <option value="teacher_salary">O&apos;qituvchi</option>
+                    <option value="staff_salary">Xodim</option>
+                  </select>
+                  <span className="text-sm text-gray-500">{filteredExp.length} ta yozuv</span>
+                </div>
+                <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+                  {loadingHist ? (
+                    <div className="p-4 space-y-2">{Array(5).fill(0).map((_, i) => <Skel key={i} />)}</div>
+                  ) : filteredExp.length === 0 ? (
+                    <p className="px-5 py-10 text-sm text-gray-400 text-center">Bu oy uchun to&apos;lov tarixi yo&apos;q</p>
+                  ) : (
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-sm">
+                        <thead>
+                          <tr className="bg-gray-50 border-b border-gray-200">
+                            {['№', 'Ism', 'Kategoriya', 'Miqdor', "To'lov turi", 'Sana'].map((h, i) => (
+                              <th key={i} className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap">{h}</th>
+                            ))}
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-gray-100">
+                          {filteredExp.map((exp, idx) => (
+                            <tr key={exp.id} className="hover:bg-gray-50 transition-colors">
+                              <td className="px-4 py-3 text-gray-400 text-xs">{idx + 1}</td>
+                              <td className="px-4 py-3 font-medium text-gray-900 whitespace-nowrap">
+                                {nameFromDesc(exp.description || '')}
+                              </td>
+                              <td className="px-4 py-3">
+                                <span className={cn('inline-flex items-center px-2 py-0.5 text-xs font-medium rounded-full',
+                                  exp.category === 'teacher_salary' ? 'bg-blue-50 text-blue-700' : 'bg-gray-100 text-gray-700')}>
+                                  {exp.category === 'teacher_salary' ? "O'qituvchi" : 'Xodim'}
+                                </span>
+                              </td>
+                              <td className="px-4 py-3 font-semibold text-emerald-600 whitespace-nowrap">{formatCurrency(exp.amount)}</td>
+                              <td className="px-4 py-3 text-xs text-gray-600">{payType(exp.source)}</td>
+                              <td className="px-4 py-3 text-gray-500 text-xs whitespace-nowrap">{fmtDate(exp.expense_date)}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </div>
+              </>
+            );
+          })()}
         </div>
       )}
 

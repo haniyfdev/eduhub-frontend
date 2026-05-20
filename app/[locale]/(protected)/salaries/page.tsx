@@ -333,7 +333,7 @@ export default function SalariesPage() {
     calculatedAmount: Number(s.calculated_amount),
     carryOver:        Number(s.carry_over),
     paidAmount:       Number(s.paid_amount),
-    totalOwed:        Number(s.total_owed),
+    totalOwed:        Number(s.calculated_amount) + Number(s.carry_over) - Number(s.paid_amount),
     status:           s.status,
     month:            s.month ?? null,
     dueDate:          s.due_date ?? null,
@@ -353,8 +353,24 @@ export default function SalariesPage() {
   const totalPaid = teacherGrouped.reduce((s, t) => s + t.total_paid, 0)
     + staffRows.reduce((s, r) => s + r.paidAmount, 0);
   const totalRemaining =
-    teacherGrouped.reduce((s, t) => s + Math.max(t.total_owed - t.total_paid, 0), 0) +
-    staffRows.reduce((s, r) => s + Math.max(r.totalOwed - r.paidAmount, 0), 0);
+    teacherGrouped.reduce((sum, t) => sum + Math.max(t.total_owed - t.total_paid, 0), 0) +
+    staffRows.reduce((sum, r) => sum + Math.max(r.totalOwed, 0), 0);
+
+  console.log('teacherGrouped:', teacherGrouped.map(t => ({
+    name: t.teacher_name,
+    total_owed: t.total_owed,
+    total_paid: t.total_paid,
+    remaining: t.total_owed - t.total_paid,
+  })));
+  console.log('staffRows:', staffRows.map(r => ({
+    name: r.name,
+    calculatedAmount: r.calculatedAmount,
+    carryOver: r.carryOver,
+    paidAmount: r.paidAmount,
+    totalOwed: r.totalOwed,
+    status: r.status,
+  })));
+  console.log('totalRemaining:', totalRemaining);
 
   const Skel = ({ w }: { w?: string }) => <Skeleton className={cn('h-4 rounded', w ?? 'w-full')} />;
 

@@ -623,7 +623,6 @@ export default function SalariesPage() {
                     <option value="teacher_salary">O&apos;qituvchi</option>
                     <option value="staff_salary">Xodim</option>
                   </select>
-                  <span className="text-sm text-gray-500">{filteredExp.length} ta yozuv</span>
                 </div>
                 <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
                   {loadingHist ? (

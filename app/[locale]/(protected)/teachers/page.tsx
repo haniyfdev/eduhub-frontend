@@ -41,6 +41,8 @@ interface StaffMember {
   salary_amount: number;
   hired_at: string;
   status: string;
+  archived_at?: string | null;
+  updated_at?: string | null;
 }
 
 interface StaffForm {
@@ -138,7 +140,6 @@ export default function TeachersPage() {
   const [savingStaff, setSavingStaff]               = useState(false);
   const [staffArchiveTarget, setStaffArchiveTarget] = useState<StaffMember | null>(null);
   const [staffArchiving, setStaffArchiving]         = useState(false);
-  const [staffRestoring, setStaffRestoring]         = useState<string | null>(null);
 
   // ── Refs ───────────────────────────────────────────────────────────────────
   const firstNameRef  = useRef<HTMLInputElement>(null);
@@ -321,20 +322,7 @@ export default function TeachersPage() {
     }
   }
 
-  async function handleRestoreStaff(id: string) {
-    setStaffRestoring(id);
-    try {
-      await api.patch(`/api/v1/staff/${id}/`, { status: 'active' });
-      toast.success('Xodim tiklandi');
-      fetchStaff();
-    } catch {
-      toast.error('Xatolik');
-    } finally {
-      setStaffRestoring(null);
-    }
-  }
-
-  // ── Render ─────────────────────────────────────────────────────────────────
+// ── Render ─────────────────────────────────────────────────────────────────
   return (
     <div className="space-y-5">
       <Toaster position="top-right" />
@@ -556,13 +544,11 @@ export default function TeachersPage() {
                               <Minus className="w-4 h-4" />
                             </button>
                           ) : (
-                            <button
-                              onClick={() => handleRestoreStaff(s.id)}
-                              disabled={staffRestoring === s.id}
-                              className="px-2 py-1 text-xs rounded text-blue-600 hover:bg-blue-50 transition-colors disabled:opacity-50"
-                              title="Tiklash">
-                              ↺
-                            </button>
+                            <span className="text-gray-400 text-sm">
+                              {(s.archived_at || s.updated_at)
+                                ? formatDMY(s.archived_at || s.updated_at)
+                                : 'Arxivlangan'}
+                            </span>
                           )}
                         </td>
                       </tr>

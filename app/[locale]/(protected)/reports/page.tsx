@@ -31,7 +31,7 @@ interface PnLData {
   from_date: string; to_date: string;
   income: { total: number };
   expenses: {
-    total: number; teacher_salaries: number; staff_salaries: number;
+    total: number; maoshlar: number;
     rent: number; utility: number; tax: number; fine: number;
     discount: number; other: number;
     breakdown: ExpenseRow[];
@@ -68,20 +68,19 @@ const REFERRAL_COLORS: Record<string, string> = {
   social_media: '#8B5CF6', other: '#6B7280',
 };
 const EXPENSE_PIE_COLORS: Record<string, string> = {
-  teacher_salary: '#3B82F6',
-  staff_salary:   '#8B5CF6',
-  rent:           '#F59E0B',
-  utility:        '#10B981',
-  tax:            '#EF4444',
-  fine:           '#F97316',
-  discount:       '#EC4899',
-  other:          '#6B7280',
+  maoshlar: '#3B82F6',
+  rent:     '#F59E0B',
+  utility:  '#10B981',
+  tax:      '#EF4444',
+  fine:     '#F97316',
+  discount: '#EC4899',
+  other:    '#6B7280',
 };
 const EXPENSE_LABELS: Record<string, string> = {
   rent: 'Ijara', utility: 'Kommunal', tax: 'Soliq', fine: 'Jarima',
-  discount: 'Chegirma', teacher_salary: "O'qituvchi maoshi", staff_salary: 'Xodim maoshi', other: 'Boshqa',
+  discount: 'Chegirma', maoshlar: 'Maoshlar', other: 'Boshqa',
 };
-const MANUAL_CATS = ['rent', 'utility', 'tax', 'fine', 'discount', 'staff_salary', 'other'];
+const MANUAL_CATS = ['rent', 'utility', 'tax', 'fine', 'discount', 'other'];
 const MONTH_LABELS = ['Yan','Fev','Mar','Apr','May','Iyn','Iyl','Avg','Sen','Okt','Noy','Dek'];
 
 function todayStr()      { return new Date().toISOString().slice(0, 10); }
@@ -236,16 +235,15 @@ export default function ReportsPage() {
 
   const expBreakdown = useMemo(() => {
     if (!pnl?.expenses) return [];
-    const { teacher_salaries, staff_salaries, rent, utility, tax, fine, discount, other } = pnl.expenses;
+    const { maoshlar, rent, utility, tax, fine, discount, other } = pnl.expenses;
     return [
-      { key: 'teacher_salary', name: "O'qituvchi maoshi", value: Number(teacher_salaries) },
-      { key: 'staff_salary',   name: 'Xodim maoshi',       value: Number(staff_salaries) },
-      { key: 'rent',           name: 'Ijara',               value: Number(rent) },
-      { key: 'utility',        name: 'Kommunal',            value: Number(utility) },
-      { key: 'tax',            name: 'Soliq',               value: Number(tax) },
-      { key: 'fine',           name: 'Jarima',              value: Number(fine) },
-      { key: 'discount',       name: 'Chegirma',            value: Number(discount) },
-      { key: 'other',          name: 'Boshqa',              value: Number(other) },
+      { key: 'maoshlar', name: 'Maoshlar', value: Number(maoshlar) },
+      { key: 'rent',     name: 'Ijara',    value: Number(rent) },
+      { key: 'utility',  name: 'Kommunal', value: Number(utility) },
+      { key: 'tax',      name: 'Soliq',    value: Number(tax) },
+      { key: 'fine',     name: 'Jarima',   value: Number(fine) },
+      { key: 'discount', name: 'Chegirma', value: Number(discount) },
+      { key: 'other',    name: 'Boshqa',   value: Number(other) },
     ].filter(d => d.value > 0).sort((a, b) => b.value - a.value);
   }, [pnl]);
 
@@ -609,7 +607,7 @@ export default function ReportsPage() {
                         'inline-flex items-center gap-1.5 px-2 py-0.5 text-xs font-medium rounded-full',
                         e.source === 'auto' ? 'bg-blue-50 text-blue-700' : 'bg-gray-100 text-gray-700'
                       )}>
-                        {e.source === 'auto' && e.category === 'teacher_salary' && <GraduationCap className="w-3 h-3" />}
+                        {e.source === 'auto' && e.category === 'maoshlar' && <GraduationCap className="w-3 h-3" />}
                         {EXPENSE_LABELS[e.category] ?? e.category}
                       </span>
                     </td>

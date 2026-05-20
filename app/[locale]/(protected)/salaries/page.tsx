@@ -374,8 +374,8 @@ export default function SalariesPage() {
       {/* Tabs */}
       <div className="flex gap-1 border-b border-gray-200">
         {([
-          { id: 'debts',   label: '💰 Maosh qarzdorligi' },
-          { id: 'history', label: "📋 To'lovlar tarixi" },
+          { id: 'debts',   label: 'Maosh qarzdorligi' },
+          { id: 'history', label: "To'lovlar tarixi" },
         ] as const).map(tab => (
           <button key={tab.id} onClick={() => setActiveTab(tab.id)}
             className={cn(

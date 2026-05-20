@@ -353,8 +353,8 @@ export default function TeachersPage() {
       {/* Tabs */}
       <div className="flex gap-1 border-b border-gray-200">
         {([
-          { id: 'teachers', label: "👨‍🏫 O'qituvchilar" },
-          { id: 'staff',    label: '👷 Xodimlar' },
+          { id: 'teachers', label: "O'qituvchilar" },
+          { id: 'staff',    label: 'Xodimlar' },
         ] as const).map(tab => (
           <button key={tab.id} onClick={() => setActiveTab(tab.id)}
             className={cn(

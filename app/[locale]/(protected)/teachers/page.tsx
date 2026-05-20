@@ -73,15 +73,6 @@ const ROLE_LABELS: Record<string, string> = {
   security: 'Qorovul', cleaner: 'Farrosh', supply: 'Zavxoz', other: 'Boshqa',
 };
 
-const ROLE_BADGE: Record<string, string> = {
-  admin:      'bg-gray-100 text-gray-700',
-  manager:    'bg-purple-50 text-purple-700',
-  accountant: 'bg-emerald-50 text-emerald-700',
-  security:   'bg-orange-50 text-orange-700',
-  cleaner:    'bg-teal-50 text-teal-700',
-  supply:     'bg-yellow-50 text-yellow-700',
-  other:      'bg-gray-50 text-gray-500',
-};
 
 const EMPTY_FORM: {
   first_name: string; last_name: string; phone: string; password: string;

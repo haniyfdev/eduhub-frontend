@@ -535,7 +535,7 @@ export default function SalariesPage() {
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="bg-gray-50 border-b border-gray-200">
-                      {["№", "Xodim", "Lavozim", "Ishga kirgan", "Oylik", "To'langan", 'Qoldiq', 'Holat', 'Oxirgi muddat'].map((h, i) => (
+                      {["№", "Xodim", "Maosh qayd kuni", "Jami", "To'langan", 'Qoldiq', 'Holat', 'Oxirgi muddat'].map((h, i) => (
                         <th key={i} className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap">{h}</th>
                       ))}
                     </tr>
@@ -549,11 +549,9 @@ export default function SalariesPage() {
                       return (
                         <tr key={row.id} className={cn('transition-colors group', rowBg)}>
                           <td className="px-4 py-3 text-gray-400 text-xs">{idx + 1}</td>
-                          <td className="px-4 py-3 font-semibold text-gray-900 whitespace-nowrap">{row.name}</td>
                           <td className="px-4 py-3">
-                            <span className={cn('inline-flex items-center px-2 py-0.5 text-xs font-medium rounded-full', ROLE_BADGE.other)}>
-                              {row.roleDisplay || '—'}
-                            </span>
+                            <p className="font-semibold text-gray-900 whitespace-nowrap">{row.name}</p>
+                            <p className="text-xs text-gray-500">{row.roleDisplay || '—'}</p>
                           </td>
                           <td className="px-4 py-3 text-xs text-gray-500 whitespace-nowrap">{fmtDate(row.hiredAt)}</td>
                           <td className="px-4 py-3 font-bold text-gray-900 whitespace-nowrap">
@@ -602,17 +600,24 @@ export default function SalariesPage() {
             const filteredExp = histCategory === 'all'
               ? expenses
               : expenses.filter(e => e.category === histCategory);
-            const payLabel: Record<string, string> = { cash: 'Naqd', card: 'Karta', transfer: "O'tkazma" };
-            function payType(source?: string): string {
-              if (!source) return '—';
-              for (const k of ['cash', 'card', 'transfer']) {
-                if (source.includes(k)) return payLabel[k];
+            function parseDesc(desc: string): { name: string; group: string } {
+              const parenIdx = desc.indexOf('(');
+              if (parenIdx !== -1) {
+                const closeIdx = desc.indexOf(')', parenIdx);
+                return {
+                  name:  desc.slice(0, parenIdx).trim(),
+                  group: closeIdx !== -1 ? desc.slice(parenIdx + 1, closeIdx) : '—',
+                };
               }
-              return '—';
+              const dashIdx = desc.indexOf(' — ');
+              return { name: dashIdx !== -1 ? desc.slice(0, dashIdx) : desc, group: '—' };
             }
-            function nameFromDesc(desc: string): string {
-              const idx = desc.indexOf(' — ');
-              return idx !== -1 ? desc.slice(0, idx) : desc;
+            function payBadge(source?: string) {
+              if (!source) return <span className="text-gray-400">—</span>;
+              if (source.includes('cash'))     return <span className="inline-flex items-center px-2 py-0.5 text-xs font-medium rounded-full bg-emerald-50 text-emerald-700">Naqd</span>;
+              if (source.includes('card'))     return <span className="inline-flex items-center px-2 py-0.5 text-xs font-medium rounded-full bg-blue-50 text-blue-700">Karta</span>;
+              if (source.includes('transfer')) return <span className="inline-flex items-center px-2 py-0.5 text-xs font-medium rounded-full bg-orange-50 text-orange-700">O&apos;tkazma</span>;
+              return <span className="text-gray-400">—</span>;
             }
             return (
               <>
@@ -637,29 +642,32 @@ export default function SalariesPage() {
                       <table className="w-full text-sm">
                         <thead>
                           <tr className="bg-gray-50 border-b border-gray-200">
-                            {['№', 'Ism', 'Kategoriya', 'Miqdor', "To'lov turi", 'Sana'].map((h, i) => (
+                            {['№', 'Ism', 'Ishga kirgan', 'Guruh', 'Kategoriya', 'Miqdor', "To'lov", 'Sana'].map((h, i) => (
                               <th key={i} className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap">{h}</th>
                             ))}
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-gray-100">
-                          {filteredExp.map((exp, idx) => (
-                            <tr key={exp.id} className="hover:bg-gray-50 transition-colors">
-                              <td className="px-4 py-3 text-gray-400 text-xs">{idx + 1}</td>
-                              <td className="px-4 py-3 font-medium text-gray-900 whitespace-nowrap">
-                                {nameFromDesc(exp.description || '')}
-                              </td>
-                              <td className="px-4 py-3">
-                                <span className={cn('inline-flex items-center px-2 py-0.5 text-xs font-medium rounded-full',
-                                  exp.category === 'teacher_salary' ? 'bg-blue-50 text-blue-700' : 'bg-gray-100 text-gray-700')}>
-                                  {exp.category === 'teacher_salary' ? "O'qituvchi" : 'Xodim'}
-                                </span>
-                              </td>
-                              <td className="px-4 py-3 font-semibold text-emerald-600 whitespace-nowrap">{formatCurrency(exp.amount)}</td>
-                              <td className="px-4 py-3 text-xs text-gray-600">{payType(exp.source)}</td>
-                              <td className="px-4 py-3 text-gray-500 text-xs whitespace-nowrap">{fmtDate(exp.expense_date)}</td>
-                            </tr>
-                          ))}
+                          {filteredExp.map((exp, idx) => {
+                            const parsed = parseDesc(exp.description || '');
+                            return (
+                              <tr key={exp.id} className="hover:bg-gray-50 transition-colors">
+                                <td className="px-4 py-3 text-gray-400 text-xs">{idx + 1}</td>
+                                <td className="px-4 py-3 font-medium text-gray-900 whitespace-nowrap">{parsed.name}</td>
+                                <td className="px-4 py-3 text-xs text-gray-500">—</td>
+                                <td className="px-4 py-3 text-xs text-gray-600">{parsed.group}</td>
+                                <td className="px-4 py-3">
+                                  <span className={cn('inline-flex items-center px-2 py-0.5 text-xs font-medium rounded-full',
+                                    exp.category === 'teacher_salary' ? 'bg-blue-50 text-blue-700' : 'bg-gray-100 text-gray-700')}>
+                                    {exp.category === 'teacher_salary' ? "O'qituvchi" : 'Xodim'}
+                                  </span>
+                                </td>
+                                <td className="px-4 py-3 font-semibold text-emerald-600 whitespace-nowrap">{formatCurrency(exp.amount)}</td>
+                                <td className="px-4 py-3">{payBadge(exp.source)}</td>
+                                <td className="px-4 py-3 text-gray-500 text-xs whitespace-nowrap">{fmtDate(exp.expense_date)}</td>
+                              </tr>
+                            );
+                          })}
                         </tbody>
                       </table>
                     </div>

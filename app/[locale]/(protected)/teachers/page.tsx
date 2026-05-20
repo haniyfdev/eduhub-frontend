@@ -140,11 +140,14 @@ export default function TeachersPage() {
   // ── Staff state ───────────────────────────────────────────────────────────
   const [staffList, setStaffList]                   = useState<StaffMember[]>([]);
   const [staffLoading, setStaffLoading]             = useState(false);
+  const [staffSearch, setStaffSearch]               = useState('');
+  const [staffStatusFilter, setStaffStatusFilter]   = useState('');
   const [showAddStaff, setShowAddStaff]             = useState(false);
   const [staffForm, setStaffForm]                   = useState<StaffForm>(blankStaffForm);
   const [savingStaff, setSavingStaff]               = useState(false);
   const [staffArchiveTarget, setStaffArchiveTarget] = useState<StaffMember | null>(null);
   const [staffArchiving, setStaffArchiving]         = useState(false);
+  const [staffRestoring, setStaffRestoring]         = useState<string | null>(null);
 
   // ── Refs ───────────────────────────────────────────────────────────────────
   const firstNameRef  = useRef<HTMLInputElement>(null);
@@ -220,14 +223,17 @@ export default function TeachersPage() {
   const fetchStaff = useCallback(async () => {
     setStaffLoading(true);
     try {
-      const { data } = await api.get('/api/v1/staff/?status=active');
+      const params: Record<string, string> = {};
+      if (staffSearch)       params.search = staffSearch;
+      if (staffStatusFilter) params.status = staffStatusFilter;
+      const { data } = await api.get('/api/v1/staff/', { params });
       setStaffList(data.results ?? data);
     } catch {
       toast.error("Xodimlar yuklanmadi");
     } finally {
       setStaffLoading(false);
     }
-  }, []);
+  }, [staffSearch, staffStatusFilter]);
 
   useEffect(() => { if (activeTab === 'staff') fetchStaff(); }, [activeTab, fetchStaff]);
 
@@ -321,6 +327,19 @@ export default function TeachersPage() {
       toast.error('Xatolik');
     } finally {
       setStaffArchiving(false);
+    }
+  }
+
+  async function handleRestoreStaff(id: string) {
+    setStaffRestoring(id);
+    try {
+      await api.patch(`/api/v1/staff/${id}/`, { status: 'active' });
+      toast.success('Xodim tiklandi');
+      fetchStaff();
+    } catch {
+      toast.error('Xatolik');
+    } finally {
+      setStaffRestoring(null);
     }
   }
 
@@ -477,54 +496,92 @@ export default function TeachersPage() {
 
       {/* ════ TAB 2: XODIMLAR ════ */}
       {activeTab === 'staff' && (
-        <div className="bg-white rounded border border-gray-200 shadow-sm overflow-hidden">
-          {staffLoading ? (
-            <div className="p-4 space-y-3">
-              {Array(5).fill(0).map((_, i) => (
-                <div key={i} className="flex gap-3">
-                  {Array(7).fill(0).map((_, j) => <Skeleton key={j} className="h-4 flex-1" />)}
-                </div>
-              ))}
+        <>
+          <div className="flex gap-3 items-center flex-wrap">
+            <div className="relative max-w-xs flex-1">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+              <input
+                type="text"
+                value={staffSearch}
+                onChange={(e) => setStaffSearch(e.target.value)}
+                placeholder="Ism yoki familiya..."
+                className="w-full pl-9 pr-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
             </div>
-          ) : staffList.length === 0 ? (
-            <p className="px-5 py-16 text-sm text-gray-400 text-center">
-              Xodimlar yo&apos;q — birinchi xodimni qo&apos;shing
-            </p>
-          ) : (
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="bg-gray-50 border-b border-gray-200">
-                  {['№', 'Ism', 'Lavozim', 'Telefon', 'Ishga kirgan', 'Oylik', 'Amal'].map((h) => (
-                    <th key={h} className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap">{h}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-100">
-                {staffList.map((s, idx) => (
-                  <tr key={s.id} className="hover:bg-gray-50 transition-colors">
-                    <td className="px-4 py-3 text-gray-400 text-xs">{idx + 1}</td>
-                    <td className="px-4 py-3 font-semibold text-gray-900 whitespace-nowrap">{s.full_name}</td>
-                    <td className="px-4 py-3">
-                      <span className={cn('inline-flex items-center px-2 py-0.5 text-xs font-medium rounded-full', ROLE_BADGE[s.role] ?? ROLE_BADGE.other)}>
-                        {s.role_display}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3 text-gray-500 text-sm">{formatPhone(s.phone)}</td>
-                    <td className="px-4 py-3 text-gray-500 text-xs whitespace-nowrap">{formatDMY(s.hired_at)}</td>
-                    <td className="px-4 py-3 font-semibold text-gray-900 whitespace-nowrap">{formatCurrency(s.salary_amount)}</td>
-                    <td className="px-4 py-3">
-                      <button onClick={() => setStaffArchiveTarget(s)}
-                        className="p-1 rounded text-red-400 hover:bg-red-50 hover:text-red-600 transition-colors"
-                        title="Arxivlash">
-                        <Minus className="w-4 h-4" />
-                      </button>
-                    </td>
-                  </tr>
+            <select value={staffStatusFilter} onChange={(e) => setStaffStatusFilter(e.target.value)}
+              className="px-3 py-2 border border-gray-300 rounded text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-700">
+              <option value="">Barchasi</option>
+              <option value="active">Faol</option>
+              <option value="archived">Arxivlangan</option>
+            </select>
+          </div>
+
+          <div className="bg-white rounded border border-gray-200 shadow-sm overflow-hidden">
+            {staffLoading ? (
+              <div className="p-4 space-y-3">
+                {Array(5).fill(0).map((_, i) => (
+                  <div key={i} className="flex gap-3">
+                    {Array(7).fill(0).map((_, j) => <Skeleton key={j} className="h-4 flex-1" />)}
+                  </div>
                 ))}
-              </tbody>
-            </table>
-          )}
-        </div>
+              </div>
+            ) : staffList.length === 0 ? (
+              <p className="px-5 py-16 text-sm text-gray-400 text-center">
+                Xodimlar yo&apos;q — birinchi xodimni qo&apos;shing
+              </p>
+            ) : (
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="bg-gray-50 border-b border-gray-200">
+                    {['№', 'Ism', 'Telefon', 'Ishga kirgan', 'Oylik', 'Holat', 'Amal'].map((h) => (
+                      <th key={h} className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap">{h}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-100">
+                  {[...staffList]
+                    .sort((a, b) => a.status === b.status ? 0 : a.status === 'active' ? -1 : 1)
+                    .map((s, idx) => (
+                      <tr key={s.id} className={cn('transition-colors', s.status === 'archived' ? 'bg-yellow-50 hover:bg-yellow-100' : 'hover:bg-gray-50')}>
+                        <td className="px-4 py-3 text-gray-400 text-xs">{idx + 1}</td>
+                        <td className="px-4 py-3">
+                          <p className="font-semibold text-gray-900">{s.full_name}</p>
+                          <p className="text-xs text-gray-500">{s.role_display}</p>
+                        </td>
+                        <td className="px-4 py-3 text-gray-500 text-sm">{formatPhone(s.phone)}</td>
+                        <td className="px-4 py-3 text-gray-500 text-xs whitespace-nowrap">{formatDMY(s.hired_at)}</td>
+                        <td className="px-4 py-3 font-semibold text-gray-900 whitespace-nowrap">{formatCurrency(s.salary_amount)}</td>
+                        <td className="px-4 py-3">
+                          <span className={cn('inline-flex items-center px-2 py-0.5 text-xs font-medium border rounded',
+                            s.status === 'active' ? 'bg-green-50 text-green-700 border-green-200' : 'bg-gray-100 text-gray-600 border-gray-200')}>
+                            {s.status === 'active' ? 'Faol' : 'Arxivlangan'}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3">
+                          {s.status === 'active' ? (
+                            <button onClick={() => setStaffArchiveTarget(s)}
+                              className="p-1 rounded text-red-400 hover:bg-red-50 hover:text-red-600 transition-colors"
+                              title="Arxivlash">
+                              <Minus className="w-4 h-4" />
+                            </button>
+                          ) : (
+                            <button
+                              onClick={() => handleRestoreStaff(s.id)}
+                              disabled={staffRestoring === s.id}
+                              className="px-2 py-1 text-xs rounded text-blue-600 hover:bg-blue-50 transition-colors disabled:opacity-50"
+                              title="Tiklash">
+                              ↺
+                            </button>
+                          )}
+                        </td>
+                      </tr>
+                    ))
+                  }
+                </tbody>
+              </table>
+            )}
+          </div>
+        </>
       )}
 
       {/* ══ Add Teacher Dialog ══ */}

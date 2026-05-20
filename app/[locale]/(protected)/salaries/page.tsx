@@ -48,8 +48,9 @@ interface TeacherSalaryGrouped {
 interface StaffSalaryData {
   id: string;
   staff: string;
-  user_name: string;
-  user_role: string;
+  staff_name: string;
+  staff_role: string;
+  hired_at?: string | null;
   month: string;
   calculated_amount: number;
   paid_amount: number;
@@ -70,12 +71,8 @@ interface StaffMember {
   phone: string;
   role: string;
   role_display: string;
-  contract_type: string;
-  contract_display: string;
   salary_amount: number;
-  contract_months: number | null;
-  contract_start: string | null;
-  contract_end: string | null;
+  hired_at: string;
   status: string;
 }
 
@@ -96,6 +93,7 @@ interface SalaryRow {
   status: 'unpaid' | 'partial' | 'paid';
   month: string | null;
   dueDate: string | null;
+  hiredAt: string | null;
 }
 
 interface ExpenseItem {
@@ -112,10 +110,7 @@ interface StaffForm {
   last_name: string;
   phone: string;
   role: string;
-  contract_type: 'monthly' | 'contract';
   salary_amount: string;
-  contract_months: string;
-  contract_start: string;
   notes: string;
 }
 
@@ -137,10 +132,6 @@ const ROLE_BADGE: Record<string, string> = {
   other: 'bg-gray-50 text-gray-500',
 };
 
-const PAYMENT_TYPE_LABELS: Record<string, string> = {
-  cash: 'Naqd', card: 'Karta', transfer: "O'tkazma",
-};
-
 const formatAmount = (val: string) =>
   val.replace(/\D/g, '').replace(/\B(?=(\d{3})+(?!\d))/g, ',');
 
@@ -154,8 +145,7 @@ function currentMonthStr() {
 function blankStaffForm(): StaffForm {
   return {
     first_name: '', last_name: '', phone: '', role: 'admin',
-    contract_type: 'monthly', salary_amount: '', contract_months: '',
-    contract_start: '', notes: '',
+    salary_amount: '', notes: '',
   };
 }
 
@@ -195,7 +185,6 @@ export default function SalariesPage() {
   const [confirmArchive, setConfirmArchive]   = useState<StaffMember | null>(null);
   const [payTarget, setPayTarget]             = useState<SalaryRow | null>(null);
   const [payAmount, setPayAmount]             = useState('');
-  const [payType, setPayType]                 = useState<'cash' | 'card' | 'transfer'>('cash');
   const [paying, setPaying]                   = useState(false);
 
   // ── History state ─────────────────────────────────────────────────────────────
@@ -351,10 +340,8 @@ export default function SalariesPage() {
   // ── Staff handlers ────────────────────────────────────────────────────────────
 
   function openPayModal(row: SalaryRow) {
-    const remaining = row.totalOwed - row.paidAmount;
     setPayTarget(row);
-    setPayAmount(formatAmount(String(remaining > 0 ? remaining : row.totalOwed)));
-    setPayType('cash');
+    setPayAmount(formatAmount(String(Math.round(row.totalOwed))));
   }
 
   async function handlePay() {
@@ -364,7 +351,7 @@ export default function SalariesPage() {
     if (amount < 10000) { toast.error("Minimal to'lov 10,000 so'm"); return; }
     setPaying(true);
     try {
-      await api.post(`/api/v1/staff-salaries/${payTarget.id}/pay/`, { amount, payment_type: payType });
+      await api.post(`/api/v1/staff-salaries/${payTarget.id}/pay/`, { amount });
       toast.success("Maosh muvaffaqiyatli to'landi");
       setPayTarget(null);
       loadSalaries();
@@ -387,25 +374,14 @@ export default function SalariesPage() {
     }
     setSavingStaff(true);
     try {
-      let contractStartIso = '';
-      if (staffForm.contract_type === 'contract' && staffForm.contract_start.length === 10) {
-        const [d, m, y] = staffForm.contract_start.split('/');
-        contractStartIso = `${y}-${m}-${d}`;
-      }
-      const body: Record<string, unknown> = {
-        first_name: staffForm.first_name,
-        last_name:  staffForm.last_name,
-        phone:      '+998' + staffForm.phone.replace(/\D/g, ''),
-        role:       staffForm.role,
-        contract_type: staffForm.contract_type,
+      await api.post('/api/v1/staff/', {
+        first_name:    staffForm.first_name,
+        last_name:     staffForm.last_name,
+        phone:         '+998' + staffForm.phone.replace(/\D/g, ''),
+        role:          staffForm.role,
         salary_amount: salaryNum,
-        notes: staffForm.notes || null,
-      };
-      if (staffForm.contract_type === 'contract') {
-        body.contract_months = parseInt(staffForm.contract_months);
-        body.contract_start  = contractStartIso;
-      }
-      await api.post('/api/v1/staff/', body);
+        notes:         staffForm.notes || null,
+      });
       toast.success("Xodim qo'shildi");
       setShowAddStaff(false);
       setStaffForm(blankStaffForm());
@@ -438,9 +414,9 @@ export default function SalariesPage() {
   const staffRows = useMemo<SalaryRow[]>(() => staffSals.map(s => ({
     id:               s.id,
     entityType:       'staff',
-    name:             s.user_name,
-    roleDisplay:      s.user_role || '—',
-    badgeText:        s.user_role || 'Xodim',
+    name:             s.staff_name,
+    roleDisplay:      s.staff_role || '—',
+    badgeText:        s.staff_role || 'Xodim',
     badgeStyle:       ROLE_BADGE.other,
     salaryTypeText:   '',
     salaryTypeStyle:  '',
@@ -448,10 +424,11 @@ export default function SalariesPage() {
     calculatedAmount: Number(s.calculated_amount),
     carryOver:        Number(s.carry_over),
     paidAmount:       Number(s.paid_amount),
-    totalOwed:        Number(s.calculated_amount) + Number(s.carry_over),
+    totalOwed:        Number(s.total_owed),
     status:           s.status,
     month:            s.month ?? null,
     dueDate:          s.due_date ?? null,
+    hiredAt:          s.hired_at ?? null,
   })), [staffSals]);
 
   const filteredTeachers = useMemo(() => (
@@ -559,7 +536,7 @@ export default function SalariesPage() {
                   <table className="w-full text-sm">
                     <thead>
                       <tr className="bg-gray-50 border-b border-gray-200">
-                        {['№', 'Ism', 'Lavozim', 'Shartnoma turi', 'Oylik', 'Muddat', 'Holat', 'Amal'].map((h, i) => (
+                        {['№', 'Ism', 'Lavozim', 'Ishga kirgan', 'Oylik', 'Amal'].map((h, i) => (
                           <th key={i} className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap">{h}</th>
                         ))}
                       </tr>
@@ -574,18 +551,8 @@ export default function SalariesPage() {
                               {s.role_display}
                             </span>
                           </td>
-                          <td className="px-4 py-3 text-gray-600 text-xs">{s.contract_display}</td>
+                          <td className="px-4 py-3 text-gray-500 text-xs whitespace-nowrap">{fmtDate(s.hired_at)}</td>
                           <td className="px-4 py-3 font-semibold text-gray-900">{formatCurrency(s.salary_amount)}</td>
-                          <td className="px-4 py-3 text-gray-500 text-xs">
-                            {s.contract_type === 'contract' && s.contract_end
-                              ? `${s.contract_start?.slice(0, 7)} → ${s.contract_end?.slice(0, 7)}` : '—'}
-                          </td>
-                          <td className="px-4 py-3">
-                            <span className={cn('inline-flex items-center px-2 py-0.5 text-xs font-medium rounded-full',
-                              s.status === 'active' ? 'bg-emerald-50 text-emerald-700' : 'bg-gray-100 text-gray-500')}>
-                              {s.status === 'active' ? 'Faol' : 'Arxivlangan'}
-                            </span>
-                          </td>
                           <td className="px-4 py-3">
                             <button onClick={() => setConfirmArchive(s)} className="text-xs text-red-500 hover:text-red-700 hover:underline">
                               Arxiv
@@ -713,7 +680,7 @@ export default function SalariesPage() {
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="bg-gray-50 border-b border-gray-200">
-                      {["№", "Xodim", 'Maosh qayd kuni', 'Jami', "To'langan", 'Qoldiq', 'Holat', 'Oxirgi muddat'].map((h, i) => (
+                      {["№", "Xodim", "Lavozim", "Ishga kirgan", "Oylik", "To'langan", 'Qoldiq', 'Holat', 'Oxirgi muddat'].map((h, i) => (
                         <th key={i} className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap">{h}</th>
                       ))}
                     </tr>
@@ -721,22 +688,21 @@ export default function SalariesPage() {
                   <tbody className="divide-y divide-gray-100">
                     {filteredStaffRows.map((row, idx) => {
                       const today   = new Date().toISOString().slice(0, 10);
-                      const jami    = row.calculatedAmount + row.carryOver;
-                      const qoldiq  = Math.max(jami - row.paidAmount, 0);
+                      const qoldiq  = Math.max(row.totalOwed, 0);
                       const overdue = row.status !== 'paid' && !!row.dueDate && row.dueDate < today;
                       const rowBg   = row.status === 'paid' ? 'bg-white' : overdue ? 'bg-[#FEF2F2]' : 'bg-[#FFFBEB]';
                       return (
                         <tr key={row.id} className={cn('transition-colors group', rowBg)}>
                           <td className="px-4 py-3 text-gray-400 text-xs">{idx + 1}</td>
+                          <td className="px-4 py-3 font-semibold text-gray-900 whitespace-nowrap">{row.name}</td>
                           <td className="px-4 py-3">
-                            <p className="font-semibold text-gray-900 whitespace-nowrap">{row.name}</p>
-                            <p className="text-xs text-gray-500">{row.roleDisplay || '—'}</p>
+                            <span className={cn('inline-flex items-center px-2 py-0.5 text-xs font-medium rounded-full', ROLE_BADGE.other)}>
+                              {row.roleDisplay || '—'}
+                            </span>
                           </td>
-                          <td className="px-4 py-3 text-xs text-gray-600 whitespace-nowrap">
-                            {row.month ? `${row.month.slice(5, 7)}/${row.month.slice(0, 4)}` : '—'}
-                          </td>
+                          <td className="px-4 py-3 text-xs text-gray-500 whitespace-nowrap">{fmtDate(row.hiredAt)}</td>
                           <td className="px-4 py-3 font-bold text-gray-900 whitespace-nowrap">
-                            {formatCurrency(jami)}
+                            {formatCurrency(row.calculatedAmount + row.carryOver)}
                           </td>
                           <td className="px-4 py-3 font-semibold text-emerald-600 whitespace-nowrap">
                             {row.paidAmount > 0 ? formatCurrency(row.paidAmount) : <span className="text-gray-400">—</span>}
@@ -1024,9 +990,8 @@ export default function SalariesPage() {
             <DialogTitle>{payTarget?.name}ga maosh to&apos;lash</DialogTitle>
           </DialogHeader>
           {payTarget && (() => {
-            const remaining = payTarget.totalOwed - payTarget.paidAmount;
-            const amt = parseAmount(payAmount);
-            const preview = amt >= remaining ? 'paid' : amt >= 10000 ? 'partial' : null;
+            const amt     = parseAmount(payAmount);
+            const preview = amt >= payTarget.totalOwed ? 'paid' : amt >= 10000 ? 'partial' : null;
             return (
               <div className="mt-2 space-y-4">
                 <div className="text-sm text-gray-600 space-y-1.5 bg-gray-50 rounded-lg px-3 py-3">
@@ -1042,7 +1007,7 @@ export default function SalariesPage() {
                   )}
                   <div className="flex justify-between font-semibold border-t border-gray-200 pt-1.5">
                     <span>Qolgan</span>
-                    <span className="text-red-600">{formatCurrency(remaining)}</span>
+                    <span className="text-red-600">{formatCurrency(payTarget.totalOwed)}</span>
                   </div>
                 </div>
                 <div>
@@ -1051,24 +1016,12 @@ export default function SalariesPage() {
                     onChange={e => setPayAmount(formatAmount(e.target.value))}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none"
                     placeholder="0" autoFocus />
-                  <p className="text-xs text-gray-400 mt-1">Min: 10,000 | Max: {formatCurrency(remaining)}</p>
+                  <p className="text-xs text-gray-400 mt-1">Min: 10,000 | Max: {formatCurrency(payTarget.totalOwed)}</p>
                   {preview && (
                     <p className={cn('text-xs mt-1 font-medium', preview === 'paid' ? 'text-emerald-600' : 'text-orange-500')}>
-                      {preview === 'paid' ? "✓ To'liq to'lanadi" : `◑ Qisman — ${formatCurrency(remaining - amt)} qoladi`}
+                      {preview === 'paid' ? "✓ To'liq to'lanadi" : `◑ Qisman — ${formatCurrency(payTarget.totalOwed - amt)} qoladi`}
                     </p>
                   )}
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">To&apos;lov turi</label>
-                  <div className="flex gap-2">
-                    {(['cash', 'card', 'transfer'] as const).map(tp => (
-                      <button key={tp} type="button" onClick={() => setPayType(tp)}
-                        className={cn('flex-1 py-2 text-xs font-medium rounded-lg border transition-colors',
-                          payType === tp ? 'bg-blue-600 text-white border-blue-600' : 'border-gray-300 text-gray-600 hover:bg-gray-50')}>
-                        {PAYMENT_TYPE_LABELS[tp]}
-                      </button>
-                    ))}
-                  </div>
                 </div>
                 <div className="flex gap-3 pt-1">
                   <button onClick={() => setPayTarget(null)}
@@ -1125,18 +1078,6 @@ export default function SalariesPage() {
               </select>
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Shartnoma turi</label>
-              <div className="flex gap-2">
-                {([{ v: 'monthly', label: 'Oylik belgilangan' }, { v: 'contract', label: 'Shartnomaviy' }] as const).map(({ v, label }) => (
-                  <button key={v} type="button" onClick={() => setStaffForm(f => ({ ...f, contract_type: v }))}
-                    className={cn('flex-1 py-2 text-sm font-medium rounded-lg border transition-colors',
-                      staffForm.contract_type === v ? 'bg-blue-600 text-white border-blue-600' : 'border-gray-300 text-gray-600 hover:bg-gray-50')}>
-                    {label}
-                  </button>
-                ))}
-              </div>
-            </div>
-            <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Oylik miqdor (so&apos;m) *</label>
               <input type="text" inputMode="numeric" value={staffForm.salary_amount}
                 onChange={e => setStaffForm(f => ({ ...f, salary_amount: formatAmount(e.target.value) }))}
@@ -1144,39 +1085,6 @@ export default function SalariesPage() {
                 placeholder="0" />
               <p className="text-xs text-gray-400 mt-0.5">Minimal: 100,000 so&apos;m</p>
             </div>
-            {staffForm.contract_type === 'contract' && (
-              <>
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Muddat (oy)</label>
-                    <input type="number" value={staffForm.contract_months} min={1} max={60}
-                      onChange={e => setStaffForm(f => ({ ...f, contract_months: e.target.value }))}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none"
-                      placeholder="12" required />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Boshlanish sanasi</label>
-                    <input type="text" value={staffForm.contract_start} maxLength={10} placeholder="dd/mm/yyyy"
-                      onChange={e => {
-                        let val = e.target.value.replace(/\D/g, '');
-                        if (val.length > 8) val = val.slice(0, 8);
-                        let masked = val;
-                        if (val.length > 2) masked = val.slice(0, 2) + '/' + val.slice(2);
-                        if (val.length > 4) masked = masked.slice(0, 5) + '/' + masked.slice(5);
-                        setStaffForm(f => ({ ...f, contract_start: masked }));
-                      }}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none"
-                      required />
-                  </div>
-                </div>
-                {staffForm.contract_months && staffForm.contract_start.length === 10 && (() => {
-                  const [d, m, y] = staffForm.contract_start.split('/');
-                  const end = new Date(`${y}-${m}-${d}`);
-                  end.setMonth(end.getMonth() + parseInt(staffForm.contract_months));
-                  return <p className="text-xs text-gray-500">Tugash sanasi: <strong>{end.toLocaleDateString('uz-UZ')}</strong></p>;
-                })()}
-              </>
-            )}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Izoh</label>
               <textarea value={staffForm.notes} rows={2}

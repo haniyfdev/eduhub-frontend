@@ -612,13 +612,6 @@ export default function SalariesPage() {
               const dashIdx = desc.indexOf(' — ');
               return { name: dashIdx !== -1 ? desc.slice(0, dashIdx) : desc, group: '—' };
             }
-            function payBadge(source?: string) {
-              if (!source) return <span className="text-gray-400">—</span>;
-              if (source.includes('cash'))     return <span className="inline-flex items-center px-2 py-0.5 text-xs font-medium rounded-full bg-emerald-50 text-emerald-700">Naqd</span>;
-              if (source.includes('card'))     return <span className="inline-flex items-center px-2 py-0.5 text-xs font-medium rounded-full bg-blue-50 text-blue-700">Karta</span>;
-              if (source.includes('transfer')) return <span className="inline-flex items-center px-2 py-0.5 text-xs font-medium rounded-full bg-orange-50 text-orange-700">O&apos;tkazma</span>;
-              return <span className="text-gray-400">—</span>;
-            }
             return (
               <>
                 <div className="flex flex-wrap items-center gap-3">
@@ -642,7 +635,7 @@ export default function SalariesPage() {
                       <table className="w-full text-sm">
                         <thead>
                           <tr className="bg-gray-50 border-b border-gray-200">
-                            {['№', 'Ism', 'Ishga kirgan', 'Guruh', 'Kategoriya', 'Miqdor', "To'lov", 'Sana'].map((h, i) => (
+                            {['№', 'Ism', 'Guruh', 'Kategoriya', 'Miqdor', 'Sana'].map((h, i) => (
                               <th key={i} className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap">{h}</th>
                             ))}
                           </tr>
@@ -654,7 +647,6 @@ export default function SalariesPage() {
                               <tr key={exp.id} className="hover:bg-gray-50 transition-colors">
                                 <td className="px-4 py-3 text-gray-400 text-xs">{idx + 1}</td>
                                 <td className="px-4 py-3 font-medium text-gray-900 whitespace-nowrap">{parsed.name}</td>
-                                <td className="px-4 py-3 text-xs text-gray-500">—</td>
                                 <td className="px-4 py-3 text-xs text-gray-600">{parsed.group}</td>
                                 <td className="px-4 py-3">
                                   <span className={cn('inline-flex items-center px-2 py-0.5 text-xs font-medium rounded-full',
@@ -663,7 +655,6 @@ export default function SalariesPage() {
                                   </span>
                                 </td>
                                 <td className="px-4 py-3 font-semibold text-emerald-600 whitespace-nowrap">{formatCurrency(exp.amount)}</td>
-                                <td className="px-4 py-3">{payBadge(exp.source)}</td>
                                 <td className="px-4 py-3 text-gray-500 text-xs whitespace-nowrap">{fmtDate(exp.expense_date)}</td>
                               </tr>
                             );

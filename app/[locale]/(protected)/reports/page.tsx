@@ -332,7 +332,7 @@ export default function ReportsPage() {
             border: profit >= 0 ? 'border-blue-200' : 'border-red-200',
           },
           {
-            label: 'Qarzdorlik', value: debtAmt, icon: AlertTriangle,
+            label: "O'quvchilar qarzi", value: debtAmt, icon: AlertTriangle,
             sub: `${debtPct.toFixed(1)}% umumiy daromaddan`,
             subColor: debtPctColor,
             color: 'text-amber-600', bg: 'bg-amber-50', border: 'border-amber-200',
@@ -362,7 +362,7 @@ export default function ReportsPage() {
           { label: "Faol o'quvchilar", value: stats?.active_students, icon: Users,         color: 'text-emerald-600 bg-emerald-50 border-emerald-200' },
           { label: "Faol O'qituvchilar",    value: stats?.active_teachers, icon: GraduationCap, color: 'text-blue-600 bg-blue-50 border-blue-200' },
           { label: 'Faol guruhlar',    value: stats?.active_groups,   icon: Users2,        color: 'text-purple-600 bg-purple-50 border-purple-200' },
-          { label: "O'quvchilar qarzi",       value: stats?.total_debtors,   icon: AlertCircle,   color: 'text-red-600 bg-red-50 border-red-200' },
+          { label: 'Qarzdorlar',       value: stats?.total_debtors,   icon: AlertCircle,   color: 'text-red-600 bg-red-50 border-red-200' },
         ] as const).map(({ label, value, icon: Icon, color }) => {
           const [tc, bgc, bc] = color.split(' ');
           return (

@@ -1,9 +1,7 @@
 'use client';
 
 import { useEffect, useState, useCallback, useMemo } from 'react';
-import {
-  Banknote, ChevronDown, ChevronUp, Plus, AlertCircle,
-} from 'lucide-react';
+import { Banknote } from 'lucide-react';
 import toast, { Toaster } from 'react-hot-toast';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -63,19 +61,6 @@ interface StaffSalaryData {
   note?: string | null;
 }
 
-interface StaffMember {
-  id: string;
-  first_name: string;
-  last_name: string;
-  full_name: string;
-  phone: string;
-  role: string;
-  role_display: string;
-  salary_amount: number;
-  hired_at: string;
-  status: string;
-}
-
 interface SalaryRow {
   id: string;
   entityType: 'staff';
@@ -105,21 +90,7 @@ interface ExpenseItem {
   source?: string;
 }
 
-interface StaffForm {
-  first_name: string;
-  last_name: string;
-  phone: string;
-  role: string;
-  salary_amount: string;
-  notes: string;
-}
-
 // ─── Constants ────────────────────────────────────────────────────────────────
-
-const ROLE_LABELS: Record<string, string> = {
-  admin: 'Admin', manager: 'Menejer', accountant: 'Buxgalter',
-  security: 'Qorovul', cleaner: 'Farrosh', supply: 'Zavxoz', other: 'Boshqa',
-};
 
 const ROLE_BADGE: Record<string, string> = {
   teacher: 'bg-blue-50 text-blue-700',
@@ -140,13 +111,6 @@ const parseAmount = (val: string) => Number(val.replace(/,/g, ''));
 function currentMonthStr() {
   const d = new Date();
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
-}
-
-function blankStaffForm(): StaffForm {
-  return {
-    first_name: '', last_name: '', phone: '', role: 'admin',
-    salary_amount: '', notes: '',
-  };
 }
 
 function fmtDate(iso: string | null): string {
@@ -175,15 +139,8 @@ export default function SalariesPage() {
   const [bulkPaying, setBulkPaying]           = useState(false);
 
   // ── Staff salary state ────────────────────────────────────────────────────────
-  const [staffSals, setStaffSals]   = useState<StaffSalaryData[]>([]);
-  const [staffList, setStaffList]   = useState<StaffMember[]>([]);
-  const [staffOpen, setStaffOpen]   = useState(false);
-  const [showAddStaff, setShowAddStaff]       = useState(false);
-  const [staffForm, setStaffForm]             = useState<StaffForm>(blankStaffForm);
-  const [savingStaff, setSavingStaff]         = useState(false);
-  const [archivingId, setArchivingId]         = useState<string | null>(null);
-  const [confirmArchive, setConfirmArchive]   = useState<StaffMember | null>(null);
-  const [payTarget, setPayTarget]             = useState<SalaryRow | null>(null);
+  const [staffSals, setStaffSals] = useState<StaffSalaryData[]>([]);
+  const [payTarget, setPayTarget] = useState<SalaryRow | null>(null);
   const [payAmount, setPayAmount]             = useState('');
   const [paying, setPaying]                   = useState(false);
 
@@ -197,17 +154,15 @@ export default function SalariesPage() {
 
   const loadSalaries = useCallback(async () => {
     setLoadingSals(true);
-    const [tRes, sRes, staffRes] = await Promise.allSettled([
+    const [tRes, sRes] = await Promise.allSettled([
       api.get(`/api/v1/teacher-salaries/?month=${month}`),
       api.get(`/api/v1/staff-salaries/?month=${month}`),
-      api.get(`/api/v1/staff/?status=active`),
     ]);
     if (tRes.status === 'fulfilled') {
       const data = tRes.value.data.results ?? tRes.value.data;
       setTeacherGrouped(Array.isArray(data) ? data : []);
     }
     if (sRes.status === 'fulfilled') setStaffSals(sRes.value.data.results ?? sRes.value.data);
-    if (staffRes.status === 'fulfilled') setStaffList(staffRes.value.data.results ?? staffRes.value.data);
     setLoadingSals(false);
   }, [month]);
 
@@ -363,52 +318,6 @@ export default function SalariesPage() {
     }
   }
 
-  async function handleAddStaff(e: React.FormEvent) {
-    e.preventDefault();
-    const salaryNum = parseAmount(staffForm.salary_amount);
-    if (!staffForm.salary_amount || salaryNum < 100000) {
-      toast.error("Oylik kamida 100,000 so'm bo'lishi kerak"); return;
-    }
-    if (staffForm.phone.replace(/\D/g, '').length !== 9) {
-      toast.error("To'liq 9 raqam kiriting"); return;
-    }
-    setSavingStaff(true);
-    try {
-      await api.post('/api/v1/staff/', {
-        first_name:    staffForm.first_name,
-        last_name:     staffForm.last_name,
-        phone:         '+998' + staffForm.phone.replace(/\D/g, ''),
-        role:          staffForm.role,
-        salary_amount: salaryNum,
-        notes:         staffForm.notes || null,
-      });
-      toast.success("Xodim qo'shildi");
-      setShowAddStaff(false);
-      setStaffForm(blankStaffForm());
-      loadSalaries();
-    } catch (err: unknown) {
-      const e = err as { response?: { data?: unknown } };
-      const detail = e?.response?.data;
-      toast.error(typeof detail === 'object' ? JSON.stringify(detail) : 'Xatolik');
-    } finally {
-      setSavingStaff(false);
-    }
-  }
-
-  async function handleArchive(staff: StaffMember) {
-    setArchivingId(staff.id);
-    try {
-      await api.patch(`/api/v1/staff/${staff.id}/archive/`);
-      toast.success(`${staff.full_name} arxivlandi`);
-      setConfirmArchive(null);
-      loadSalaries();
-    } catch {
-      toast.error('Xatolik');
-    } finally {
-      setArchivingId(null);
-    }
-  }
-
   // ── Derived ───────────────────────────────────────────────────────────────────
 
   const staffRows = useMemo<SalaryRow[]>(() => staffSals.map(s => ({
@@ -511,60 +420,6 @@ export default function SalariesPage() {
                 {loadingSals ? <Skel w="w-32 mt-1" /> : <p className={cn('text-xl font-bold mt-1', color)}>{formatCurrency(value)}</p>}
               </div>
             ))}
-          </div>
-
-          {/* Staff management — collapsible */}
-          <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
-            <button onClick={() => setStaffOpen(o => !o)}
-              className="w-full flex items-center justify-between px-5 py-4 hover:bg-gray-50 transition-colors">
-              <span className="text-sm font-semibold text-gray-900">Xodimlar jadvali</span>
-              <div className="flex items-center gap-2">
-                <button onClick={e => { e.stopPropagation(); setShowAddStaff(true); }}
-                  className="flex items-center gap-1.5 text-xs px-2.5 py-1 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
-                  <Plus className="w-3 h-3" /> Qo&apos;shish
-                </button>
-                {staffOpen ? <ChevronUp className="w-4 h-4 text-gray-400" /> : <ChevronDown className="w-4 h-4 text-gray-400" />}
-              </div>
-            </button>
-            {staffOpen && (
-              <div className="border-t border-gray-100 overflow-x-auto">
-                {loadingSals ? (
-                  <div className="p-4 space-y-2">{Array(3).fill(0).map((_, i) => <Skel key={i} />)}</div>
-                ) : staffList.length === 0 ? (
-                  <p className="px-5 py-8 text-sm text-gray-400 text-center">Xodimlar yo&apos;q</p>
-                ) : (
-                  <table className="w-full text-sm">
-                    <thead>
-                      <tr className="bg-gray-50 border-b border-gray-200">
-                        {['№', 'Ism', 'Lavozim', 'Ishga kirgan', 'Oylik', 'Amal'].map((h, i) => (
-                          <th key={i} className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap">{h}</th>
-                        ))}
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-gray-100">
-                      {staffList.map((s, idx) => (
-                        <tr key={s.id} className="hover:bg-gray-50 transition-colors">
-                          <td className="px-4 py-3 text-gray-400 text-xs">{idx + 1}</td>
-                          <td className="px-4 py-3 font-semibold text-gray-900 whitespace-nowrap">{s.full_name}</td>
-                          <td className="px-4 py-3">
-                            <span className={cn('inline-flex items-center px-2 py-0.5 text-xs font-medium rounded-full', ROLE_BADGE[s.role] ?? ROLE_BADGE.other)}>
-                              {s.role_display}
-                            </span>
-                          </td>
-                          <td className="px-4 py-3 text-gray-500 text-xs whitespace-nowrap">{fmtDate(s.hired_at)}</td>
-                          <td className="px-4 py-3 font-semibold text-gray-900">{formatCurrency(s.salary_amount)}</td>
-                          <td className="px-4 py-3">
-                            <button onClick={() => setConfirmArchive(s)} className="text-xs text-red-500 hover:text-red-700 hover:underline">
-                              Arxiv
-                            </button>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                )}
-              </div>
-            )}
           </div>
 
           {/* ── Teacher salary table ── */}
@@ -1039,99 +894,6 @@ export default function SalariesPage() {
         </DialogContent>
       </Dialog>
 
-      {/* ══ Add Staff Modal ══ */}
-      <Dialog open={showAddStaff} onOpenChange={open => { if (!open) { setShowAddStaff(false); setStaffForm(blankStaffForm()); } }}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader><DialogTitle>Yangi xodim qo&apos;shish</DialogTitle></DialogHeader>
-          <form onSubmit={handleAddStaff} className="space-y-3 mt-2">
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Ism *</label>
-                <input type="text" value={staffForm.first_name} required
-                  onChange={e => setStaffForm(f => ({ ...f, first_name: e.target.value }))}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none"
-                  placeholder="Ism" />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Familiya *</label>
-                <input type="text" value={staffForm.last_name} required
-                  onChange={e => setStaffForm(f => ({ ...f, last_name: e.target.value }))}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none"
-                  placeholder="Familiya" />
-              </div>
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Telefon *</label>
-              <div className="flex">
-                <span className="inline-flex items-center px-3 border border-r-0 border-gray-300 bg-gray-50 text-gray-500 text-sm rounded-l-lg">+998</span>
-                <input type="tel" value={staffForm.phone} required
-                  onChange={e => setStaffForm(f => ({ ...f, phone: e.target.value.replace(/\D/g, '').slice(0, 9) }))}
-                  className="flex-1 px-3 py-2 border border-gray-300 rounded-r-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none"
-                  placeholder="XX XXX XX XX" maxLength={9} />
-              </div>
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Lavozim *</label>
-              <select value={staffForm.role} onChange={e => setStaffForm(f => ({ ...f, role: e.target.value }))}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none">
-                {Object.entries(ROLE_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
-              </select>
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Oylik miqdor (so&apos;m) *</label>
-              <input type="text" inputMode="numeric" value={staffForm.salary_amount}
-                onChange={e => setStaffForm(f => ({ ...f, salary_amount: formatAmount(e.target.value) }))}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none"
-                placeholder="0" />
-              <p className="text-xs text-gray-400 mt-0.5">Minimal: 100,000 so&apos;m</p>
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Izoh</label>
-              <textarea value={staffForm.notes} rows={2}
-                onChange={e => setStaffForm(f => ({ ...f, notes: e.target.value }))}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none resize-none"
-                placeholder="Qo'shimcha ma'lumot..." />
-            </div>
-            <div className="flex gap-3 pt-2">
-              <button type="button" onClick={() => { setShowAddStaff(false); setStaffForm(blankStaffForm()); }}
-                className="flex-1 px-4 py-2 border border-gray-300 text-sm font-medium rounded-lg hover:bg-gray-50">
-                Bekor qilish
-              </button>
-              <button type="submit" disabled={savingStaff}
-                className="flex-1 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 disabled:opacity-60">
-                {savingStaff ? 'Saqlanmoqda...' : 'Saqlash'}
-              </button>
-            </div>
-          </form>
-        </DialogContent>
-      </Dialog>
-
-      {/* ══ Archive Confirm ══ */}
-      <Dialog open={!!confirmArchive} onOpenChange={open => { if (!open) setConfirmArchive(null); }}>
-        <DialogContent className="sm:max-w-sm">
-          <DialogHeader><DialogTitle>Xodimni arxivlash</DialogTitle></DialogHeader>
-          {confirmArchive && (
-            <div className="mt-2 space-y-4">
-              <div className="flex items-start gap-3 p-3 bg-amber-50 border border-amber-200 rounded-lg">
-                <AlertCircle className="w-5 h-5 text-amber-500 shrink-0 mt-0.5" />
-                <p className="text-sm text-amber-700">
-                  <strong>{confirmArchive.full_name}</strong> arxivlanadi va keyingi oy uchun maosh hisoblanmaydi.
-                </p>
-              </div>
-              <div className="flex gap-3">
-                <button onClick={() => setConfirmArchive(null)}
-                  className="flex-1 px-4 py-2 border border-gray-300 text-sm font-medium rounded-lg hover:bg-gray-50">
-                  Bekor qilish
-                </button>
-                <button onClick={() => handleArchive(confirmArchive)} disabled={archivingId === confirmArchive.id}
-                  className="flex-1 px-4 py-2 bg-red-600 text-white text-sm font-medium rounded-lg hover:bg-red-700 disabled:opacity-60">
-                  {archivingId === confirmArchive.id ? '...' : 'Arxivlash'}
-                </button>
-              </div>
-            </div>
-          )}
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }

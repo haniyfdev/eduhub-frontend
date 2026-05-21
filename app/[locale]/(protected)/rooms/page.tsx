@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState, useCallback, useMemo } from 'react';
-import { DoorOpen, RefreshCw, Calendar, List, Snowflake } from 'lucide-react';
+import { DoorOpen, Calendar, List, Snowflake } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import api from '@/lib/axios';
 import { cn } from '@/lib/utils';
@@ -173,10 +173,6 @@ export default function RoomsPage() {
               <List className="w-3.5 h-3.5" /> Ro&apos;yxat
             </button>
           </div>
-          <button onClick={load}
-            className="flex items-center gap-1.5 px-3 py-2 text-xs text-gray-600 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors">
-            <RefreshCw className="w-3.5 h-3.5" /> Yangilash
-          </button>
         </div>
       </div>
 
@@ -274,7 +270,10 @@ export default function RoomsPage() {
                 {allGroups.map((g, idx) => {
                   const col = courseColor(g.course);
                   return (
-                    <tr key={g.id} className="hover:bg-gray-50 transition-colors">
+                    <tr key={g.id} className={cn(
+                      'transition-colors',
+                      g.status === 'frozen' ? 'bg-cyan-50' : 'hover:bg-gray-50'
+                    )}>
                       <td className="px-4 py-3 text-gray-400 text-xs">{idx + 1}</td>
                       <td className="px-4 py-3 font-medium text-gray-700">
                         <div className="flex items-center gap-1.5">

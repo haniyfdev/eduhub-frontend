@@ -69,6 +69,7 @@ export default function Topbar() {
   const [newTitle, setNewTitle] = useState('');
   const [newBody, setNewBody] = useState('');
   const [creatingAnn, setCreatingAnn] = useState(false);
+  const [selectedAnn, setSelectedAnn] = useState<Announcement | null>(null);
 
   // Profile modal
   const [showProfile, setShowProfile] = useState(false);
@@ -87,6 +88,7 @@ export default function Topbar() {
   const [showConfirm, setShowConfirm] = useState(false);
 
   const langRef = useRef<HTMLDivElement>(null);
+  const bodyRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
     const u = getUser();
@@ -170,8 +172,8 @@ export default function Topbar() {
     } catch {}
   }
 
-  async function handleCreate(e: React.FormEvent) {
-    e.preventDefault();
+  async function submitCreate() {
+    if (!newTitle.trim() || !newBody.trim()) return;
     setCreatingAnn(true);
     try {
       await api.post('/api/v1/announcements/', { title: newTitle, body: newBody });
@@ -186,6 +188,16 @@ export default function Topbar() {
     } finally {
       setCreatingAnn(false);
     }
+  }
+
+  function handleCreate(e: React.FormEvent) {
+    e.preventDefault();
+    submitCreate();
+  }
+
+  function openDetail(ann: Announcement) {
+    setSelectedAnn(ann);
+    handleRead(ann);
   }
 
   function openProfile() {
@@ -327,19 +339,21 @@ export default function Topbar() {
             )}
           </div>
 
-          {/* Announcement bell */}
-          <button
-            onClick={openBell}
-            className="relative p-2 rounded-lg hover:bg-gray-100 transition-colors"
-            title="Bildirishnomalar"
-          >
-            <Bell className={`w-5 h-5 ${unreadCount > 0 ? 'text-gray-600' : 'text-gray-400'}`} />
-            {unreadCount > 0 && (
-              <span className="absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] px-1 bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center leading-none">
-                {unreadCount > 99 ? '99+' : unreadCount}
-              </span>
-            )}
-          </button>
+          {/* Announcement bell — hidden for teachers */}
+          {user?.role !== 'teacher' && (
+            <button
+              onClick={openBell}
+              className="relative p-2 rounded-lg hover:bg-gray-100 transition-colors"
+              title="Bildirishnomalar"
+            >
+              <Bell className={`w-5 h-5 ${unreadCount > 0 ? 'text-gray-600' : 'text-gray-400'}`} />
+              {unreadCount > 0 && user?.role !== 'superadmin' && (
+                <span className="absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] px-1 bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center leading-none">
+                  {unreadCount > 99 ? '99+' : unreadCount}
+                </span>
+              )}
+            </button>
+          )}
 
           {/* Avatar — click directly opens profile modal */}
           {user && (
@@ -440,18 +454,16 @@ export default function Topbar() {
                 {announcements.map((ann) => (
                   <div
                     key={ann.id}
-                    onClick={() => handleRead(ann)}
+                    onClick={() => openDetail(ann)}
                     className={cn(
-                      'p-4 border-b border-gray-100 cursor-pointer hover:bg-gray-50 transition-colors',
-                      !ann.is_read && 'bg-blue-50 border-l-4 border-l-blue-500'
+                      'px-4 py-3 border-b border-gray-100 cursor-pointer hover:bg-gray-50 transition-colors',
+                      !ann.is_read ? 'bg-blue-50 border-l-4 border-l-blue-500' : 'bg-white'
                     )}
                   >
-                    <div className="flex justify-between items-start gap-2">
-                      <p className="font-semibold text-gray-900 text-sm">{ann.title}</p>
+                    <div className="flex justify-between items-center gap-2">
+                      <p className={cn('text-sm', !ann.is_read ? 'font-semibold text-gray-900' : 'font-medium text-gray-700')}>{ann.title}</p>
                       <span className="text-xs text-gray-400 flex-shrink-0">{fmtDate(ann.created_at)}</span>
                     </div>
-                    <p className="text-sm text-gray-600 mt-1">{ann.body}</p>
-                    <p className="text-xs text-gray-400 mt-1">— {ann.created_by_name}</p>
                   </div>
                 ))}
               </div>
@@ -472,6 +484,7 @@ export default function Topbar() {
               <input
                 value={newTitle}
                 onChange={(e) => setNewTitle(e.target.value)}
+                onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); bodyRef.current?.focus(); } }}
                 className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                 required
               />
@@ -479,8 +492,15 @@ export default function Topbar() {
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Xabar matni</label>
               <textarea
+                ref={bodyRef}
                 value={newBody}
                 onChange={(e) => setNewBody(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && !e.shiftKey && newBody.trim()) {
+                    e.preventDefault();
+                    submitCreate();
+                  }
+                }}
                 rows={4}
                 className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
                 required
@@ -497,6 +517,27 @@ export default function Topbar() {
               </button>
             </div>
           </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Announcement detail modal */}
+      <Dialog open={!!selectedAnn} onOpenChange={(open) => { if (!open) setSelectedAnn(null); }}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="font-bold">{selectedAnn?.title}</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-gray-700 whitespace-pre-wrap mt-2">{selectedAnn?.body}</p>
+          <div className="flex items-center justify-between mt-4 pt-3 border-t border-gray-100">
+            <span className="text-xs text-gray-400">
+              {selectedAnn && fmtDate(selectedAnn.created_at)} — {selectedAnn?.created_by_name}
+            </span>
+            <button
+              onClick={() => setSelectedAnn(null)}
+              className="px-4 py-1.5 border border-gray-300 text-sm font-medium rounded hover:bg-gray-50"
+            >
+              Yopish
+            </button>
+          </div>
         </DialogContent>
       </Dialog>
 

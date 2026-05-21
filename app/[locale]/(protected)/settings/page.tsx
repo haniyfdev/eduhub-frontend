@@ -27,7 +27,7 @@ interface SmsTemplate {
   body: string;
 }
 
-type Tab = 'profile' | 'company' | 'sms' | 'discounts';
+type Tab = 'company' | 'sms' | 'discounts';
 
 const SMS_TYPE_LABELS: Record<string, string> = {
   debt: 'Qarz eslatmasi',
@@ -41,9 +41,7 @@ const labelCls = 'block text-sm font-medium text-gray-700 mb-1';
 
 export default function SettingsPage() {
   const [user, setUser] = useState<User | null>(null);
-  const [tab, setTab] = useState<Tab>('profile');
-  const [profile, setProfile] = useState({ first_name: '', last_name: '', phone: '' });
-  const [password, setPassword] = useState({ old_password: '', new_password: '', confirm: '' });
+  const [tab, setTab] = useState<Tab>('company');
   const [settings, setSettings] = useState<CompanySettings>({
     billing_type: 'monthly',
     absent_policy: 'ignore',
@@ -51,11 +49,6 @@ export default function SettingsPage() {
   });
   const [smsTemplates, setSmsTemplates] = useState<SmsTemplate[]>([]);
   const [editingTemplate, setEditingTemplate] = useState<SmsTemplate | null>(null);
-  const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
-  const [avatarFile, setAvatarFile] = useState<File | null>(null);
-  const [savingAvatar, setSavingAvatar] = useState(false);
-  const [saving, setSaving] = useState(false);
-  const [savingPw, setSavingPw] = useState(false);
   const [savingSettings, setSavingSettings] = useState(false);
   const [savingSms, setSavingSms] = useState(false);
   const [loadingSettings, setLoadingSettings] = useState(false);
@@ -68,17 +61,9 @@ export default function SettingsPage() {
   useEffect(() => {
     const u = getUser();
     setUser(u);
-    if (u) {
-      setProfile({ first_name: u.first_name ?? '', last_name: u.last_name ?? '', phone: (u as any).phone ?? '' });
-    }
-    try {
-      const saved = localStorage.getItem('avatar');
-      if (saved) setAvatarPreview(saved);
-    } catch {}
   }, []);
 
   const canEditCompany = ['boss', 'manager', 'superadmin'].includes(user?.role ?? '');
-  const canEditPhone = ['boss', 'manager'].includes(user?.role ?? '');
 
   useEffect(() => {
     if (tab === 'company' && canEditCompany) {
@@ -88,7 +73,6 @@ export default function SettingsPage() {
         .catch(() => {})
         .finally(() => setLoadingSettings(false));
 
-      // Fetch company info if user has a company
       if (user?.company_id && !companyInfo) {
         api.get<CompanyInfo>(`/api/v1/companies/${user.company_id}/`)
           .then(({ data }) => {
@@ -115,92 +99,6 @@ export default function SettingsPage() {
         .finally(() => setLoadingSms(false));
     }
   }, [tab, canEditCompany]);
-
-  function handleAvatarChange(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    if (!['image/jpeg', 'image/png', 'image/jpg'].includes(file.type)) {
-      toast.error('Faqat JPG yoki PNG format qabul qilinadi');
-      return;
-    }
-    if (file.size > 1024 * 1024) {
-      toast.error('Fayl hajmi 1MB dan oshmasligi kerak');
-      return;
-    }
-    setAvatarFile(file);
-    const reader = new FileReader();
-    reader.onload = (ev) => {
-      const base64 = ev.target?.result as string;
-      setAvatarPreview(base64);
-      try { localStorage.setItem('avatar', base64); } catch {}
-    };
-    reader.readAsDataURL(file);
-  }
-
-  async function handleAvatarUpload() {
-    if (!avatarFile || !user) return;
-    setSavingAvatar(true);
-    try {
-      const formData = new FormData();
-      formData.append('avatar', avatarFile);
-      await api.patch(`/api/v1/users/${user.id}/`, formData, {
-        headers: { 'Content-Type': 'multipart/form-data' },
-      });
-      toast.success('Rasm saqlandi');
-      setAvatarFile(null);
-    } catch (err: any) {
-      if (err?.response?.status === 400 || err?.response?.status === 415) {
-        toast.success('Rasm saqlandi');
-      } else {
-        toast.error(err?.response?.data?.detail || 'Xatolik yuz berdi');
-        setAvatarPreview(null);
-        setAvatarFile(null);
-        try { localStorage.removeItem('avatar'); } catch {}
-      }
-    } finally {
-      setSavingAvatar(false);
-    }
-  }
-
-  async function handleProfileSave(e: React.FormEvent) {
-    e.preventDefault();
-    if (!user) return;
-    setSaving(true);
-    try {
-      const payload: Record<string, string> = {
-        first_name: profile.first_name,
-        last_name: profile.last_name,
-      };
-      if (canEditPhone && profile.phone) payload.phone = profile.phone;
-      await api.patch(`/api/v1/users/${user.id}/`, payload);
-      toast.success('Profil saqlandi');
-    } catch (err: any) {
-      toast.error(err?.response?.data?.detail || 'Xatolik yuz berdi');
-    } finally {
-      setSaving(false);
-    }
-  }
-
-  async function handlePasswordSave(e: React.FormEvent) {
-    e.preventDefault();
-    if (password.new_password !== password.confirm) {
-      toast.error('Parollar mos emas');
-      return;
-    }
-    setSavingPw(true);
-    try {
-      await api.post('/api/v1/users/change-password/', {
-        old_password: password.old_password,
-        new_password: password.new_password,
-      });
-      toast.success("Parol o'zgartirildi");
-      setPassword({ old_password: '', new_password: '', confirm: '' });
-    } catch (err: any) {
-      toast.error(err?.response?.data?.detail || "Eski parol noto'g'ri");
-    } finally {
-      setSavingPw(false);
-    }
-  }
 
   function handleCompanyLogoChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -233,7 +131,7 @@ export default function SettingsPage() {
         phone: companyForm.phone,
         address: companyForm.address,
       });
-      toast.success('Kompaniya ma\'lumotlari saqlandi');
+      toast.success("Kompaniya ma'lumotlari saqlandi");
       setCompanyInfo((c) => c ? { ...c, ...companyForm } : c);
       try { localStorage.setItem('company_name', companyForm.name); } catch {}
     } catch (err: any) {
@@ -275,282 +173,137 @@ export default function SettingsPage() {
   }
 
   const tabs: Array<{ key: Tab; label: string; show: boolean }> = [
-    { key: 'profile', label: 'Profil', show: true },
     { key: 'company', label: 'Kompaniya', show: canEditCompany },
     { key: 'sms', label: 'SMS shablonlar', show: canEditCompany },
     { key: 'discounts', label: 'Chegirmalar', show: true },
   ];
+
+  const visibleTabs = tabs.filter((t) => t.show);
 
   return (
     <div className="space-y-5">
       <Toaster position="top-right" />
       <h1 className="text-xl font-bold text-gray-900">Sozlamalar</h1>
 
-      {/* Tabs */}
-      <div className="flex border-b border-gray-200">
-        {tabs.filter((t) => t.show).map(({ key, label }) => (
-          <button
-            key={key}
-            onClick={() => setTab(key)}
-            className={`px-4 py-2.5 text-sm font-medium border-b-2 transition-colors ${
-              tab === key
-                ? 'border-blue-600 text-blue-600'
-                : 'border-transparent text-gray-500 hover:text-gray-700'
-            }`}
-          >
-            {label}
-          </button>
-        ))}
-      </div>
-
-      {/* Profile tab */}
-      {tab === 'profile' && (
-        <div className="grid grid-cols-1 xl:grid-cols-2 gap-5">
-          {/* Avatar */}
-          <div className="xl:col-span-2 bg-white rounded border border-gray-200 shadow-sm p-6 flex items-center gap-6">
-            <div className="relative flex-shrink-0">
-              {avatarPreview ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img src={avatarPreview} alt="Avatar" className="w-20 h-20 rounded-full object-cover border-2 border-blue-200" />
-              ) : (
-                <div className="w-20 h-20 rounded-full bg-blue-600 flex items-center justify-center">
-                  <span className="text-2xl font-bold text-white">
-                    {(user?.first_name?.[0] ?? '').toUpperCase()}{(user?.last_name?.[0] ?? '').toUpperCase()}
-                  </span>
-                </div>
-              )}
-            </div>
-            <div className="flex-1">
-              <p className="text-sm font-semibold text-gray-900 mb-0.5">
-                {user?.first_name} {user?.last_name}
-              </p>
-              <p className="text-xs text-gray-400 mb-3 capitalize">{user?.role}</p>
-              <div className="flex items-center gap-3">
-                <label className="cursor-pointer px-4 py-2 border border-gray-300 text-sm font-medium rounded hover:bg-gray-50 transition-colors">
-                  Rasm yuklash
-                  <input
-                    type="file"
-                    accept="image/jpeg,image/jpg,image/png"
-                    className="hidden"
-                    onChange={handleAvatarChange}
-                  />
-                </label>
-                {avatarFile && (
-                  <button
-                    type="button"
-                    onClick={handleAvatarUpload}
-                    disabled={savingAvatar}
-                    className="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded hover:bg-blue-700 disabled:opacity-60"
-                  >
-                    {savingAvatar ? 'Saqlanmoqda...' : 'Saqlash'}
-                  </button>
-                )}
-              </div>
-              <p className="text-xs text-gray-400 mt-2">JPG yoki PNG, max 1MB</p>
-            </div>
-          </div>
-
-          {/* Profile info */}
-          <div className="bg-white rounded border border-gray-200 shadow-sm p-6">
-            <h2 className="text-sm font-semibold text-gray-900 mb-4">Shaxsiy ma&apos;lumotlar</h2>
-            <form onSubmit={handleProfileSave} className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className={labelCls}>Ism</label>
-                  <input
-                    value={profile.first_name}
-                    onChange={(e) => setProfile((p) => ({ ...p, first_name: e.target.value }))}
-                    className={inputCls}
-                    required
-                  />
-                </div>
-                <div>
-                  <label className={labelCls}>Familiya</label>
-                  <input
-                    value={profile.last_name}
-                    onChange={(e) => setProfile((p) => ({ ...p, last_name: e.target.value }))}
-                    className={inputCls}
-                    required
-                  />
-                </div>
-              </div>
-              <div>
-                <label className={labelCls}>Telefon</label>
-                <input
-                  value={profile.phone}
-                  readOnly={!canEditPhone}
-                  onChange={canEditPhone ? (e) => setProfile((p) => ({ ...p, phone: e.target.value })) : undefined}
-                  className={`${inputCls} ${!canEditPhone ? 'bg-gray-50 text-gray-500 cursor-not-allowed' : ''}`}
-                />
-                {!canEditPhone && (
-                  <p className="text-xs text-gray-400 mt-1">
-                    Telefon raqamini o'zgartirish uchun admin bilan bog'laning
-                  </p>
-                )}
-              </div>
-              {user && (
-                <div className="px-3 py-2 bg-gray-50 rounded text-xs text-gray-500">
-                  Rol: <span className="font-medium capitalize">{user.role}</span>
-                </div>
-              )}
-              <button
-                type="submit"
-                disabled={saving}
-                className="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded hover:bg-blue-700 disabled:opacity-60"
-              >
-                {saving ? 'Saqlanmoqda...' : 'Saqlash'}
-              </button>
-            </form>
-          </div>
-
-          {/* Change password */}
-          <div className="bg-white rounded border border-gray-200 shadow-sm p-6">
-            <h2 className="text-sm font-semibold text-gray-900 mb-4">Parolni o'zgartirish</h2>
-            <form onSubmit={handlePasswordSave} className="space-y-4">
-              <div>
-                <label className={labelCls}>Eski parol</label>
-                <input
-                  type="password"
-                  value={password.old_password}
-                  onChange={(e) => setPassword((p) => ({ ...p, old_password: e.target.value }))}
-                  className={inputCls}
-                  required
-                />
-              </div>
-              <div>
-                <label className={labelCls}>Yangi parol</label>
-                <input
-                  type="password"
-                  value={password.new_password}
-                  onChange={(e) => setPassword((p) => ({ ...p, new_password: e.target.value }))}
-                  className={inputCls}
-                  required
-                />
-              </div>
-              <div>
-                <label className={labelCls}>Yangi parolni tasdiqlang</label>
-                <input
-                  type="password"
-                  value={password.confirm}
-                  onChange={(e) => setPassword((p) => ({ ...p, confirm: e.target.value }))}
-                  className={inputCls}
-                  required
-                />
-              </div>
-              <button
-                type="submit"
-                disabled={savingPw}
-                className="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded hover:bg-blue-700 disabled:opacity-60"
-              >
-                {savingPw ? 'Saqlanmoqda...' : "Parolni o'zgartirish"}
-              </button>
-            </form>
-          </div>
+      {/* Tabs — only render when more than one visible */}
+      {visibleTabs.length > 1 && (
+        <div className="flex border-b border-gray-200">
+          {visibleTabs.map(({ key, label }) => (
+            <button
+              key={key}
+              onClick={() => setTab(key)}
+              className={`px-4 py-2.5 text-sm font-medium border-b-2 transition-colors ${
+                tab === key
+                  ? 'border-blue-600 text-blue-600'
+                  : 'border-transparent text-gray-500 hover:text-gray-700'
+              }`}
+            >
+              {label}
+            </button>
+          ))}
         </div>
       )}
 
       {/* Company settings tab */}
-      {tab === 'company' && canEditCompany && (
+      {(tab === 'company' || (!canEditCompany && false)) && canEditCompany && (
         <div className="space-y-5">
-        {/* Company info card */}
-        {user?.company_id && (
-          <div className="bg-white rounded border border-gray-200 shadow-sm p-6 max-w-xl">
-            <h2 className="text-sm font-semibold text-gray-900 mb-4">Kompaniya ma&apos;lumotlari</h2>
-            <div className="flex items-center gap-5 mb-5">
-              {/* Logo */}
-              <div className="relative flex-shrink-0">
-                {companyLogo ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img src={companyLogo} alt="Logo" className="w-16 h-16 rounded-xl object-cover border border-gray-200" />
-                ) : (
-                  <div className="w-16 h-16 rounded-xl bg-blue-600 flex items-center justify-center">
-                    <span className="text-lg font-bold text-white">
-                      {(companyForm.name || companyInfo?.name || '?')[0]?.toUpperCase()}
-                    </span>
-                  </div>
-                )}
+          {user?.company_id && (
+            <div className="bg-white rounded border border-gray-200 shadow-sm p-6 max-w-xl">
+              <h2 className="text-sm font-semibold text-gray-900 mb-4">Kompaniya ma&apos;lumotlari</h2>
+              <div className="flex items-center gap-5 mb-5">
+                <div className="relative flex-shrink-0">
+                  {companyLogo ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={companyLogo} alt="Logo" className="w-16 h-16 rounded-xl object-cover border border-gray-200" />
+                  ) : (
+                    <div className="w-16 h-16 rounded-xl bg-blue-600 flex items-center justify-center">
+                      <span className="text-lg font-bold text-white">
+                        {(companyForm.name || companyInfo?.name || '?')[0]?.toUpperCase()}
+                      </span>
+                    </div>
+                  )}
+                </div>
+                <label className="cursor-pointer px-3 py-1.5 border border-gray-300 text-sm font-medium rounded hover:bg-gray-50 transition-colors">
+                  Logo yuklash
+                  <input type="file" accept="image/jpeg,image/jpg,image/png" className="hidden" onChange={handleCompanyLogoChange} />
+                </label>
               </div>
-              <label className="cursor-pointer px-3 py-1.5 border border-gray-300 text-sm font-medium rounded hover:bg-gray-50 transition-colors">
-                Logo yuklash
-                <input type="file" accept="image/jpeg,image/jpg,image/png" className="hidden" onChange={handleCompanyLogoChange} />
-              </label>
+              <form onSubmit={handleCompanyInfoSave} className="space-y-4">
+                <div>
+                  <label className={labelCls}>Kompaniya nomi</label>
+                  <input value={companyForm.name} onChange={(e) => setCompanyForm((f) => ({ ...f, name: e.target.value }))}
+                    className={inputCls} required />
+                </div>
+                <div>
+                  <label className={labelCls}>Telefon</label>
+                  <input value={companyForm.phone} onChange={(e) => setCompanyForm((f) => ({ ...f, phone: e.target.value }))}
+                    className={inputCls} />
+                </div>
+                <div>
+                  <label className={labelCls}>Manzil</label>
+                  <input value={companyForm.address} onChange={(e) => setCompanyForm((f) => ({ ...f, address: e.target.value }))}
+                    className={inputCls} />
+                </div>
+                <button type="submit" disabled={savingCompanyInfo}
+                  className="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded hover:bg-blue-700 disabled:opacity-60">
+                  {savingCompanyInfo ? 'Saqlanmoqda...' : 'Saqlash'}
+                </button>
+              </form>
             </div>
-            <form onSubmit={handleCompanyInfoSave} className="space-y-4">
-              <div>
-                <label className={labelCls}>Kompaniya nomi</label>
-                <input value={companyForm.name} onChange={(e) => setCompanyForm((f) => ({ ...f, name: e.target.value }))}
-                  className={inputCls} required />
-              </div>
-              <div>
-                <label className={labelCls}>Telefon</label>
-                <input value={companyForm.phone} onChange={(e) => setCompanyForm((f) => ({ ...f, phone: e.target.value }))}
-                  className={inputCls} />
-              </div>
-              <div>
-                <label className={labelCls}>Manzil</label>
-                <input value={companyForm.address} onChange={(e) => setCompanyForm((f) => ({ ...f, address: e.target.value }))}
-                  className={inputCls} />
-              </div>
-              <button type="submit" disabled={savingCompanyInfo}
-                className="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded hover:bg-blue-700 disabled:opacity-60">
-                {savingCompanyInfo ? 'Saqlanmoqda...' : 'Saqlash'}
-              </button>
-            </form>
-          </div>
-        )}
-
-        <div className="bg-white rounded border border-gray-200 shadow-sm p-6 max-w-xl">
-          <h2 className="text-sm font-semibold text-gray-900 mb-4">Kompaniya sozlamalari</h2>
-          {loadingSettings ? (
-            <div className="space-y-4">{Array(3).fill(0).map((_, i) => <Skeleton key={i} className="h-10 w-full" />)}</div>
-          ) : (
-            <form onSubmit={handleSettingsSave} className="space-y-5">
-              <div>
-                <label className={labelCls}>Hisoblash turi</label>
-                <select
-                  value={settings.billing_type}
-                  onChange={(e) => setSettings((s) => ({ ...s, billing_type: e.target.value }))}
-                  className={inputCls}
-                >
-                  <option value="monthly">Oylik (to'liq narx)</option>
-                  <option value="per_lesson">Dars bo'yicha</option>
-                  <option value="upfront">Oldindan to'liq</option>
-                </select>
-              </div>
-              <div>
-                <label className={labelCls}>Davomatsizlik siyosati</label>
-                <select
-                  value={settings.absent_policy}
-                  onChange={(e) => setSettings((s) => ({ ...s, absent_policy: e.target.value }))}
-                  className={inputCls}
-                >
-                  <option value="ignore">E'tiborsiz (hech narsa qilmaydi)</option>
-                  <option value="deduct">Qarzdan ayirish</option>
-                  <option value="penalty">Jarima qo'shish (+5%)</option>
-                </select>
-              </div>
-              <div>
-                <label className={labelCls}>O'qituvchi shartnoma bekor siyosati</label>
-                <select
-                  value={settings.teacher_contract_break_policy}
-                  onChange={(e) => setSettings((s) => ({ ...s, teacher_contract_break_policy: e.target.value }))}
-                  className={inputCls}
-                >
-                  <option value="full">To'liq maosh</option>
-                  <option value="prorate">Ishlagan kunlar bo'yicha</option>
-                  <option value="none">Maosh yo'q</option>
-                </select>
-              </div>
-              <button
-                type="submit"
-                disabled={savingSettings}
-                className="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded hover:bg-blue-700 disabled:opacity-60"
-              >
-                {savingSettings ? 'Saqlanmoqda...' : 'Saqlash'}
-              </button>
-            </form>
           )}
-        </div>
+
+          <div className="bg-white rounded border border-gray-200 shadow-sm p-6 max-w-xl">
+            <h2 className="text-sm font-semibold text-gray-900 mb-4">Kompaniya sozlamalari</h2>
+            {loadingSettings ? (
+              <div className="space-y-4">{Array(3).fill(0).map((_, i) => <Skeleton key={i} className="h-10 w-full" />)}</div>
+            ) : (
+              <form onSubmit={handleSettingsSave} className="space-y-5">
+                <div>
+                  <label className={labelCls}>Hisoblash turi</label>
+                  <select
+                    value={settings.billing_type}
+                    onChange={(e) => setSettings((s) => ({ ...s, billing_type: e.target.value }))}
+                    className={inputCls}
+                  >
+                    <option value="monthly">Oylik (to&apos;liq narx)</option>
+                    <option value="per_lesson">Dars bo&apos;yicha</option>
+                    <option value="upfront">Oldindan to&apos;liq</option>
+                  </select>
+                </div>
+                <div>
+                  <label className={labelCls}>Davomatsizlik siyosati</label>
+                  <select
+                    value={settings.absent_policy}
+                    onChange={(e) => setSettings((s) => ({ ...s, absent_policy: e.target.value }))}
+                    className={inputCls}
+                  >
+                    <option value="ignore">E&apos;tiborsiz (hech narsa qilmaydi)</option>
+                    <option value="deduct">Qarzdan ayirish</option>
+                    <option value="penalty">Jarima qo&apos;shish (+5%)</option>
+                  </select>
+                </div>
+                <div>
+                  <label className={labelCls}>O&apos;qituvchi shartnoma bekor siyosati</label>
+                  <select
+                    value={settings.teacher_contract_break_policy}
+                    onChange={(e) => setSettings((s) => ({ ...s, teacher_contract_break_policy: e.target.value }))}
+                    className={inputCls}
+                  >
+                    <option value="full">To&apos;liq maosh</option>
+                    <option value="prorate">Ishlagan kunlar bo&apos;yicha</option>
+                    <option value="none">Maosh yo&apos;q</option>
+                  </select>
+                </div>
+                <button
+                  type="submit"
+                  disabled={savingSettings}
+                  className="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded hover:bg-blue-700 disabled:opacity-60"
+                >
+                  {savingSettings ? 'Saqlanmoqda...' : 'Saqlash'}
+                </button>
+              </form>
+            )}
+          </div>
         </div>
       )}
 
@@ -561,7 +314,7 @@ export default function SettingsPage() {
             <div className="px-5 py-4 border-b border-gray-100">
               <h2 className="text-sm font-semibold text-gray-900">SMS shablonlar</h2>
               <p className="text-xs text-gray-400 mt-0.5">
-                Mavjud o'zgaruvchilar: <code className="bg-gray-100 px-1 rounded">{'{'+'student_name}'}</code>{' '}
+                Mavjud o&apos;zgaruvchilar: <code className="bg-gray-100 px-1 rounded">{'{'+'student_name}'}</code>{' '}
                 <code className="bg-gray-100 px-1 rounded">{'{'+'amount}'}</code>{' '}
                 <code className="bg-gray-100 px-1 rounded">{'{'+'due_date}'}</code>
               </p>
@@ -633,7 +386,7 @@ export default function SettingsPage() {
       )}
 
       {/* Discounts tab */}
-      {tab === 'discounts' && (
+      {(tab === 'discounts' || !canEditCompany) && (
         <DiscountsTab />
       )}
     </div>

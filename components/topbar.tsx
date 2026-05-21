@@ -2,13 +2,15 @@
 
 import { usePathname, useRouter } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
-import { Globe, LogOut } from 'lucide-react';
+import { ChevronDown, Globe, LogOut, User as UserIcon } from 'lucide-react';
 import { useLocale } from 'next-intl';
 import { getUser, logout } from '@/lib/auth';
 import NotificationBell from './notification-bell';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { User } from '@/types';
 import { cn } from '@/lib/utils';
+import api from '@/lib/axios';
+import toast from 'react-hot-toast';
 
 const TITLES: Record<string, string> = {
   dashboard: 'Bosh sahifa',
@@ -43,8 +45,22 @@ export default function Topbar() {
   const [showLang, setShowLang] = useState(false);
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
+
+  // Profile modal state
+  const [showProfile, setShowProfile] = useState(false);
+  const [profileForm, setProfileForm] = useState({ first_name: '', last_name: '', phone: '' });
+  const [password, setPassword] = useState({ old_password: '', new_password: '', confirm: '' });
+  const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
+  const [avatarFile, setAvatarFile] = useState<File | null>(null);
+  const [savingAvatar, setSavingAvatar] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [savingPw, setSavingPw] = useState(false);
+  const [showPasswordSection, setShowPasswordSection] = useState(false);
+
   const langRef = useRef<HTMLDivElement>(null);
   const userMenuRef = useRef<HTMLDivElement>(null);
+
+  const canEditPhone = ['boss', 'manager'].includes(user?.role ?? '');
 
   useEffect(() => {
     const u = getUser();
@@ -58,15 +74,14 @@ export default function Topbar() {
       return;
     }
 
-    // Read cached name first, then refresh in background
     try {
       const cached = localStorage.getItem('company_name');
       if (cached) setCompanyName(cached);
     } catch {}
 
     if (u.company_id) {
-      import('@/lib/axios').then(({ default: api }) => {
-        api.get(`/api/v1/companies/${u.company_id}/`)
+      import('@/lib/axios').then(({ default: apiInst }) => {
+        apiInst.get(`/api/v1/companies/${u.company_id}/`)
           .then(({ data }) => {
             const name = (data as any).name ?? '';
             setCompanyName(name);
@@ -104,9 +119,118 @@ export default function Topbar() {
     router.push(`/${locale}/login`);
   }
 
+  function openProfile() {
+    setShowUserMenu(false);
+    if (user) {
+      setProfileForm({
+        first_name: user.first_name ?? '',
+        last_name: user.last_name ?? '',
+        phone: (user as any).phone ?? '',
+      });
+    }
+    setAvatarPreview(null);
+    setAvatarFile(null);
+    setPassword({ old_password: '', new_password: '', confirm: '' });
+    setShowPasswordSection(false);
+    setShowProfile(true);
+  }
+
+  function handleAvatarChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!['image/jpeg', 'image/png', 'image/jpg'].includes(file.type)) {
+      toast.error('Faqat JPG yoki PNG format qabul qilinadi');
+      return;
+    }
+    if (file.size > 1024 * 1024) {
+      toast.error('Fayl hajmi 1MB dan oshmasligi kerak');
+      return;
+    }
+    setAvatarFile(file);
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      setAvatarPreview(ev.target?.result as string);
+    };
+    reader.readAsDataURL(file);
+  }
+
+  async function handleAvatarUpload() {
+    if (!avatarFile || !user) return;
+    setSavingAvatar(true);
+    try {
+      const formData = new FormData();
+      formData.append('avatar', avatarFile);
+      await api.patch(`/api/v1/users/${user.id}/`, formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+      const newSrc = avatarPreview!;
+      setAvatarSrc(newSrc);
+      try { localStorage.setItem('avatar', newSrc); } catch {}
+      toast.success('Rasm saqlandi');
+      setAvatarFile(null);
+    } catch (err: any) {
+      if (err?.response?.status === 400 || err?.response?.status === 415) {
+        const newSrc = avatarPreview!;
+        setAvatarSrc(newSrc);
+        try { localStorage.setItem('avatar', newSrc); } catch {}
+        toast.success('Rasm saqlandi');
+        setAvatarFile(null);
+      } else {
+        toast.error(err?.response?.data?.detail || 'Xatolik yuz berdi');
+        setAvatarPreview(null);
+        setAvatarFile(null);
+      }
+    } finally {
+      setSavingAvatar(false);
+    }
+  }
+
+  async function handleProfileSave(e: React.FormEvent) {
+    e.preventDefault();
+    if (!user) return;
+    setSaving(true);
+    try {
+      const payload: Record<string, string> = {
+        first_name: profileForm.first_name,
+        last_name: profileForm.last_name,
+      };
+      if (canEditPhone && profileForm.phone) payload.phone = profileForm.phone;
+      await api.patch(`/api/v1/users/${user.id}/`, payload);
+      toast.success('Profil saqlandi');
+    } catch (err: any) {
+      toast.error(err?.response?.data?.detail || 'Xatolik yuz berdi');
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function handlePasswordSave(e: React.FormEvent) {
+    e.preventDefault();
+    if (password.new_password !== password.confirm) {
+      toast.error('Parollar mos emas');
+      return;
+    }
+    setSavingPw(true);
+    try {
+      await api.post('/api/v1/users/change-password/', {
+        old_password: password.old_password,
+        new_password: password.new_password,
+      });
+      toast.success("Parol o'zgartirildi");
+      setPassword({ old_password: '', new_password: '', confirm: '' });
+      setShowPasswordSection(false);
+    } catch (err: any) {
+      toast.error(err?.response?.data?.detail || "Eski parol noto'g'ri");
+    } finally {
+      setSavingPw(false);
+    }
+  }
+
   const segment = pathname.split('/')[2] ?? 'dashboard';
   const title = TITLES[segment] ?? 'EduHub';
   const pathWithoutLocale = '/' + pathname.split('/').slice(2).join('/') || '/dashboard';
+
+  const displaySrc = avatarPreview || avatarSrc;
 
   return (
     <>
@@ -181,8 +305,15 @@ export default function Topbar() {
                     </span>
                   </div>
                   <button
+                    onClick={openProfile}
+                    className="w-full flex items-center gap-2.5 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors mt-1"
+                  >
+                    <UserIcon className="w-4 h-4 flex-shrink-0 text-gray-500" />
+                    Profil sozlamalari
+                  </button>
+                  <button
                     onClick={() => { setShowUserMenu(false); setShowLogoutConfirm(true); }}
-                    className="w-full flex items-center gap-2.5 px-4 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors mt-1"
+                    className="w-full flex items-center gap-2.5 px-4 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors"
                   >
                     <LogOut className="w-4 h-4 flex-shrink-0" />
                     Chiqish
@@ -194,6 +325,7 @@ export default function Topbar() {
         </div>
       </header>
 
+      {/* Logout confirm dialog */}
       <Dialog open={showLogoutConfirm} onOpenChange={setShowLogoutConfirm}>
         <DialogContent className="sm:max-w-sm">
           <DialogHeader>
@@ -212,6 +344,167 @@ export default function Topbar() {
               className="flex-1 px-4 py-2 bg-red-600 text-white text-sm font-medium rounded hover:bg-red-700"
             >
               Ha, chiqish
+            </button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Profile modal */}
+      <Dialog open={showProfile} onOpenChange={(open) => { if (!open) setShowProfile(false); }}>
+        <DialogContent className="sm:max-w-md max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Profil sozlamalari</DialogTitle>
+          </DialogHeader>
+
+          {/* Avatar */}
+          <div className="flex flex-col items-center gap-3 py-4">
+            {displaySrc ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={displaySrc} alt="Avatar" className="w-20 h-20 rounded-full object-cover border-2 border-blue-200" />
+            ) : (
+              <div className="w-20 h-20 rounded-full bg-blue-600 flex items-center justify-center">
+                <span className="text-2xl font-bold text-white select-none">
+                  {(user?.first_name?.[0] ?? '').toUpperCase()}{(user?.last_name?.[0] ?? '').toUpperCase()}
+                </span>
+              </div>
+            )}
+            <div className="flex items-center gap-2">
+              <label className="cursor-pointer px-3 py-1.5 border border-gray-300 text-sm font-medium rounded hover:bg-gray-50 transition-colors">
+                Rasm yuklash
+                <input
+                  type="file"
+                  accept="image/jpeg,image/jpg,image/png"
+                  className="hidden"
+                  onChange={handleAvatarChange}
+                />
+              </label>
+              {avatarFile && (
+                <button
+                  type="button"
+                  onClick={handleAvatarUpload}
+                  disabled={savingAvatar}
+                  className="px-3 py-1.5 bg-blue-600 text-white text-sm font-medium rounded hover:bg-blue-700 disabled:opacity-60"
+                >
+                  {savingAvatar ? 'Saqlanmoqda...' : 'Saqlash'}
+                </button>
+              )}
+            </div>
+            <p className="text-xs text-gray-400">JPG yoki PNG, max 1MB</p>
+          </div>
+
+          <hr className="border-gray-100" />
+
+          {/* Personal info */}
+          <form onSubmit={handleProfileSave} className="space-y-4 py-4">
+            <h3 className="text-sm font-semibold text-gray-900">Shaxsiy ma&apos;lumotlar</h3>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Ism</label>
+                <input
+                  value={profileForm.first_name}
+                  onChange={(e) => setProfileForm((p) => ({ ...p, first_name: e.target.value }))}
+                  className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Familiya</label>
+                <input
+                  value={profileForm.last_name}
+                  onChange={(e) => setProfileForm((p) => ({ ...p, last_name: e.target.value }))}
+                  className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  required
+                />
+              </div>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Telefon</label>
+              <input
+                value={profileForm.phone}
+                readOnly={!canEditPhone}
+                onChange={canEditPhone ? (e) => setProfileForm((p) => ({ ...p, phone: e.target.value })) : undefined}
+                className={cn(
+                  'w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500',
+                  !canEditPhone && 'bg-gray-50 text-gray-500 cursor-not-allowed'
+                )}
+              />
+            </div>
+            {user && (
+              <div className="inline-block px-3 py-1.5 bg-gray-50 rounded text-xs text-gray-500">
+                Rol: <span className="font-medium">{ROLE_LABELS[user.role ?? ''] ?? user.role}</span>
+              </div>
+            )}
+            <button
+              type="submit"
+              disabled={saving}
+              className="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded hover:bg-blue-700 disabled:opacity-60"
+            >
+              {saving ? 'Saqlanmoqda...' : 'Saqlash'}
+            </button>
+          </form>
+
+          <hr className="border-gray-100" />
+
+          {/* Password (collapsible) */}
+          <div className="py-4 space-y-3">
+            <button
+              type="button"
+              onClick={() => setShowPasswordSection((v) => !v)}
+              className="flex items-center gap-2 text-sm font-semibold text-gray-900 hover:text-blue-600 transition-colors w-full text-left"
+            >
+              Parolni o&apos;zgartirish
+              <ChevronDown className={cn('w-4 h-4 transition-transform ml-auto', showPasswordSection && 'rotate-180')} />
+            </button>
+            {showPasswordSection && (
+              <form onSubmit={handlePasswordSave} className="space-y-3">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Eski parol</label>
+                  <input
+                    type="password"
+                    value={password.old_password}
+                    onChange={(e) => setPassword((p) => ({ ...p, old_password: e.target.value }))}
+                    className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Yangi parol</label>
+                  <input
+                    type="password"
+                    value={password.new_password}
+                    onChange={(e) => setPassword((p) => ({ ...p, new_password: e.target.value }))}
+                    className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Yangi parolni tasdiqlang</label>
+                  <input
+                    type="password"
+                    value={password.confirm}
+                    onChange={(e) => setPassword((p) => ({ ...p, confirm: e.target.value }))}
+                    className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    required
+                  />
+                </div>
+                <button
+                  type="submit"
+                  disabled={savingPw}
+                  className="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded hover:bg-blue-700 disabled:opacity-60"
+                >
+                  {savingPw ? 'Saqlanmoqda...' : "Parolni o'zgartirish"}
+                </button>
+              </form>
+            )}
+          </div>
+
+          {/* Footer */}
+          <div className="pt-2 border-t border-gray-100">
+            <button
+              onClick={() => setShowProfile(false)}
+              className="w-full px-4 py-2 border border-gray-300 text-sm font-medium rounded hover:bg-gray-50 transition-colors"
+            >
+              Yopish
             </button>
           </div>
         </DialogContent>

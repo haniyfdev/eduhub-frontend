@@ -2,7 +2,7 @@
 
 import { usePathname, useRouter } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
-import { ChevronDown, Globe, LogOut, User as UserIcon } from 'lucide-react';
+import { ChevronDown, Eye, EyeOff, Globe, LogOut } from 'lucide-react';
 import { useLocale } from 'next-intl';
 import { getUser, logout } from '@/lib/auth';
 import NotificationBell from './notification-bell';
@@ -43,24 +43,23 @@ export default function Topbar() {
   const [avatarSrc, setAvatarSrc] = useState<string | null>(null);
   const [companyName, setCompanyName] = useState<string | null>(null);
   const [showLang, setShowLang] = useState(false);
-  const [showUserMenu, setShowUserMenu] = useState(false);
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
 
-  // Profile modal state
+  // Profile modal
   const [showProfile, setShowProfile] = useState(false);
-  const [profileForm, setProfileForm] = useState({ first_name: '', last_name: '', phone: '' });
+  const [firstName, setFirstName] = useState('');
+  const [lastName, setLastName] = useState('');
+  const [phone, setPhone] = useState('');
   const [password, setPassword] = useState({ old_password: '', new_password: '', confirm: '' });
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
-  const [savingAvatar, setSavingAvatar] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [savingPw, setSavingPw] = useState(false);
   const [showPasswordSection, setShowPasswordSection] = useState(false);
+  const [showOld, setShowOld] = useState(false);
+  const [showNew, setShowNew] = useState(false);
+  const [showConfirm, setShowConfirm] = useState(false);
 
   const langRef = useRef<HTMLDivElement>(null);
-  const userMenuRef = useRef<HTMLDivElement>(null);
-
-  const canEditPhone = ['boss', 'manager'].includes(user?.role ?? '');
 
   useEffect(() => {
     const u = getUser();
@@ -101,15 +100,6 @@ export default function Topbar() {
     return () => document.removeEventListener('mousedown', handle);
   }, [showLang]);
 
-  useEffect(() => {
-    if (!showUserMenu) return;
-    function handle(e: MouseEvent) {
-      if (userMenuRef.current && !userMenuRef.current.contains(e.target as Node)) setShowUserMenu(false);
-    }
-    document.addEventListener('mousedown', handle);
-    return () => document.removeEventListener('mousedown', handle);
-  }, [showUserMenu]);
-
   function handleLogout() {
     logout();
     try {
@@ -120,18 +110,19 @@ export default function Topbar() {
   }
 
   function openProfile() {
-    setShowUserMenu(false);
     if (user) {
-      setProfileForm({
-        first_name: user.first_name ?? '',
-        last_name: user.last_name ?? '',
-        phone: (user as any).phone ?? '',
-      });
+      setFirstName(user.first_name ?? '');
+      setLastName(user.last_name ?? '');
+      const rawPhone = (user as any).phone ?? '';
+      setPhone(rawPhone.startsWith('+998') ? rawPhone.slice(4) : rawPhone.replace(/\D/g, '').slice(0, 9));
     }
     setAvatarPreview(null);
     setAvatarFile(null);
     setPassword({ old_password: '', new_password: '', confirm: '' });
     setShowPasswordSection(false);
+    setShowOld(false);
+    setShowNew(false);
+    setShowConfirm(false);
     setShowProfile(true);
   }
 
@@ -139,7 +130,7 @@ export default function Topbar() {
     const file = e.target.files?.[0];
     if (!file) return;
     if (!['image/jpeg', 'image/png', 'image/jpg'].includes(file.type)) {
-      toast.error('Faqat JPG yoki PNG format qabul qilinadi');
+      toast.error('Faqat JPG yoki PNG formatida');
       return;
     }
     if (file.size > 1024 * 1024) {
@@ -148,55 +139,53 @@ export default function Topbar() {
     }
     setAvatarFile(file);
     const reader = new FileReader();
-    reader.onload = (ev) => {
-      setAvatarPreview(ev.target?.result as string);
-    };
+    reader.onload = (ev) => setAvatarPreview(ev.target?.result as string);
     reader.readAsDataURL(file);
   }
 
-  async function handleAvatarUpload() {
-    if (!avatarFile || !user) return;
-    setSavingAvatar(true);
+  async function handleSave() {
+    if (!user) return;
+
+    const pwFilled = password.old_password || password.new_password || password.confirm;
+    if (pwFilled && password.new_password !== password.confirm) {
+      toast.error('Yangi parollar mos kelmaydi');
+      return;
+    }
+
+    setSaving(true);
     try {
-      const formData = new FormData();
-      formData.append('avatar', avatarFile);
-      await api.patch(`/api/v1/users/${user.id}/`, formData, {
-        headers: { 'Content-Type': 'multipart/form-data' },
-      });
-      const newSrc = avatarPreview!;
-      setAvatarSrc(newSrc);
-      try { localStorage.setItem('avatar', newSrc); } catch {}
-      toast.success('Rasm saqlandi');
-      setAvatarFile(null);
-    } catch (err: any) {
-      if (err?.response?.status === 400 || err?.response?.status === 415) {
+      // 1. Avatar
+      if (avatarFile) {
+        const formData = new FormData();
+        formData.append('avatar', avatarFile);
+        try {
+          await api.patch(`/api/v1/users/${user.id}/`, formData, {
+            headers: { 'Content-Type': 'multipart/form-data' },
+          });
+        } catch (err: any) {
+          if (err?.response?.status !== 400 && err?.response?.status !== 415) throw err;
+        }
         const newSrc = avatarPreview!;
         setAvatarSrc(newSrc);
         try { localStorage.setItem('avatar', newSrc); } catch {}
-        toast.success('Rasm saqlandi');
-        setAvatarFile(null);
-      } else {
-        toast.error(err?.response?.data?.detail || 'Xatolik yuz berdi');
-        setAvatarPreview(null);
         setAvatarFile(null);
       }
-    } finally {
-      setSavingAvatar(false);
-    }
-  }
 
-  async function handleProfileSave(e: React.FormEvent) {
-    e.preventDefault();
-    if (!user) return;
-    setSaving(true);
-    try {
-      const payload: Record<string, string> = {
-        first_name: profileForm.first_name,
-        last_name: profileForm.last_name,
-      };
-      if (canEditPhone && profileForm.phone) payload.phone = profileForm.phone;
+      // 2. Profile info
+      const payload: Record<string, string> = { first_name: firstName, last_name: lastName };
+      if (phone.length === 9) payload.phone = '+998' + phone;
       await api.patch(`/api/v1/users/${user.id}/`, payload);
-      toast.success('Profil saqlandi');
+
+      // 3. Password
+      if (pwFilled) {
+        await api.post('/api/v1/users/change-password/', {
+          old_password: password.old_password,
+          new_password: password.new_password,
+        });
+      }
+
+      toast.success("Ma'lumotlar saqlandi");
+      setShowProfile(false);
     } catch (err: any) {
       toast.error(err?.response?.data?.detail || 'Xatolik yuz berdi');
     } finally {
@@ -204,32 +193,9 @@ export default function Topbar() {
     }
   }
 
-  async function handlePasswordSave(e: React.FormEvent) {
-    e.preventDefault();
-    if (password.new_password !== password.confirm) {
-      toast.error('Parollar mos emas');
-      return;
-    }
-    setSavingPw(true);
-    try {
-      await api.post('/api/v1/users/change-password/', {
-        old_password: password.old_password,
-        new_password: password.new_password,
-      });
-      toast.success("Parol o'zgartirildi");
-      setPassword({ old_password: '', new_password: '', confirm: '' });
-      setShowPasswordSection(false);
-    } catch (err: any) {
-      toast.error(err?.response?.data?.detail || "Eski parol noto'g'ri");
-    } finally {
-      setSavingPw(false);
-    }
-  }
-
   const segment = pathname.split('/')[2] ?? 'dashboard';
   const title = TITLES[segment] ?? 'EduHub';
   const pathWithoutLocale = '/' + pathname.split('/').slice(2).join('/') || '/dashboard';
-
   const displaySrc = avatarPreview || avatarSrc;
 
   return (
@@ -274,58 +240,29 @@ export default function Topbar() {
 
           <NotificationBell />
 
-          {/* User avatar with dropdown */}
+          {/* Avatar — click directly opens profile modal */}
           {user && (
-            <div ref={userMenuRef} className="relative ml-1">
-              <button
-                onClick={() => setShowUserMenu((v) => !v)}
-                className="focus:outline-none"
-                aria-label="User menu"
-              >
-                {avatarSrc ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img src={avatarSrc} alt="" className="w-8 h-8 rounded-full object-cover" />
-                ) : (
-                  <div className="w-8 h-8 rounded-full bg-blue-600 flex items-center justify-center hover:bg-blue-700 transition-colors">
-                    <span className="text-xs font-bold text-white select-none">
-                      {(user.first_name?.[0] ?? '').toUpperCase()}{(user.last_name?.[0] ?? '').toUpperCase()}
-                    </span>
-                  </div>
-                )}
-              </button>
-
-              {showUserMenu && (
-                <div className="absolute right-0 mt-2 w-52 bg-white border border-gray-200 rounded-lg shadow-lg z-50 py-2">
-                  <div className="px-4 py-2 border-b border-gray-100">
-                    <p className="text-sm font-semibold text-gray-900 truncate">
-                      {user.first_name} {user.last_name}
-                    </p>
-                    <span className="inline-block mt-1 px-2 py-0.5 text-xs font-medium bg-blue-100 text-blue-700 rounded">
-                      {ROLE_LABELS[user.role ?? ''] ?? user.role}
-                    </span>
-                  </div>
-                  <button
-                    onClick={openProfile}
-                    className="w-full flex items-center gap-2.5 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors mt-1"
-                  >
-                    <UserIcon className="w-4 h-4 flex-shrink-0 text-gray-500" />
-                    Profil sozlamalari
-                  </button>
-                  <button
-                    onClick={() => { setShowUserMenu(false); setShowLogoutConfirm(true); }}
-                    className="w-full flex items-center gap-2.5 px-4 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors"
-                  >
-                    <LogOut className="w-4 h-4 flex-shrink-0" />
-                    Chiqish
-                  </button>
+            <button
+              onClick={openProfile}
+              className="ml-1 focus:outline-none"
+              aria-label="Profil sozlamalari"
+            >
+              {avatarSrc ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={avatarSrc} alt="" className="w-8 h-8 rounded-full object-cover" />
+              ) : (
+                <div className="w-8 h-8 rounded-full bg-blue-600 flex items-center justify-center hover:bg-blue-700 transition-colors">
+                  <span className="text-xs font-bold text-white select-none">
+                    {(user.first_name?.[0] ?? '').toUpperCase()}{(user.last_name?.[0] ?? '').toUpperCase()}
+                  </span>
                 </div>
               )}
-            </div>
+            </button>
           )}
         </div>
       </header>
 
-      {/* Logout confirm dialog */}
+      {/* Logout confirm */}
       <Dialog open={showLogoutConfirm} onOpenChange={setShowLogoutConfirm}>
         <DialogContent className="sm:max-w-sm">
           <DialogHeader>
@@ -368,80 +305,65 @@ export default function Topbar() {
                 </span>
               </div>
             )}
-            <div className="flex items-center gap-2">
-              <label className="cursor-pointer px-3 py-1.5 border border-gray-300 text-sm font-medium rounded hover:bg-gray-50 transition-colors">
-                Rasm yuklash
-                <input
-                  type="file"
-                  accept="image/jpeg,image/jpg,image/png"
-                  className="hidden"
-                  onChange={handleAvatarChange}
-                />
-              </label>
-              {avatarFile && (
-                <button
-                  type="button"
-                  onClick={handleAvatarUpload}
-                  disabled={savingAvatar}
-                  className="px-3 py-1.5 bg-blue-600 text-white text-sm font-medium rounded hover:bg-blue-700 disabled:opacity-60"
-                >
-                  {savingAvatar ? 'Saqlanmoqda...' : 'Saqlash'}
-                </button>
-              )}
-            </div>
-            <p className="text-xs text-gray-400">JPG yoki PNG, max 1MB</p>
+            <label className="cursor-pointer px-3 py-1.5 border border-gray-300 text-sm font-medium rounded hover:bg-gray-50 transition-colors">
+              Rasm yuklash
+              <input
+                type="file"
+                accept="image/jpeg,image/jpg,image/png"
+                className="hidden"
+                onChange={handleAvatarChange}
+              />
+            </label>
+            {avatarPreview && (
+              <p className="text-xs text-green-600">Yangi rasm tanlandi</p>
+            )}
           </div>
 
           <hr className="border-gray-100" />
 
           {/* Personal info */}
-          <form onSubmit={handleProfileSave} className="space-y-4 py-4">
+          <div className="space-y-4 py-4">
             <h3 className="text-sm font-semibold text-gray-900">Shaxsiy ma&apos;lumotlar</h3>
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Ism</label>
                 <input
-                  value={profileForm.first_name}
-                  onChange={(e) => setProfileForm((p) => ({ ...p, first_name: e.target.value }))}
+                  value={firstName}
+                  onChange={(e) => setFirstName(e.target.value)}
                   className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  required
                 />
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Familiya</label>
                 <input
-                  value={profileForm.last_name}
-                  onChange={(e) => setProfileForm((p) => ({ ...p, last_name: e.target.value }))}
+                  value={lastName}
+                  onChange={(e) => setLastName(e.target.value)}
                   className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  required
                 />
               </div>
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Telefon</label>
-              <input
-                value={profileForm.phone}
-                readOnly={!canEditPhone}
-                onChange={canEditPhone ? (e) => setProfileForm((p) => ({ ...p, phone: e.target.value })) : undefined}
-                className={cn(
-                  'w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500',
-                  !canEditPhone && 'bg-gray-50 text-gray-500 cursor-not-allowed'
-                )}
-              />
+              <div className="flex">
+                <span className="px-3 py-2 bg-gray-100 border border-r-0 border-gray-300 rounded-l text-sm text-gray-500 select-none">
+                  +998
+                </span>
+                <input
+                  type="tel"
+                  maxLength={9}
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value.replace(/\D/g, '').slice(0, 9))}
+                  className="flex-1 px-3 py-2 border border-gray-300 rounded-r text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="901234567"
+                />
+              </div>
             </div>
             {user && (
               <div className="inline-block px-3 py-1.5 bg-gray-50 rounded text-xs text-gray-500">
                 Rol: <span className="font-medium">{ROLE_LABELS[user.role ?? ''] ?? user.role}</span>
               </div>
             )}
-            <button
-              type="submit"
-              disabled={saving}
-              className="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded hover:bg-blue-700 disabled:opacity-60"
-            >
-              {saving ? 'Saqlanmoqda...' : 'Saqlash'}
-            </button>
-          </form>
+          </div>
 
           <hr className="border-gray-100" />
 
@@ -450,61 +372,96 @@ export default function Topbar() {
             <button
               type="button"
               onClick={() => setShowPasswordSection((v) => !v)}
-              className="flex items-center gap-2 text-sm font-semibold text-gray-900 hover:text-blue-600 transition-colors w-full text-left"
+              className="flex items-center w-full text-left text-sm font-semibold text-gray-900 hover:text-blue-600 transition-colors"
             >
               Parolni o&apos;zgartirish
               <ChevronDown className={cn('w-4 h-4 transition-transform ml-auto', showPasswordSection && 'rotate-180')} />
             </button>
             {showPasswordSection && (
-              <form onSubmit={handlePasswordSave} className="space-y-3">
+              <div className="space-y-3">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Eski parol</label>
-                  <input
-                    type="password"
-                    value={password.old_password}
-                    onChange={(e) => setPassword((p) => ({ ...p, old_password: e.target.value }))}
-                    className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    required
-                  />
+                  <div className="relative">
+                    <input
+                      type={showOld ? 'text' : 'password'}
+                      value={password.old_password}
+                      onChange={(e) => setPassword((p) => ({ ...p, old_password: e.target.value }))}
+                      className="w-full px-3 py-2 pr-10 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowOld((v) => !v)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                    >
+                      {showOld ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    </button>
+                  </div>
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Yangi parol</label>
-                  <input
-                    type="password"
-                    value={password.new_password}
-                    onChange={(e) => setPassword((p) => ({ ...p, new_password: e.target.value }))}
-                    className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    required
-                  />
+                  <div className="relative">
+                    <input
+                      type={showNew ? 'text' : 'password'}
+                      value={password.new_password}
+                      onChange={(e) => setPassword((p) => ({ ...p, new_password: e.target.value }))}
+                      className="w-full px-3 py-2 pr-10 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowNew((v) => !v)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                    >
+                      {showNew ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    </button>
+                  </div>
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Yangi parolni tasdiqlang</label>
-                  <input
-                    type="password"
-                    value={password.confirm}
-                    onChange={(e) => setPassword((p) => ({ ...p, confirm: e.target.value }))}
-                    className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    required
-                  />
+                  <div className="relative">
+                    <input
+                      type={showConfirm ? 'text' : 'password'}
+                      value={password.confirm}
+                      onChange={(e) => setPassword((p) => ({ ...p, confirm: e.target.value }))}
+                      className="w-full px-3 py-2 pr-10 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowConfirm((v) => !v)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                    >
+                      {showConfirm ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    </button>
+                  </div>
                 </div>
-                <button
-                  type="submit"
-                  disabled={savingPw}
-                  className="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded hover:bg-blue-700 disabled:opacity-60"
-                >
-                  {savingPw ? 'Saqlanmoqda...' : "Parolni o'zgartirish"}
-                </button>
-              </form>
+              </div>
             )}
           </div>
 
           {/* Footer */}
-          <div className="pt-2 border-t border-gray-100">
+          <div className="pt-3 border-t border-gray-100 flex items-center gap-3">
             <button
+              type="button"
+              onClick={() => setShowLogoutConfirm(true)}
+              className="flex items-center gap-2 px-4 py-2 border border-red-300 text-red-600 text-sm font-medium rounded hover:bg-red-50 transition-colors"
+            >
+              <LogOut className="w-4 h-4" />
+              Chiqish
+            </button>
+            <div className="flex-1" />
+            <button
+              type="button"
               onClick={() => setShowProfile(false)}
-              className="w-full px-4 py-2 border border-gray-300 text-sm font-medium rounded hover:bg-gray-50 transition-colors"
+              className="px-4 py-2 border border-gray-300 text-sm font-medium rounded hover:bg-gray-50 transition-colors"
             >
               Yopish
+            </button>
+            <button
+              type="button"
+              onClick={handleSave}
+              disabled={saving}
+              className="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded hover:bg-blue-700 disabled:opacity-60"
+            >
+              {saving ? 'Saqlanmoqda...' : 'Saqlash'}
             </button>
           </div>
         </DialogContent>

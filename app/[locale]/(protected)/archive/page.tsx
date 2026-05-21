@@ -22,7 +22,6 @@ const TABS: { key: Tab; label: string }[] = [
   { key: 'courses', label: 'Kurslar' },
 ];
 
-// --- Student archive (merged students + ignored leads) ---
 interface ArchiveStudent {
   id: string;
   source: 'student' | 'lead';
@@ -38,7 +37,6 @@ interface ArchiveStudent {
   reason_display: string;
 }
 
-// --- Teacher (from /api/v1/teachers/?status=archived) ---
 interface ArchivedTeacher {
   id: string;
   first_name: string;
@@ -51,7 +49,6 @@ interface ArchivedTeacher {
   archived_at?: string | null;
 }
 
-// --- Group (from /api/v1/groups/?status=archived) ---
 interface ArchivedGroup {
   id: string;
   name: string;
@@ -64,7 +61,6 @@ interface ArchivedGroup {
   archived_at?: string | null;
 }
 
-// --- Course (from /api/v1/courses/?status=archived) ---
 interface ArchivedCourse {
   id: string;
   name: string;
@@ -127,7 +123,9 @@ export default function ArchivePage() {
   const [search, setSearch] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const [reasonFilter, setReasonFilter] = useState('');
-  const [pageSize] = useState(50);
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(25);
+  const [totalCount, setTotalCount] = useState(0);
   const [loading, setLoading] = useState(false);
   const [restoring, setRestoring] = useState<string | null>(null);
   const [confirm, setConfirm] = useState<ConfirmState | null>(null);
@@ -135,85 +133,79 @@ export default function ArchivePage() {
 
   const [archiveStudents, setArchiveStudents] = useState<ArchiveStudent[]>([]);
   const [teachers, setTeachers] = useState<ArchivedTeacher[]>([]);
-  const [teacherCount, setTeacherCount] = useState(0);
-  const [teacherPage, setTeacherPage] = useState(1);
   const [groups, setGroups] = useState<ArchivedGroup[]>([]);
-  const [groupCount, setGroupCount] = useState(0);
-  const [groupPage, setGroupPage] = useState(1);
   const [courses, setCourses] = useState<ArchivedCourse[]>([]);
-  const [courseCount, setCourseCount] = useState(0);
-  const [coursePage, setCoursePage] = useState(1);
 
+  // Debounce search
   useEffect(() => {
     if (debounceRef.current) clearTimeout(debounceRef.current);
     debounceRef.current = setTimeout(() => setDebouncedSearch(search), 300);
     return () => { if (debounceRef.current) clearTimeout(debounceRef.current); };
   }, [search]);
 
-  // Reset page when search/tab/filter changes
-  useEffect(() => {
-    setTeacherPage(1); setGroupPage(1); setCoursePage(1);
-  }, [tab, debouncedSearch]);
+  // Reset to page 1 when tab, search, or filter changes
+  useEffect(() => { setPage(1); }, [tab, debouncedSearch, reasonFilter]);
 
   const fetchStudents = useCallback(async () => {
     setLoading(true);
     try {
-      const params: Record<string, string> = {};
+      const params: Record<string, string | number> = { page, page_size: pageSize };
       if (debouncedSearch) params.search = debouncedSearch;
       if (reasonFilter) params.reason = reasonFilter;
-      const { data } = await api.get<ArchiveStudent[]>('/api/v1/archive/students/', { params });
-      setArchiveStudents(data ?? []);
+      const { data } = await api.get<PaginatedResponse<ArchiveStudent>>('/api/v1/archive/students/', { params });
+      setArchiveStudents(data.results ?? []);
+      setTotalCount(data.count ?? 0);
     } catch {
       toast.error("Ma'lumotlarni yuklashda xatolik");
     } finally {
       setLoading(false);
     }
-  }, [debouncedSearch, reasonFilter]);
+  }, [debouncedSearch, reasonFilter, page, pageSize]);
 
   const fetchTeachers = useCallback(async () => {
     setLoading(true);
     try {
-      const params: Record<string, string | number> = { status: 'archived', page: teacherPage, page_size: pageSize };
+      const params: Record<string, string | number> = { status: 'archived', page, page_size: pageSize };
       if (debouncedSearch) params.search = debouncedSearch;
       const { data } = await api.get<PaginatedResponse<ArchivedTeacher>>('/api/v1/teachers/', { params });
       setTeachers(data.results ?? []);
-      setTeacherCount(data.count ?? 0);
+      setTotalCount(data.count ?? 0);
     } catch {
       toast.error("Ma'lumotlarni yuklashda xatolik");
     } finally {
       setLoading(false);
     }
-  }, [debouncedSearch, teacherPage, pageSize]);
+  }, [debouncedSearch, page, pageSize]);
 
   const fetchGroups = useCallback(async () => {
     setLoading(true);
     try {
-      const params: Record<string, string | number> = { status: 'archived', page: groupPage, page_size: pageSize };
+      const params: Record<string, string | number> = { status: 'archived', page, page_size: pageSize };
       if (debouncedSearch) params.search = debouncedSearch;
       const { data } = await api.get<PaginatedResponse<ArchivedGroup>>('/api/v1/groups/', { params });
       setGroups(data.results ?? []);
-      setGroupCount(data.count ?? 0);
+      setTotalCount(data.count ?? 0);
     } catch {
       toast.error("Ma'lumotlarni yuklashda xatolik");
     } finally {
       setLoading(false);
     }
-  }, [debouncedSearch, groupPage, pageSize]);
+  }, [debouncedSearch, page, pageSize]);
 
   const fetchCourses = useCallback(async () => {
     setLoading(true);
     try {
-      const params: Record<string, string | number> = { status: 'archived', page: coursePage, page_size: pageSize };
+      const params: Record<string, string | number> = { status: 'archived', page, page_size: pageSize };
       if (debouncedSearch) params.search = debouncedSearch;
       const { data } = await api.get<PaginatedResponse<ArchivedCourse>>('/api/v1/courses/', { params });
       setCourses(data.results ?? []);
-      setCourseCount(data.count ?? 0);
+      setTotalCount(data.count ?? 0);
     } catch {
       toast.error("Ma'lumotlarni yuklashda xatolik");
     } finally {
       setLoading(false);
     }
-  }, [debouncedSearch, coursePage, pageSize]);
+  }, [debouncedSearch, page, pageSize]);
 
   useEffect(() => {
     if (tab === 'students') fetchStudents();
@@ -354,7 +346,7 @@ export default function ArchivePage() {
           <table className="w-full text-sm">
             <thead>
               <tr className="bg-gray-50 border-b border-gray-200">
-                {['№', 'Ism', 'Telefon', 'Ota-ona tel', 'Guruh', 'Kurs', "Tug'ilgan", 'Holat', 'Arxiv.Sana', 'Amal'].map((h, i) => (
+                {['#', 'Ism', 'Telefon', 'Ota-ona tel', 'Guruh', 'Kurs', "Tug'ilgan", 'Holat', 'Arxiv.Sana', 'Amal'].map((h, i) => (
                   <th key={i} className={thCls}>{h}</th>
                 ))}
               </tr>
@@ -364,7 +356,7 @@ export default function ArchivePage() {
                 ? <tr><td colSpan={10} className="px-4 py-16 text-center text-gray-400">Arxivlangan o&apos;quvchilar topilmadi</td></tr>
                 : archiveStudents.map((s, i) => (
                   <tr key={`${s.source}-${s.id}`} className={rowCls}>
-                    <td className={cn(tdCls, 'text-gray-400 text-xs')}>{i + 1}</td>
+                    <td className={cn(tdCls, 'text-gray-400 text-xs')}>{(page - 1) * pageSize + i + 1}</td>
                     <td className={cn(tdCls, 'font-medium text-gray-900 whitespace-nowrap')}>{s.first_name} {s.last_name}</td>
                     <td className={cn(tdCls, 'text-gray-500 whitespace-nowrap')}>{formatPhone(s.phone)}</td>
                     <td className={cn(tdCls, 'text-gray-500 whitespace-nowrap')}>{s.second_phone ? formatPhone(s.second_phone) : '—'}</td>
@@ -385,11 +377,7 @@ export default function ArchivePage() {
                     </td>
                     <td className={cn(tdCls, 'text-gray-500 text-xs whitespace-nowrap')}>{s.archived_at}</td>
                     <td className={tdCls}>
-                      <RestoreButton
-                        id={s.id}
-                        source={s.source}
-                        name={`${s.first_name} ${s.last_name}`}
-                      />
+                      <RestoreButton id={s.id} source={s.source} name={`${s.first_name} ${s.last_name}`} />
                     </td>
                   </tr>
                 ))
@@ -403,7 +391,7 @@ export default function ArchivePage() {
           <table className="w-full text-sm">
             <thead>
               <tr className="bg-gray-50 border-b border-gray-200">
-                {['№', 'Ism', 'Telefon', 'Fan', 'Maosh turi', "Tug'ilgan", 'Ish boshlagan', 'Arxiv.Sana', 'Amal'].map((h, i) => (
+                {['#', 'Ism', 'Telefon', 'Fan', 'Maosh turi', "Tug'ilgan", 'Ish boshlagan', 'Arxiv.Sana', 'Amal'].map((h, i) => (
                   <th key={i} className={thCls}>{h}</th>
                 ))}
               </tr>
@@ -413,7 +401,7 @@ export default function ArchivePage() {
                 ? <tr><td colSpan={9} className="px-4 py-16 text-center text-gray-400">Arxivlangan o&apos;qituvchilar topilmadi</td></tr>
                 : teachers.map((t, i) => (
                   <tr key={t.id} className={rowCls}>
-                    <td className={cn(tdCls, 'text-gray-400 text-xs')}>{(teacherPage - 1) * pageSize + i + 1}</td>
+                    <td className={cn(tdCls, 'text-gray-400 text-xs')}>{(page - 1) * pageSize + i + 1}</td>
                     <td className={cn(tdCls, 'font-medium text-gray-900 whitespace-nowrap')}>{t.first_name} {t.last_name}</td>
                     <td className={cn(tdCls, 'text-gray-500 whitespace-nowrap')}>{formatPhone(t.phone)}</td>
                     <td className={cn(tdCls, 'text-gray-600')}>{t.subject || '—'}</td>
@@ -443,7 +431,7 @@ export default function ArchivePage() {
           <table className="w-full text-sm">
             <thead>
               <tr className="bg-gray-50 border-b border-gray-200">
-                {['№', 'Guruh', 'Kurs', "O'qituvchi", 'Kunlar', 'Soatlar', 'Xona', 'Arxiv.Sana', 'Amal'].map((h, i) => (
+                {['#', 'Guruh', 'Kurs', "O'qituvchi", 'Kunlar', 'Soatlar', 'Xona', 'Arxiv.Sana', 'Amal'].map((h, i) => (
                   <th key={i} className={thCls}>{h}</th>
                 ))}
               </tr>
@@ -453,7 +441,7 @@ export default function ArchivePage() {
                 ? <tr><td colSpan={9} className="px-4 py-16 text-center text-gray-400">Arxivlangan guruhlar topilmadi</td></tr>
                 : groups.map((g, i) => (
                   <tr key={g.id} className={rowCls}>
-                    <td className={cn(tdCls, 'text-gray-400 text-xs')}>{(groupPage - 1) * pageSize + i + 1}</td>
+                    <td className={cn(tdCls, 'text-gray-400 text-xs')}>{(page - 1) * pageSize + i + 1}</td>
                     <td className={cn(tdCls, 'font-bold text-gray-900')}>{g.name}</td>
                     <td className={cn(tdCls, 'text-gray-600')}>{g.course?.name || '—'}</td>
                     <td className={cn(tdCls, 'text-gray-600 whitespace-nowrap')}>
@@ -480,7 +468,7 @@ export default function ArchivePage() {
           <table className="w-full text-sm">
             <thead>
               <tr className="bg-gray-50 border-b border-gray-200">
-                {['№', 'Kurs nomi', 'Narxi', 'Davomiyligi', "O'qituvchilar", 'Arxiv.Sana', 'Amal'].map((h, i) => (
+                {['#', 'Kurs nomi', 'Narxi', 'Davomiyligi', "O'qituvchilar", 'Arxiv.Sana', 'Amal'].map((h, i) => (
                   <th key={i} className={thCls}>{h}</th>
                 ))}
               </tr>
@@ -490,7 +478,7 @@ export default function ArchivePage() {
                 ? <tr><td colSpan={7} className="px-4 py-16 text-center text-gray-400">Arxivlangan kurslar topilmadi</td></tr>
                 : courses.map((c, i) => (
                   <tr key={c.id} className={rowCls}>
-                    <td className={cn(tdCls, 'text-gray-400 text-xs')}>{(coursePage - 1) * pageSize + i + 1}</td>
+                    <td className={cn(tdCls, 'text-gray-400 text-xs')}>{(page - 1) * pageSize + i + 1}</td>
                     <td className={cn(tdCls, 'font-medium text-gray-900')}>{c.name}</td>
                     <td className={cn(tdCls, 'text-gray-700 whitespace-nowrap')}>
                       {c.price ? Number(c.price).toLocaleString() + " so'm" : '—'}
@@ -518,19 +506,13 @@ export default function ArchivePage() {
         )}
       </div>
 
-      {/* Pagination — teachers/groups/courses only */}
-      {!loading && tab === 'teachers' && teacherCount > pageSize && (
-        <Pagination page={teacherPage} pageSize={pageSize} count={teacherCount}
-          onPageChange={setTeacherPage} onPageSizeChange={() => {}} />
-      )}
-      {!loading && tab === 'groups' && groupCount > pageSize && (
-        <Pagination page={groupPage} pageSize={pageSize} count={groupCount}
-          onPageChange={setGroupPage} onPageSizeChange={() => {}} />
-      )}
-      {!loading && tab === 'courses' && courseCount > pageSize && (
-        <Pagination page={coursePage} pageSize={pageSize} count={courseCount}
-          onPageChange={setCoursePage} onPageSizeChange={() => {}} />
-      )}
+      <Pagination
+        page={page}
+        pageSize={pageSize}
+        count={totalCount}
+        onPageChange={setPage}
+        onPageSizeChange={(ps) => { setPageSize(ps); setPage(1); }}
+      />
     </div>
   );
 }

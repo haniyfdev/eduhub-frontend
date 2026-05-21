@@ -19,7 +19,8 @@ interface Course {
   duration_hours: number;
   status: 'active' | 'archived';
   closed_at?: string | null;
-  teacher_names?: { id: string; first_name: string; last_name: string }[];
+  teachers?: string[];
+  teacher_names?: string[];
 }
 
 interface Teacher { id: string; first_name: string; last_name: string; }
@@ -108,7 +109,7 @@ export default function CoursesPage() {
       price:            String(c.price),
       duration_months:  String(c.duration_months),
       duration_hours:   String(c.duration_hours),
-      teacher_ids:      (c.teacher_names ?? []).map((t) => t.id),
+      teacher_ids:      c.teachers ?? [],
       status:           c.status,
     });
     setTouched({});
@@ -262,9 +263,9 @@ export default function CoursesPage() {
                       <td className="px-4 py-3 text-gray-600">
                         {c.teacher_names && c.teacher_names.length > 0 ? (
                           <div className="flex flex-wrap gap-1">
-                            {c.teacher_names.map((t) => (
-                              <span key={t.id} className="inline-flex items-center px-1.5 py-0.5 text-xs bg-blue-50 text-blue-700 border border-blue-200 rounded">
-                                {t.first_name} {t.last_name}
+                            {c.teacher_names.map((name, i) => (
+                              <span key={i} className="inline-flex items-center px-1.5 py-0.5 text-xs bg-blue-50 text-blue-700 border border-blue-200 rounded">
+                                {name}
                               </span>
                             ))}
                           </div>

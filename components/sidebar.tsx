@@ -42,8 +42,8 @@ const sections = [
   {
     label: 'Tizim',
     items: [
-      { key: 'settings', icon: Settings, href: '/settings' },
       { key: 'archive', icon: Archive, href: '/archive' },
+      { key: 'settings', icon: Settings, href: '/settings' },
     ],
   },
 ];

@@ -431,22 +431,14 @@ export default function Topbar() {
         <DialogContent className="sm:max-w-md p-0 overflow-hidden gap-0">
           <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100 bg-gray-50">
             <DialogTitle className="text-sm font-semibold text-gray-900">Bildirishnomalar</DialogTitle>
-            <div className="flex items-center gap-2">
-              {user?.role === 'superadmin' && (
-                <button
-                  onClick={() => setShowCreate(true)}
-                  className="w-7 h-7 flex items-center justify-center rounded-full bg-blue-600 text-white hover:bg-blue-700 transition-colors"
-                >
-                  <Plus className="w-4 h-4" />
-                </button>
-              )}
+            {user?.role === 'superadmin' && (
               <button
-                onClick={() => setBellOpen(false)}
-                className="w-7 h-7 flex items-center justify-center rounded-full hover:bg-gray-100 transition-colors"
+                onClick={() => setShowCreate(true)}
+                className="w-7 h-7 flex items-center justify-center rounded-full bg-blue-600 text-white hover:bg-blue-700 transition-colors mr-7"
               >
-                <X className="w-4 h-4 text-gray-500" />
+                <Plus className="w-4 h-4" />
               </button>
-            </div>
+            )}
           </div>
           <div className="max-h-[70vh] overflow-y-auto">
             {loadingAnns ? (

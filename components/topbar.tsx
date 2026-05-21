@@ -94,11 +94,11 @@ export default function Topbar() {
   }, []);
 
   useEffect(() => {
-    if (user?.phone) {
-      const digits = (user.phone as string).replace('+998', '').replace(/\D/g, '');
-      setPhone(digits);
+    const p = (user as any)?.phone as string | undefined;
+    if (p) {
+      setPhone(p.replace('+998', '').replace(/\D/g, ''));
     }
-  }, [user?.phone]);
+  }, [(user as any)?.phone]);
 
   useEffect(() => {
     if (!showLang) return;
@@ -122,7 +122,7 @@ export default function Topbar() {
     if (user) {
       setFirstName(user.first_name ?? '');
       setLastName(user.last_name ?? '');
-      const rawPhone = (user.phone as string) ?? '';
+      const rawPhone = ((user as any).phone as string) ?? '';
       setPhone(rawPhone.replace('+998', '').replace(/\D/g, ''));
     }
     setAvatarPreview(null);

@@ -416,7 +416,7 @@ export default function ReportsPage() {
                 <ResponsiveContainer width="100%" height="100%">
                   <PieChart>
                     <Pie data={courseIncome} dataKey="amount" nameKey="course"
-                      cx="50%" cy="50%" outerRadius={110} innerRadius={50}>
+                      cx="50%" cy="50%" outerRadius={110} innerRadius={0}>
                       {courseIncome.map((_, i) => (
                         <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />
                       ))}

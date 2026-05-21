@@ -8,9 +8,10 @@ import { Skeleton } from '@/components/ui/skeleton';
 import {
   Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle,
 } from '@/components/ui/dialog';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Button } from '@/components/ui/button';
 import api from '@/lib/axios';
-import { cn, formatPhone, formatDMY } from '@/lib/utils';
+import { cn, formatPhone, formatDMY, formatCurrency } from '@/lib/utils';
 import { PaginatedResponse } from '@/types';
 
 type Tab = 'students' | 'teachers' | 'groups' | 'courses';
@@ -44,6 +45,9 @@ interface ArchivedTeacher {
   phone: string;
   subject?: string;
   salary_type?: string;
+  fixed_amount?: number | null;
+  salary_percent?: number | null;
+  per_student_amt?: number | null;
   birth_date?: string | null;
   hired_at?: string | null;
   archived_at?: string | null;
@@ -78,15 +82,13 @@ const REASON_OPTIONS = [
   { value: 'ignored', label: 'Rad etdi' },
 ];
 
-const SALARY_TYPE_ICON: Record<string, React.ReactNode> = {
-  fixed:       <Banknote className="w-3.5 h-3.5 text-blue-600" />,
-  percent:     <Percent className="w-3.5 h-3.5 text-purple-600" />,
-  per_student: <Users className="w-3.5 h-3.5 text-green-600" />,
+const SALARY_STYLES: Record<string, string> = {
+  fixed:       'bg-gray-100 text-gray-700 border-gray-200',
+  percent:     'bg-blue-50 text-blue-700 border-blue-200',
+  per_student: 'bg-green-50 text-green-700 border-green-200',
 };
-const SALARY_TYPE_LABEL: Record<string, string> = {
-  fixed: 'Sobit',
-  percent: 'Foiz',
-  per_student: "O'quvchi",
+const SALARY_LABELS: Record<string, string> = {
+  fixed: 'Belgilangan', percent: 'Foizli', per_student: "O'quvchi boshiga",
 };
 
 const thCls = 'text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap';
@@ -407,10 +409,24 @@ export default function ArchivePage() {
                     <td className={cn(tdCls, 'text-gray-600')}>{t.subject || '—'}</td>
                     <td className={tdCls}>
                       {t.salary_type ? (
-                        <span className="inline-flex items-center gap-1 text-xs whitespace-nowrap">
-                          {SALARY_TYPE_ICON[t.salary_type]}
-                          {SALARY_TYPE_LABEL[t.salary_type] || t.salary_type}
-                        </span>
+                        <Popover>
+                          <PopoverTrigger className={cn('inline-flex items-center gap-1 px-2 py-0.5 text-xs font-medium border rounded cursor-pointer hover:scale-105 transition-transform', SALARY_STYLES[t.salary_type])}>
+                            {t.salary_type === 'fixed'       && <Banknote className="w-3 h-3" />}
+                            {t.salary_type === 'percent'     && <Percent   className="w-3 h-3" />}
+                            {t.salary_type === 'per_student' && <Users     className="w-3 h-3" />}
+                            {SALARY_LABELS[t.salary_type] || t.salary_type}
+                          </PopoverTrigger>
+                          <PopoverContent className="w-56 p-3 bg-blue-600 text-white shadow-xl" side="right" align="start">
+                            <p className="text-xs font-semibold text-white/70 uppercase tracking-wide mb-2">Maosh tafsiloti</p>
+                            <div className="text-center">
+                              <span className="text-xl font-bold text-white">
+                                {t.salary_type === 'fixed'       && formatCurrency(t.fixed_amount ?? 0)}
+                                {t.salary_type === 'percent'     && `${t.salary_percent ?? 0}%`}
+                                {t.salary_type === 'per_student' && formatCurrency(t.per_student_amt ?? 0)}
+                              </span>
+                            </div>
+                          </PopoverContent>
+                        </Popover>
                       ) : '—'}
                     </td>
                     <td className={cn(tdCls, 'text-gray-500 text-xs whitespace-nowrap')}>{t.birth_date ? formatDMY(t.birth_date) : '—'}</td>

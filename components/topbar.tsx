@@ -428,17 +428,25 @@ export default function Topbar() {
 
       {/* Announcements panel */}
       <Dialog open={bellOpen} onOpenChange={setBellOpen}>
-        <DialogContent className="sm:max-w-md p-0 overflow-hidden gap-0">
+        <DialogContent className="sm:max-w-md p-0 overflow-hidden gap-0 [&>button:last-child]:hidden">
           <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100 bg-gray-50">
             <DialogTitle className="text-sm font-semibold text-gray-900">Bildirishnomalar</DialogTitle>
-            {user?.role === 'superadmin' && (
+            <div className="flex items-center gap-2">
+              {user?.role === 'superadmin' && (
+                <button
+                  onClick={() => setShowCreate(true)}
+                  className="w-7 h-7 flex items-center justify-center rounded-full bg-blue-600 text-white hover:bg-blue-700 transition-colors"
+                >
+                  <Plus className="w-4 h-4" />
+                </button>
+              )}
               <button
-                onClick={() => setShowCreate(true)}
-                className="w-7 h-7 flex items-center justify-center rounded-full bg-blue-600 text-white hover:bg-blue-700 transition-colors mr-7"
+                onClick={() => setBellOpen(false)}
+                className="p-1 rounded hover:bg-gray-100 text-gray-400 hover:text-gray-600"
               >
-                <Plus className="w-4 h-4" />
+                <X className="w-4 h-4" />
               </button>
-            )}
+            </div>
           </div>
           <div className="max-h-[70vh] overflow-y-auto">
             {loadingAnns ? (

@@ -144,6 +144,9 @@ export default function SalariesPage() {
   const [payAmount, setPayAmount]             = useState('');
   const [paying, setPaying]                   = useState(false);
 
+  // ── Summary state ─────────────────────────────────────────────────────────────
+  const [summary, setSummary] = useState({ total_calculated: 0, total_paid: 0, total_remaining: 0 });
+
   // ── History state ─────────────────────────────────────────────────────────────
   const [histMonth, setHistMonth]       = useState(currentMonthStr);
   const [histCategory, setHistCategory] = useState('all');
@@ -184,7 +187,17 @@ export default function SalariesPage() {
     }
   }, [histMonth]);
 
+  const loadSummary = useCallback(async () => {
+    try {
+      const { data } = await api.get(`/api/v1/teacher-salaries/summary/?month=${month}`);
+      setSummary(data);
+    } catch {
+      // silently fail — cards stay at previous values
+    }
+  }, [month]);
+
   useEffect(() => { loadSalaries(); }, [loadSalaries]);
+  useEffect(() => { loadSummary(); }, [loadSummary]);
   useEffect(() => { if (activeTab === 'history') loadHistory(); }, [activeTab, loadHistory]);
 
   // ── Generate ──────────────────────────────────────────────────────────────────
@@ -284,6 +297,7 @@ export default function SalariesPage() {
       setTeacherPay(null);
       setBulkAmounts({});
       loadSalaries();
+      loadSummary();
     } catch (err: unknown) {
       const e = err as { response?: { data?: { error?: string } } };
       toast.error(e?.response?.data?.error || 'Xatolik');
@@ -310,6 +324,7 @@ export default function SalariesPage() {
       toast.success("Maosh muvaffaqiyatli to'landi");
       setPayTarget(null);
       loadSalaries();
+      loadSummary();
     } catch (err: unknown) {
       const e = err as { response?: { data?: { error?: string } } };
       toast.error(e?.response?.data?.error || 'Xatolik');
@@ -348,29 +363,6 @@ export default function SalariesPage() {
     statusFilter === 'all' ? staffRows : staffRows.filter(r => r.status === statusFilter)
   ), [staffRows, statusFilter]);
 
-  const totalCalculated = teacherGrouped.reduce((s, t) => s + t.total_calculated, 0)
-    + staffRows.reduce((s, r) => s + r.calculatedAmount + r.carryOver, 0);
-  const totalPaid = teacherGrouped.reduce((s, t) => s + t.total_paid, 0)
-    + staffRows.reduce((s, r) => s + r.paidAmount, 0);
-  const totalRemaining =
-    teacherGrouped.reduce((sum, t) => sum + Math.max(t.total_owed - t.total_paid, 0), 0) +
-    staffRows.reduce((sum, r) => sum + Math.max(r.totalOwed, 0), 0);
-
-  console.log('teacherGrouped:', teacherGrouped.map(t => ({
-    name: t.teacher_name,
-    total_owed: t.total_owed,
-    total_paid: t.total_paid,
-    remaining: t.total_owed - t.total_paid,
-  })));
-  console.log('staffRows:', staffRows.map(r => ({
-    name: r.name,
-    calculatedAmount: r.calculatedAmount,
-    carryOver: r.carryOver,
-    paidAmount: r.paidAmount,
-    totalOwed: r.totalOwed,
-    status: r.status,
-  })));
-  console.log('totalRemaining:', totalRemaining);
 
   const Skel = ({ w }: { w?: string }) => <Skeleton className={cn('h-4 rounded', w ?? 'w-full')} />;
 
@@ -428,9 +420,9 @@ export default function SalariesPage() {
           {/* Summary cards */}
           <div className="grid grid-cols-3 gap-4">
             {[
-              { label: 'Jami hisoblangan', value: totalCalculated, color: 'text-gray-900',    bg: 'bg-gray-50 border-gray-200' },
-              { label: "To'langan",        value: totalPaid,       color: 'text-emerald-600', bg: 'bg-emerald-50 border-emerald-200' },
-              { label: 'Qolgan',           value: totalRemaining,  color: 'text-red-600',     bg: 'bg-red-50 border-red-200' },
+              { label: 'Jami hisoblangan', value: summary.total_calculated, color: 'text-gray-900',    bg: 'bg-gray-50 border-gray-200' },
+              { label: "To'langan",        value: summary.total_paid,       color: 'text-emerald-600', bg: 'bg-emerald-50 border-emerald-200' },
+              { label: 'Qolgan',           value: summary.total_remaining,  color: 'text-red-600',     bg: 'bg-red-50 border-red-200' },
             ].map(({ label, value, color, bg }) => (
               <div key={label} className={cn('rounded-xl border p-4', bg)}>
                 <p className="text-xs text-gray-500 font-medium uppercase tracking-wide">{label}</p>

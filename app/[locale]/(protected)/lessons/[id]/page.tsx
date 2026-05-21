@@ -86,6 +86,14 @@ export default function LessonAttendancePage() {
   const router = useRouter();
   const locale = useLocale();
 
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') router.back();
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [router]);
+
   const [lesson, setLesson] = useState<LessonDetail | null>(null);
   const [loadingLesson, setLoadingLesson] = useState(true);
   const [students, setStudents] = useState<GroupStudentRaw[]>([]);
@@ -319,6 +327,7 @@ export default function LessonAttendancePage() {
           >
             <ArrowLeft className="w-4 h-4" />
           </button>
+          <span className="text-xs text-gray-400 mt-2 hidden sm:inline">Esc</span>
           <div>
             <div className="flex items-center gap-2 flex-wrap">
               {editingTopic ? (

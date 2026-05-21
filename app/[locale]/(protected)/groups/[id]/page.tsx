@@ -82,6 +82,14 @@ export default function GroupDetailPage() {
   const user = getUser(); // yoki useAuth() — qaysi hook ishlatayotgan bo'lsang
   const canEdit = ['boss', 'manager', 'admin'].includes(user?.role ?? '');
 
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') router.push(`/${locale}/groups`);
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [router, locale]);
+
   const [group, setGroup] = useState<GroupDetail | null>(null);
   const [loadingGroup, setLoadingGroup] = useState(true);
   const [tab, setTab] = useState<TabKey>('students');
@@ -298,6 +306,7 @@ export default function GroupDetailPage() {
           >
             <ArrowLeft className="w-4 h-4" />
           </button>
+          <span className="text-xs text-gray-400 ml-1 hidden sm:inline">Esc</span>
           <div>
             <div className="flex items-center gap-3 flex-wrap">
               <h1 className="text-2xl font-bold text-gray-900">{group.name}</h1>

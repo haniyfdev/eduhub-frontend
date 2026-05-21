@@ -1,11 +1,13 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import toast, { Toaster } from 'react-hot-toast';
+import { ChevronDown, Pencil, Plus, Trash2 } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import api from '@/lib/axios';
 import { getUser } from '@/lib/auth';
-import { formatCurrency } from '@/lib/utils';
+import { cn, formatCurrency } from '@/lib/utils';
 import { User } from '@/types';
 
 interface CompanyInfo {
@@ -23,17 +25,65 @@ interface CompanySettings {
 
 interface SmsTemplate {
   id: string;
-  type: string;
+  name: string;
   body: string;
+  trigger: string;
+  is_active: boolean;
+  is_default: boolean;
+  created_at: string;
 }
 
 type Tab = 'company' | 'sms' | 'discounts';
 
-const SMS_TYPE_LABELS: Record<string, string> = {
-  debt: 'Qarz eslatmasi',
-  reminder: 'Umumiy eslatma',
-  birthday: "Tug'ilgan kun",
-  welcome: 'Xush kelibsiz',
+const TRIGGER_CHOICES = [
+  ['debt_reminder', 'Qarzdorlik eslatmasi'],
+  ['payment_confirmed', "To'lov tasdiqi"],
+  ['lesson_reminder', 'Dars eslatmasi'],
+  ['course_started', 'Kurs boshlanishi'],
+  ['overdue_debt', "Muddati o'tgan qarz"],
+  ['custom', 'Boshqa'],
+];
+
+const TRIGGER_LABELS: Record<string, string> = {
+  debt_reminder: 'Qarz eslatmasi',
+  payment_confirmed: "To'lov tasdiqi",
+  lesson_reminder: 'Dars eslatmasi',
+  course_started: 'Kurs boshlanishi',
+  overdue_debt: "Muddati o'tgan",
+  custom: 'Boshqa',
+};
+
+const TRIGGER_COLORS: Record<string, string> = {
+  debt_reminder: 'bg-yellow-100 text-yellow-700',
+  payment_confirmed: 'bg-green-100 text-green-700',
+  lesson_reminder: 'bg-blue-100 text-blue-700',
+  course_started: 'bg-purple-100 text-purple-700',
+  overdue_debt: 'bg-red-100 text-red-700',
+  custom: 'bg-gray-100 text-gray-600',
+};
+
+const VARIABLES = [
+  ['{student_name}', "O'quvchi to'liq ismi"],
+  ['{amount}', "Qarz/to'lov summasi"],
+  ['{due_date}', "To'lov muddati"],
+  ['{course_name}', 'Kurs nomi'],
+  ['{group_name}', 'Guruh nomi (masalan 2B)'],
+  ['{teacher_name}', "O'qituvchi ismi"],
+  ['{company_name}', "O'quv markaz nomi"],
+  ['{phone}', "O'quvchi telefon raqami"],
+  ['{balance}', 'Qoldiq qarz miqdori'],
+];
+
+const SAMPLE_VALUES: Record<string, string> = {
+  '{student_name}': 'Jasur Karimov',
+  '{amount}': "300,000 so'm",
+  '{due_date}': '01/06/2026',
+  '{course_name}': 'Ingliz tili',
+  '{group_name}': '2B',
+  '{teacher_name}': 'Sardor Azimov',
+  '{company_name}': 'EduHub',
+  '{phone}': '+998901234567',
+  '{balance}': "150,000 so'm",
 };
 
 const inputCls = 'w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500';
@@ -48,15 +98,22 @@ export default function SettingsPage() {
     teacher_contract_break_policy: 'full',
   });
   const [smsTemplates, setSmsTemplates] = useState<SmsTemplate[]>([]);
-  const [editingTemplate, setEditingTemplate] = useState<SmsTemplate | null>(null);
   const [savingSettings, setSavingSettings] = useState(false);
-  const [savingSms, setSavingSms] = useState(false);
   const [loadingSettings, setLoadingSettings] = useState(false);
   const [loadingSms, setLoadingSms] = useState(false);
   const [companyInfo, setCompanyInfo] = useState<CompanyInfo | null>(null);
   const [companyForm, setCompanyForm] = useState({ name: '', phone: '', address: '' });
   const [savingCompanyInfo, setSavingCompanyInfo] = useState(false);
   const [companyLogo, setCompanyLogo] = useState<string | null>(null);
+
+  // SMS tab state
+  const [varsOpen, setVarsOpen] = useState(false);
+  const [showModal, setShowModal] = useState(false);
+  const [editingTemplate, setEditingTemplate] = useState<SmsTemplate | null>(null);
+  const [modalData, setModalData] = useState({ name: '', body: '', trigger: 'custom', is_active: true });
+  const [savingModal, setSavingModal] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<SmsTemplate | null>(null);
+  const bodyRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
     const u = getUser();
@@ -93,8 +150,8 @@ export default function SettingsPage() {
   useEffect(() => {
     if (tab === 'sms' && canEditCompany) {
       setLoadingSms(true);
-      api.get<{ results: SmsTemplate[] }>('/api/v1/sms-templates/')
-        .then(({ data }) => setSmsTemplates(data.results ?? []))
+      api.get('/api/v1/sms-templates/')
+        .then(({ data }) => setSmsTemplates(data.results ?? data))
         .catch(() => {})
         .finally(() => setLoadingSms(false));
     }
@@ -154,21 +211,85 @@ export default function SettingsPage() {
     }
   }
 
-  async function handleSmsSave(e: React.FormEvent) {
-    e.preventDefault();
-    if (!editingTemplate) return;
-    setSavingSms(true);
+  function openCreate() {
+    setEditingTemplate(null);
+    setModalData({ name: '', body: '', trigger: 'custom', is_active: true });
+    setShowModal(true);
+  }
+
+  function openEdit(tmpl: SmsTemplate) {
+    setEditingTemplate(tmpl);
+    setModalData({ name: tmpl.name, body: tmpl.body, trigger: tmpl.trigger, is_active: tmpl.is_active });
+    setShowModal(true);
+  }
+
+  function insertVariable(variable: string) {
+    const el = bodyRef.current;
+    const currentBody = modalData.body;
+    if (!el) {
+      setModalData((d) => ({ ...d, body: currentBody + variable }));
+      return;
+    }
+    const start = el.selectionStart ?? currentBody.length;
+    const end = el.selectionEnd ?? currentBody.length;
+    const newBody = currentBody.slice(0, start) + variable + currentBody.slice(end);
+    setModalData((d) => ({ ...d, body: newBody }));
+    setTimeout(() => {
+      el.focus();
+      el.setSelectionRange(start + variable.length, start + variable.length);
+    }, 0);
+  }
+
+  function renderPreview(body: string) {
+    return Object.entries(SAMPLE_VALUES).reduce(
+      (text, [key, val]) => text.split(key).join(val),
+      body
+    );
+  }
+
+  async function handleSaveModal() {
+    if (!modalData.name.trim() || !modalData.body.trim()) return;
+    setSavingModal(true);
     try {
-      await api.patch(`/api/v1/sms-templates/${editingTemplate.id}/`, { body: editingTemplate.body });
-      setSmsTemplates((prev) =>
-        prev.map((t) => t.id === editingTemplate.id ? { ...t, body: editingTemplate.body } : t)
-      );
-      setEditingTemplate(null);
+      if (editingTemplate) {
+        const { data } = await api.patch(`/api/v1/sms-templates/${editingTemplate.id}/`, modalData);
+        setSmsTemplates((prev) => prev.map((t) => t.id === editingTemplate.id ? { ...t, ...data } : t));
+      } else {
+        const { data } = await api.post('/api/v1/sms-templates/', modalData);
+        setSmsTemplates((prev) => [...prev, data]);
+      }
       toast.success('Shablon saqlandi');
+      setShowModal(false);
     } catch (err: any) {
       toast.error(err?.response?.data?.detail || 'Xatolik yuz berdi');
     } finally {
-      setSavingSms(false);
+      setSavingModal(false);
+    }
+  }
+
+  async function handleToggleActive(tmpl: SmsTemplate) {
+    const newActive = !tmpl.is_active;
+    try {
+      await api.patch(`/api/v1/sms-templates/${tmpl.id}/`, { is_active: newActive });
+      if (newActive) {
+        setSmsTemplates((prev) => prev.map((t) => t.id === tmpl.id ? { ...t, is_active: true } : t));
+      } else {
+        setSmsTemplates((prev) => prev.filter((t) => t.id !== tmpl.id));
+      }
+    } catch (err: any) {
+      toast.error(err?.response?.data?.detail || 'Xatolik yuz berdi');
+    }
+  }
+
+  async function handleDelete() {
+    if (!deleteTarget) return;
+    try {
+      await api.delete(`/api/v1/sms-templates/${deleteTarget.id}/`);
+      setSmsTemplates((prev) => prev.filter((t) => t.id !== deleteTarget.id));
+      toast.success("Shablon o'chirildi");
+      setDeleteTarget(null);
+    } catch (err: any) {
+      toast.error(err?.response?.data?.detail || 'Xatolik yuz berdi');
     }
   }
 
@@ -185,7 +306,6 @@ export default function SettingsPage() {
       <Toaster position="top-right" />
       <h1 className="text-xl font-bold text-gray-900">Sozlamalar</h1>
 
-      {/* Tabs — only render when more than one visible */}
       {visibleTabs.length > 1 && (
         <div className="flex border-b border-gray-200">
           {visibleTabs.map(({ key, label }) => (
@@ -205,7 +325,7 @@ export default function SettingsPage() {
       )}
 
       {/* Company settings tab */}
-      {(tab === 'company' || (!canEditCompany && false)) && canEditCompany && (
+      {tab === 'company' && canEditCompany && (
         <div className="space-y-5">
           {user?.company_id && (
             <div className="bg-white rounded border border-gray-200 shadow-sm p-6 max-w-xl">
@@ -310,75 +430,119 @@ export default function SettingsPage() {
       {/* SMS Templates tab */}
       {tab === 'sms' && canEditCompany && (
         <div className="space-y-4">
+          {/* Variables reference panel */}
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+            <button
+              onClick={() => setVarsOpen((o) => !o)}
+              className="flex items-center justify-between w-full"
+            >
+              <span className="text-sm font-semibold text-blue-700">
+                📋 Mavjud o&apos;zgaruvchilar
+              </span>
+              <ChevronDown className={cn('w-4 h-4 text-blue-600 transition-transform', varsOpen && 'rotate-180')} />
+            </button>
+            {varsOpen && (
+              <div className="mt-3 grid grid-cols-2 gap-2">
+                {VARIABLES.map(([variable, desc]) => (
+                  <div
+                    key={variable}
+                    className="flex items-center gap-2 bg-white rounded px-2 py-1.5 border border-blue-100 cursor-pointer hover:bg-blue-50"
+                    onClick={() => {
+                      navigator.clipboard.writeText(variable);
+                      toast.success(`${variable} nusxalandi`);
+                    }}
+                  >
+                    <code className="text-xs font-mono text-blue-600 font-semibold">{variable}</code>
+                    <span className="text-xs text-gray-500">{desc}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Templates table */}
           <div className="bg-white rounded border border-gray-200 shadow-sm overflow-hidden">
-            <div className="px-5 py-4 border-b border-gray-100">
+            <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
               <h2 className="text-sm font-semibold text-gray-900">SMS shablonlar</h2>
-              <p className="text-xs text-gray-400 mt-0.5">
-                Mavjud o&apos;zgaruvchilar: <code className="bg-gray-100 px-1 rounded">{'{'+'student_name}'}</code>{' '}
-                <code className="bg-gray-100 px-1 rounded">{'{'+'amount}'}</code>{' '}
-                <code className="bg-gray-100 px-1 rounded">{'{'+'due_date}'}</code>
-              </p>
+              <button
+                onClick={openCreate}
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 text-white text-sm font-medium rounded hover:bg-blue-700 transition-colors"
+              >
+                <Plus className="w-4 h-4" />
+                Shablon qo&apos;shish
+              </button>
             </div>
             {loadingSms ? (
               <div className="p-5 space-y-3">
-                {Array(3).fill(0).map((_, i) => <Skeleton key={i} className="h-16 w-full" />)}
+                {Array(3).fill(0).map((_, i) => <Skeleton key={i} className="h-12 w-full" />)}
               </div>
             ) : smsTemplates.length === 0 ? (
               <div className="px-5 py-10 text-center text-gray-400 text-sm">
                 Hech qanday shablon topilmadi
               </div>
             ) : (
-              <div className="divide-y divide-gray-100">
-                {smsTemplates.map((tmpl) => (
-                  <div key={tmpl.id} className="p-5">
-                    {editingTemplate?.id === tmpl.id ? (
-                      <form onSubmit={handleSmsSave} className="space-y-3">
-                        <div className="flex items-center gap-2 mb-2">
-                          <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
-                            {SMS_TYPE_LABELS[tmpl.type] ?? tmpl.type}
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="bg-gray-50 border-b border-gray-200">
+                      {['#', 'Shablon nomi', 'Trigger', 'Matn', 'Holat', 'Amal'].map((h) => (
+                        <th key={h} className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap">{h}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100">
+                    {smsTemplates.map((tmpl, idx) => (
+                      <tr key={tmpl.id} className="hover:bg-gray-50">
+                        <td className="px-4 py-3 text-gray-400 text-xs">{idx + 1}</td>
+                        <td className="px-4 py-3 font-medium text-gray-900 whitespace-nowrap">{tmpl.name}</td>
+                        <td className="px-4 py-3">
+                          <span className={cn('px-2 py-0.5 rounded text-xs font-medium whitespace-nowrap', TRIGGER_COLORS[tmpl.trigger] ?? 'bg-gray-100 text-gray-600')}>
+                            {TRIGGER_LABELS[tmpl.trigger] ?? tmpl.trigger}
                           </span>
-                        </div>
-                        <textarea
-                          value={editingTemplate.body}
-                          onChange={(e) => setEditingTemplate((t) => t ? { ...t, body: e.target.value } : t)}
-                          rows={4}
-                          className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono"
-                        />
-                        <div className="flex gap-2">
+                        </td>
+                        <td className="px-4 py-3 text-gray-600 max-w-[240px]">
+                          <span className="block truncate">
+                            {tmpl.body.length > 60 ? tmpl.body.slice(0, 60) + '...' : tmpl.body}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3">
                           <button
-                            type="submit"
-                            disabled={savingSms}
-                            className="px-3 py-1.5 bg-blue-600 text-white text-xs font-medium rounded hover:bg-blue-700 disabled:opacity-60"
+                            onClick={() => handleToggleActive(tmpl)}
+                            className={cn(
+                              'relative inline-flex h-5 w-9 items-center rounded-full transition-colors',
+                              tmpl.is_active ? 'bg-green-500' : 'bg-gray-300'
+                            )}
                           >
-                            {savingSms ? '...' : 'Saqlash'}
+                            <span className={cn(
+                              'inline-block h-3.5 w-3.5 transform rounded-full bg-white transition-transform',
+                              tmpl.is_active ? 'translate-x-4' : 'translate-x-0.5'
+                            )} />
                           </button>
-                          <button
-                            type="button"
-                            onClick={() => setEditingTemplate(null)}
-                            className="px-3 py-1.5 border border-gray-300 text-xs font-medium rounded hover:bg-gray-50"
-                          >
-                            Bekor qilish
-                          </button>
-                        </div>
-                      </form>
-                    ) : (
-                      <div className="flex items-start justify-between gap-4">
-                        <div className="flex-1 min-w-0">
-                          <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">
-                            {SMS_TYPE_LABELS[tmpl.type] ?? tmpl.type}
-                          </p>
-                          <p className="text-sm text-gray-700 whitespace-pre-wrap font-mono">{tmpl.body}</p>
-                        </div>
-                        <button
-                          onClick={() => setEditingTemplate({ ...tmpl })}
-                          className="text-xs text-blue-600 hover:underline flex-shrink-0"
-                        >
-                          Tahrirlash
-                        </button>
-                      </div>
-                    )}
-                  </div>
-                ))}
+                        </td>
+                        <td className="px-4 py-3">
+                          <div className="flex items-center gap-1">
+                            <button
+                              onClick={() => openEdit(tmpl)}
+                              className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded transition-colors"
+                              title="Tahrirlash"
+                            >
+                              <Pencil className="w-3.5 h-3.5" />
+                            </button>
+                            {!tmpl.is_default && (
+                              <button
+                                onClick={() => setDeleteTarget(tmpl)}
+                                className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded transition-colors"
+                                title="O'chirish"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               </div>
             )}
           </div>
@@ -389,6 +553,115 @@ export default function SettingsPage() {
       {(tab === 'discounts' || !canEditCompany) && (
         <DiscountsTab />
       )}
+
+      {/* Add / Edit modal */}
+      <Dialog open={showModal} onOpenChange={(open) => { if (!open) setShowModal(false); }}>
+        <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>{editingTemplate ? 'Shablonni tahrirlash' : 'Yangi shablon'}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 mt-2">
+            <div>
+              <label className={labelCls}>Shablon nomi</label>
+              <input
+                value={modalData.name}
+                onChange={(e) => setModalData((d) => ({ ...d, name: e.target.value }))}
+                className={inputCls}
+                placeholder="Masalan: Qarzdorlik eslatmasi"
+              />
+            </div>
+            <div>
+              <label className={labelCls}>Holat uchun</label>
+              <select
+                value={modalData.trigger}
+                onChange={(e) => setModalData((d) => ({ ...d, trigger: e.target.value }))}
+                className={inputCls}
+              >
+                {TRIGGER_CHOICES.map(([value, label]) => (
+                  <option key={value} value={value}>{label}</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className={labelCls}>Matn</label>
+              <textarea
+                ref={bodyRef}
+                value={modalData.body}
+                onChange={(e) => setModalData((d) => ({ ...d, body: e.target.value }))}
+                rows={5}
+                className={cn(inputCls, 'resize-none')}
+                placeholder="SMS matnini kiriting..."
+              />
+              <p className="text-xs text-gray-400 mt-1">
+                O&apos;zgaruvchi qo&apos;shish uchun yuqoridagi ro&apos;yxatdan bosing yoki qo&apos;lda yozing
+              </p>
+              <div className="flex flex-wrap gap-1.5 mt-2">
+                {VARIABLES.map(([variable]) => (
+                  <button
+                    key={variable}
+                    type="button"
+                    onClick={() => insertVariable(variable)}
+                    className="px-2 py-0.5 bg-blue-50 border border-blue-200 text-xs font-mono text-blue-600 rounded hover:bg-blue-100 transition-colors"
+                  >
+                    {variable}
+                  </button>
+                ))}
+              </div>
+            </div>
+            {modalData.body && (
+              <div>
+                <label className={labelCls}>Ko&apos;rinishi</label>
+                <div className="bg-gray-50 rounded p-3 text-sm text-gray-700 whitespace-pre-wrap border border-gray-200">
+                  {renderPreview(modalData.body)}
+                </div>
+              </div>
+            )}
+            <div className="flex gap-3 pt-2">
+              <button
+                type="button"
+                onClick={() => setShowModal(false)}
+                className="flex-1 px-4 py-2 border border-gray-300 text-sm font-medium rounded hover:bg-gray-50"
+              >
+                Bekor qilish
+              </button>
+              <button
+                type="button"
+                onClick={handleSaveModal}
+                disabled={savingModal || !modalData.name.trim() || !modalData.body.trim()}
+                className="flex-1 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded hover:bg-blue-700 disabled:opacity-60"
+              >
+                {savingModal ? 'Saqlanmoqda...' : 'Saqlash'}
+              </button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete confirmation */}
+      <Dialog open={!!deleteTarget} onOpenChange={(open) => { if (!open) setDeleteTarget(null); }}>
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Shablonni o&apos;chirish</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-gray-600 mt-1">
+            <span className="font-medium">{deleteTarget?.name}</span> shablonini o&apos;chirishni tasdiqlaysizmi?
+          </p>
+          <div className="flex gap-3 mt-4">
+            <button
+              onClick={() => setDeleteTarget(null)}
+              className="flex-1 px-4 py-2 border border-gray-300 text-sm font-medium rounded hover:bg-gray-50"
+            >
+              Bekor qilish
+            </button>
+            <button
+              onClick={handleDelete}
+              className="flex-1 px-4 py-2 bg-red-600 text-white text-sm font-medium rounded hover:bg-red-700"
+            >
+              O&apos;chirish
+            </button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

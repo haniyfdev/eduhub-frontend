@@ -2,15 +2,24 @@
 
 import { usePathname, useRouter } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
-import { ChevronDown, Eye, EyeOff, Globe, LogOut, Paperclip, Trash2 } from 'lucide-react';
+import { Bell, ChevronDown, Eye, EyeOff, Globe, LogOut, Paperclip, Plus, Trash2 } from 'lucide-react';
 import { useLocale } from 'next-intl';
 import { getUser, logout } from '@/lib/auth';
-import NotificationBell from './notification-bell';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { User } from '@/types';
 import { cn } from '@/lib/utils';
 import api from '@/lib/axios';
 import toast from 'react-hot-toast';
+
+interface Announcement {
+  id: string;
+  title: string;
+  body: string;
+  created_by_name: string;
+  is_active: boolean;
+  is_read: boolean;
+  created_at: string;
+}
 
 const TITLES: Record<string, string> = {
   dashboard: 'Bosh sahifa',
@@ -35,6 +44,12 @@ const ROLE_LABELS: Record<string, string> = {
   teacher: "O'qituvchi",
 };
 
+function fmtDate(iso: string) {
+  return new Date(iso).toLocaleDateString('uz-UZ', {
+    day: '2-digit', month: '2-digit', year: 'numeric',
+  });
+}
+
 export default function Topbar() {
   const pathname = usePathname();
   const router = useRouter();
@@ -44,6 +59,16 @@ export default function Topbar() {
   const [companyName, setCompanyName] = useState<string | null>(null);
   const [showLang, setShowLang] = useState(false);
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
+
+  // Announcements
+  const [unreadCount, setUnreadCount] = useState(0);
+  const [announcements, setAnnouncements] = useState<Announcement[]>([]);
+  const [bellOpen, setBellOpen] = useState(false);
+  const [loadingAnns, setLoadingAnns] = useState(false);
+  const [showCreate, setShowCreate] = useState(false);
+  const [newTitle, setNewTitle] = useState('');
+  const [newBody, setNewBody] = useState('');
+  const [creatingAnn, setCreatingAnn] = useState(false);
 
   // Profile modal
   const [showProfile, setShowProfile] = useState(false);
@@ -93,6 +118,19 @@ export default function Topbar() {
     }
   }, []);
 
+  // Poll unread announcement count every 5 min
+  useEffect(() => {
+    async function fetchUnread() {
+      try {
+        const { data } = await api.get('/api/v1/announcements/unread_count/');
+        setUnreadCount(data.unread ?? 0);
+      } catch {}
+    }
+    fetchUnread();
+    const interval = setInterval(fetchUnread, 5 * 60 * 1000);
+    return () => clearInterval(interval);
+  }, []);
+
   useEffect(() => {
     if (!showLang) return;
     function handle(e: MouseEvent) {
@@ -109,6 +147,45 @@ export default function Topbar() {
       localStorage.removeItem('company_name');
     } catch {}
     router.push(`/${locale}/login`);
+  }
+
+  async function openBell() {
+    setBellOpen(true);
+    setLoadingAnns(true);
+    try {
+      const { data } = await api.get('/api/v1/announcements/');
+      setAnnouncements(data.results ?? data);
+    } catch {}
+    finally { setLoadingAnns(false); }
+  }
+
+  async function handleRead(ann: Announcement) {
+    if (ann.is_read) return;
+    try {
+      await api.post(`/api/v1/announcements/${ann.id}/mark_read/`);
+      setAnnouncements((prev) =>
+        prev.map((a) => a.id === ann.id ? { ...a, is_read: true } : a)
+      );
+      setUnreadCount((prev) => Math.max(0, prev - 1));
+    } catch {}
+  }
+
+  async function handleCreate(e: React.FormEvent) {
+    e.preventDefault();
+    setCreatingAnn(true);
+    try {
+      await api.post('/api/v1/announcements/', { title: newTitle, body: newBody });
+      toast.success('Xabar yuborildi');
+      setShowCreate(false);
+      setNewTitle('');
+      setNewBody('');
+      const { data } = await api.get('/api/v1/announcements/');
+      setAnnouncements(data.results ?? data);
+    } catch (err: any) {
+      toast.error(err?.response?.data?.detail || 'Xatolik yuz berdi');
+    } finally {
+      setCreatingAnn(false);
+    }
   }
 
   function openProfile() {
@@ -163,14 +240,12 @@ export default function Topbar() {
 
     setSaving(true);
     try {
-      // 0. Avatar delete
       if (avatarToDelete) {
         try { await api.patch(`/api/v1/users/${user.id}/`, { avatar: null }); } catch {}
         setAvatarSrc(null);
         try { localStorage.removeItem('avatar'); } catch {}
       }
 
-      // 1. Avatar upload
       if (avatarFile) {
         const formData = new FormData();
         formData.append('avatar', avatarFile);
@@ -187,12 +262,10 @@ export default function Topbar() {
         setAvatarFile(null);
       }
 
-      // 2. Profile info
       const payload: Record<string, string> = { first_name: firstName, last_name: lastName };
       if (phone.length === 9) payload.phone = '+998' + phone;
       await api.patch(`/api/v1/users/${user.id}/`, payload);
 
-      // 3. Password
       if (pwFilled) {
         await api.post('/api/v1/users/change-password/', {
           old_password: password.old_password,
@@ -254,7 +327,19 @@ export default function Topbar() {
             )}
           </div>
 
-          <NotificationBell />
+          {/* Announcement bell */}
+          <button
+            onClick={openBell}
+            className="relative p-2 rounded-lg hover:bg-gray-100 transition-colors"
+            title="Bildirishnomalar"
+          >
+            <Bell className={`w-5 h-5 ${unreadCount > 0 ? 'text-gray-600' : 'text-gray-400'}`} />
+            {unreadCount > 0 && (
+              <span className="absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] px-1 bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center leading-none">
+                {unreadCount > 99 ? '99+' : unreadCount}
+              </span>
+            )}
+          </button>
 
           {/* Avatar — click directly opens profile modal */}
           {user && (
@@ -324,6 +409,94 @@ export default function Topbar() {
               Ha, saqlash
             </button>
           </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Announcements panel */}
+      <Dialog open={bellOpen} onOpenChange={setBellOpen}>
+        <DialogContent className="sm:max-w-md p-0 overflow-hidden gap-0">
+          <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100 bg-gray-50">
+            <DialogTitle className="text-sm font-semibold text-gray-900">Bildirishnomalar</DialogTitle>
+            {user?.role === 'superadmin' && (
+              <button
+                onClick={() => setShowCreate(true)}
+                className="flex items-center gap-1 text-xs text-blue-600 hover:underline font-medium"
+              >
+                <Plus className="w-3.5 h-3.5" /> Yangi xabar
+              </button>
+            )}
+          </div>
+          <div className="max-h-[70vh] overflow-y-auto">
+            {loadingAnns ? (
+              <div className="flex items-center justify-center py-10">
+                <div className="w-5 h-5 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" />
+              </div>
+            ) : announcements.length === 0 ? (
+              <p className="text-sm text-gray-400 text-center py-10">
+                Hozircha bildirishnomalar yo&apos;q
+              </p>
+            ) : (
+              <div>
+                {announcements.map((ann) => (
+                  <div
+                    key={ann.id}
+                    onClick={() => handleRead(ann)}
+                    className={cn(
+                      'p-4 border-b border-gray-100 cursor-pointer hover:bg-gray-50 transition-colors',
+                      !ann.is_read && 'bg-blue-50 border-l-4 border-l-blue-500'
+                    )}
+                  >
+                    <div className="flex justify-between items-start gap-2">
+                      <p className="font-semibold text-gray-900 text-sm">{ann.title}</p>
+                      <span className="text-xs text-gray-400 flex-shrink-0">{fmtDate(ann.created_at)}</span>
+                    </div>
+                    <p className="text-sm text-gray-600 mt-1">{ann.body}</p>
+                    <p className="text-xs text-gray-400 mt-1">— {ann.created_by_name}</p>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Create announcement (superadmin only) */}
+      <Dialog open={showCreate} onOpenChange={setShowCreate}>
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Yangi xabar</DialogTitle>
+          </DialogHeader>
+          <form onSubmit={handleCreate} className="space-y-4 mt-2">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Sarlavha</label>
+              <input
+                value={newTitle}
+                onChange={(e) => setNewTitle(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                required
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Xabar matni</label>
+              <textarea
+                value={newBody}
+                onChange={(e) => setNewBody(e.target.value)}
+                rows={4}
+                className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+                required
+              />
+            </div>
+            <div className="flex gap-3">
+              <button type="button" onClick={() => setShowCreate(false)}
+                className="flex-1 px-4 py-2 border border-gray-300 text-sm font-medium rounded hover:bg-gray-50">
+                Bekor qilish
+              </button>
+              <button type="submit" disabled={creatingAnn}
+                className="flex-1 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded hover:bg-blue-700 disabled:opacity-60">
+                {creatingAnn ? 'Yuborilmoqda...' : 'Yuborish'}
+              </button>
+            </div>
+          </form>
         </DialogContent>
       </Dialog>
 
@@ -441,11 +614,8 @@ export default function Topbar() {
                       onChange={(e) => setPassword((p) => ({ ...p, old_password: e.target.value }))}
                       className="w-full px-3 py-2 pr-10 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                     />
-                    <button
-                      type="button"
-                      onClick={() => setShowOld((v) => !v)}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
-                    >
+                    <button type="button" onClick={() => setShowOld((v) => !v)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
                       {showOld ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                     </button>
                   </div>
@@ -459,11 +629,8 @@ export default function Topbar() {
                       onChange={(e) => setPassword((p) => ({ ...p, new_password: e.target.value }))}
                       className="w-full px-3 py-2 pr-10 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                     />
-                    <button
-                      type="button"
-                      onClick={() => setShowNew((v) => !v)}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
-                    >
+                    <button type="button" onClick={() => setShowNew((v) => !v)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
                       {showNew ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                     </button>
                   </div>
@@ -477,11 +644,8 @@ export default function Topbar() {
                       onChange={(e) => setPassword((p) => ({ ...p, confirm: e.target.value }))}
                       className="w-full px-3 py-2 pr-10 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                     />
-                    <button
-                      type="button"
-                      onClick={() => setShowConfirm((v) => !v)}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
-                    >
+                    <button type="button" onClick={() => setShowConfirm((v) => !v)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
                       {showConfirm ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                     </button>
                   </div>

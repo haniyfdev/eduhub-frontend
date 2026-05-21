@@ -94,6 +94,13 @@ export default function Topbar() {
   }, []);
 
   useEffect(() => {
+    if (user?.phone) {
+      const digits = (user.phone as string).replace('+998', '').replace(/\D/g, '');
+      setPhone(digits);
+    }
+  }, [user?.phone]);
+
+  useEffect(() => {
     if (!showLang) return;
     function handle(e: MouseEvent) {
       if (langRef.current && !langRef.current.contains(e.target as Node)) setShowLang(false);
@@ -115,8 +122,8 @@ export default function Topbar() {
     if (user) {
       setFirstName(user.first_name ?? '');
       setLastName(user.last_name ?? '');
-      const rawPhone = (user as any).phone ?? '';
-      setPhone(rawPhone.startsWith('+998') ? rawPhone.slice(4) : rawPhone.replace(/\D/g, '').slice(0, 9));
+      const rawPhone = (user.phone as string) ?? '';
+      setPhone(rawPhone.replace('+998', '').replace(/\D/g, ''));
     }
     setAvatarPreview(null);
     setAvatarFile(null);

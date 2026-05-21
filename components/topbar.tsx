@@ -428,7 +428,7 @@ export default function Topbar() {
 
       {/* Announcements panel */}
       <Dialog open={bellOpen} onOpenChange={setBellOpen}>
-        <DialogContent className="sm:max-w-md p-0 overflow-hidden gap-0 [&>button:last-child]:hidden">
+        <DialogContent className="sm:max-w-md p-0 overflow-hidden gap-0 [&>button]:hidden">
           <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100 bg-gray-50">
             <DialogTitle className="text-sm font-semibold text-gray-900">Bildirishnomalar</DialogTitle>
             <div className="flex items-center gap-2">

@@ -60,6 +60,12 @@ const PAYMENT_TYPE_LABELS: Record<string, string> = {
   cash: 'Naqd', card: 'Karta', transfer: "O'tkazma",
 };
 
+const formatAmount = (val: string) =>
+  val.replace(/\D/g, '').replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+
+const parseAmount = (val: string) =>
+  Number(val.replace(/,/g, ''));
+
 type PhoneSelection = Record<string, { phone1: boolean; phone2: boolean }>;
 
 export default function DebtsPage() {
@@ -147,13 +153,13 @@ export default function DebtsPage() {
 
   function openPayment(debt: Debt) {
     setPaymentTarget(debt);
-    setPaymentForm({ amount: String(debt.amount), payment_type: 'cash', note: '' });
+    setPaymentForm({ amount: formatAmount(String(debt.amount)), payment_type: 'cash', note: '' });
   }
 
   async function handlePayment(e: React.FormEvent) {
     e.preventDefault();
     if (!paymentTarget) return;
-    const amt = parseFloat(paymentForm.amount);
+    const amt = parseAmount(paymentForm.amount);
     if (!amt || amt <= 0) { toast.error("Summani kiriting"); return; }
     if (amt > paymentTarget.amount) { toast.error("To'lov summasi qarzdan oshib ketdi"); return; }
     setPaymentSaving(true);
@@ -402,11 +408,10 @@ export default function DebtsPage() {
                 )}
               </label>
               <input
-                type="number"
+                type="text"
+                inputMode="numeric"
                 value={paymentForm.amount}
-                min={1}
-                max={paymentTarget?.amount}
-                onChange={(e) => setPaymentForm((f) => ({ ...f, amount: e.target.value }))}
+                onChange={(e) => setPaymentForm((f) => ({ ...f, amount: formatAmount(e.target.value) }))}
                 className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                 required
                 autoFocus

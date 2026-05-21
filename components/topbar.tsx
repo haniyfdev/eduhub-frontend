@@ -50,6 +50,11 @@ function fmtDate(iso: string) {
   });
 }
 
+function fmtTime(iso: string) {
+  const d = new Date(iso);
+  return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+}
+
 export default function Topbar() {
   const pathname = usePathname();
   const router = useRouter();
@@ -195,7 +200,7 @@ export default function Topbar() {
     submitCreate();
   }
 
-  function openDetail(ann: Announcement) {
+  function handleReadAnnouncement(ann: Announcement) {
     setSelectedAnn(ann);
     handleRead(ann);
   }
@@ -459,21 +464,42 @@ export default function Topbar() {
               </p>
             ) : (
               <div>
-                {announcements.map((ann) => (
-                  <div
-                    key={ann.id}
-                    onClick={() => openDetail(ann)}
-                    className={cn(
-                      'px-4 py-3 border-b border-gray-100 cursor-pointer hover:bg-gray-50 transition-colors',
-                      !ann.is_read ? 'bg-blue-50 border-l-4 border-l-blue-500' : 'bg-white'
-                    )}
-                  >
-                    <div className="flex justify-between items-center gap-2">
-                      <p className={cn('text-sm', !ann.is_read ? 'font-semibold text-gray-900' : 'font-medium text-gray-700')}>{ann.title}</p>
-                      <span className="text-xs text-gray-400 flex-shrink-0">{fmtDate(ann.created_at)}</span>
+                {(() => {
+                  const grouped = announcements.reduce((acc, ann) => {
+                    const date = new Date(ann.created_at);
+                    const dateKey = `${String(date.getDate()).padStart(2, '0')}/${String(date.getMonth() + 1).padStart(2, '0')}/${date.getFullYear()}`;
+                    if (!acc[dateKey]) acc[dateKey] = [];
+                    acc[dateKey].push(ann);
+                    return acc;
+                  }, {} as Record<string, typeof announcements>);
+                  const groupedEntries = Object.entries(grouped).sort((a, b) => b[0].localeCompare(a[0]));
+                  return groupedEntries.map(([dateKey, items]) => (
+                    <div key={dateKey}>
+                      <div className="flex items-center gap-2 px-4 py-2">
+                        <div className="flex-1 h-px bg-gray-200" />
+                        <span className="text-xs text-gray-400 font-medium whitespace-nowrap">{dateKey}</span>
+                        <div className="flex-1 h-px bg-gray-200" />
+                      </div>
+                      {items.map((ann) => (
+                        <div
+                          key={ann.id}
+                          onClick={() => handleReadAnnouncement(ann)}
+                          className={cn(
+                            'px-4 py-3 border-b cursor-pointer hover:bg-gray-50 transition-colors',
+                            !ann.is_read && user?.role !== 'superadmin'
+                              ? 'bg-blue-50 border-l-4 border-l-blue-500'
+                              : 'bg-white'
+                          )}
+                        >
+                          <div className="flex items-start justify-between gap-2">
+                            <p className="text-sm font-medium text-gray-900 flex-1">{ann.title}</p>
+                            <span className="text-xs text-gray-400 whitespace-nowrap">{fmtTime(ann.created_at)}</span>
+                          </div>
+                        </div>
+                      ))}
                     </div>
-                  </div>
-                ))}
+                  ));
+                })()}
               </div>
             )}
           </div>

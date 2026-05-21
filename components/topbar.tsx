@@ -2,7 +2,7 @@
 
 import { usePathname, useRouter } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
-import { ChevronDown, Eye, EyeOff, Globe, LogOut } from 'lucide-react';
+import { ChevronDown, Eye, EyeOff, Globe, LogOut, Paperclip, Trash2 } from 'lucide-react';
 import { useLocale } from 'next-intl';
 import { getUser, logout } from '@/lib/auth';
 import NotificationBell from './notification-bell';
@@ -54,6 +54,8 @@ export default function Topbar() {
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
   const [saving, setSaving] = useState(false);
+  const [avatarToDelete, setAvatarToDelete] = useState(false);
+  const [showSaveConfirm, setShowSaveConfirm] = useState(false);
   const [showPasswordSection, setShowPasswordSection] = useState(false);
   const [showOld, setShowOld] = useState(false);
   const [showNew, setShowNew] = useState(false);
@@ -118,6 +120,8 @@ export default function Topbar() {
     }
     setAvatarPreview(null);
     setAvatarFile(null);
+    setAvatarToDelete(false);
+    setShowSaveConfirm(false);
     setPassword({ old_password: '', new_password: '', confirm: '' });
     setShowPasswordSection(false);
     setShowOld(false);
@@ -143,6 +147,12 @@ export default function Topbar() {
     reader.readAsDataURL(file);
   }
 
+  function handleAvatarDelete() {
+    setAvatarToDelete(true);
+    setAvatarPreview(null);
+    setAvatarFile(null);
+  }
+
   async function handleSave() {
     if (!user) return;
 
@@ -154,7 +164,14 @@ export default function Topbar() {
 
     setSaving(true);
     try {
-      // 1. Avatar
+      // 0. Avatar delete
+      if (avatarToDelete) {
+        try { await api.patch(`/api/v1/users/${user.id}/`, { avatar: null }); } catch {}
+        setAvatarSrc(null);
+        try { localStorage.removeItem('avatar'); } catch {}
+      }
+
+      // 1. Avatar upload
       if (avatarFile) {
         const formData = new FormData();
         formData.append('avatar', avatarFile);
@@ -196,7 +213,7 @@ export default function Topbar() {
   const segment = pathname.split('/')[2] ?? 'dashboard';
   const title = TITLES[segment] ?? 'EduHub';
   const pathWithoutLocale = '/' + pathname.split('/').slice(2).join('/') || '/dashboard';
-  const displaySrc = avatarPreview || avatarSrc;
+  const displaySrc = avatarToDelete ? null : (avatarPreview || avatarSrc);
 
   return (
     <>
@@ -286,6 +303,31 @@ export default function Topbar() {
         </DialogContent>
       </Dialog>
 
+      {/* Save confirm */}
+      <Dialog open={showSaveConfirm} onOpenChange={setShowSaveConfirm}>
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle>O&apos;zgarishlarni saqlash</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-gray-600 mt-1">Profilingizga kiritilgan o&apos;zgarishlarni tasdiqlaysizmi?</p>
+          <div className="flex gap-3 mt-4">
+            <button
+              onClick={() => setShowSaveConfirm(false)}
+              className="flex-1 px-4 py-2 border border-gray-300 text-sm font-medium rounded hover:bg-gray-50"
+            >
+              Bekor qilish
+            </button>
+            <button
+              onClick={() => { setShowSaveConfirm(false); handleSave(); }}
+              disabled={saving}
+              className="flex-1 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded hover:bg-blue-700 disabled:opacity-60"
+            >
+              Ha, saqlash
+            </button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
       {/* Profile modal */}
       <Dialog open={showProfile} onOpenChange={(open) => { if (!open) setShowProfile(false); }}>
         <DialogContent className="sm:max-w-md max-h-[90vh] overflow-y-auto">
@@ -305,16 +347,29 @@ export default function Topbar() {
                 </span>
               </div>
             )}
-            <label className="cursor-pointer px-3 py-1.5 border border-gray-300 text-sm font-medium rounded hover:bg-gray-50 transition-colors">
-              Rasm yuklash
-              <input
-                type="file"
-                accept="image/jpeg,image/jpg,image/png"
-                className="hidden"
-                onChange={handleAvatarChange}
-              />
-            </label>
-            {avatarPreview && (
+            <div className="flex items-center gap-2">
+              <label className="cursor-pointer flex items-center gap-1.5 px-3 py-1.5 border border-gray-300 text-sm font-medium rounded hover:bg-gray-50 transition-colors">
+                <Paperclip className="w-3.5 h-3.5" />
+                Rasm yuklash
+                <input
+                  type="file"
+                  accept="image/jpeg,image/jpg,image/png"
+                  className="hidden"
+                  onChange={handleAvatarChange}
+                />
+              </label>
+              {(avatarSrc || avatarPreview) && !avatarToDelete && (
+                <button
+                  type="button"
+                  onClick={handleAvatarDelete}
+                  className="flex items-center gap-1.5 px-3 py-1.5 border border-red-300 text-red-600 text-sm font-medium rounded hover:bg-red-50 transition-colors"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                  O&apos;chirish
+                </button>
+              )}
+            </div>
+            {avatarPreview && !avatarToDelete && (
               <p className="text-xs text-green-600">Yangi rasm tanlandi</p>
             )}
           </div>
@@ -354,7 +409,6 @@ export default function Topbar() {
                   value={phone}
                   onChange={(e) => setPhone(e.target.value.replace(/\D/g, '').slice(0, 9))}
                   className="flex-1 px-3 py-2 border border-gray-300 rounded-r text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  placeholder="901234567"
                 />
               </div>
             </div>
@@ -457,7 +511,7 @@ export default function Topbar() {
             </button>
             <button
               type="button"
-              onClick={handleSave}
+              onClick={() => setShowSaveConfirm(true)}
               disabled={saving}
               className="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded hover:bg-blue-700 disabled:opacity-60"
             >

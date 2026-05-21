@@ -354,7 +354,7 @@ export default function ArchivePage() {
           <table className="w-full text-sm">
             <thead>
               <tr className="bg-gray-50 border-b border-gray-200">
-                {['#', 'Ism', 'Telefon', 'Ota-ona tel', 'Guruh', 'Kurs', "Tug'ilgan", 'Holat', 'Arxiv.Sana', 'Amal'].map((h, i) => (
+                {['№', 'Ism', 'Telefon', 'Ota-ona tel', 'Guruh', 'Kurs', "Tug'ilgan", 'Holat', 'Arxiv.Sana', 'Amal'].map((h, i) => (
                   <th key={i} className={thCls}>{h}</th>
                 ))}
               </tr>
@@ -403,7 +403,7 @@ export default function ArchivePage() {
           <table className="w-full text-sm">
             <thead>
               <tr className="bg-gray-50 border-b border-gray-200">
-                {['#', 'Ism', 'Telefon', 'Fan', 'Maosh turi', "Tug'ilgan", 'Ish boshlagan', 'Arxiv.Sana', 'Amal'].map((h, i) => (
+                {['№', 'Ism', 'Telefon', 'Fan', 'Maosh turi', "Tug'ilgan", 'Ish boshlagan', 'Arxiv.Sana', 'Amal'].map((h, i) => (
                   <th key={i} className={thCls}>{h}</th>
                 ))}
               </tr>
@@ -443,7 +443,7 @@ export default function ArchivePage() {
           <table className="w-full text-sm">
             <thead>
               <tr className="bg-gray-50 border-b border-gray-200">
-                {['#', 'Guruh', 'Kurs', "O'qituvchi", 'Kunlar', 'Soatlar', 'Xona', 'Arxiv.Sana', 'Amal'].map((h, i) => (
+                {['№', 'Guruh', 'Kurs', "O'qituvchi", 'Kunlar', 'Soatlar', 'Xona', 'Arxiv.Sana', 'Amal'].map((h, i) => (
                   <th key={i} className={thCls}>{h}</th>
                 ))}
               </tr>
@@ -480,7 +480,7 @@ export default function ArchivePage() {
           <table className="w-full text-sm">
             <thead>
               <tr className="bg-gray-50 border-b border-gray-200">
-                {['#', 'Kurs nomi', 'Narxi', 'Davomiyligi', "O'qituvchilar", 'Arxiv.Sana', 'Amal'].map((h, i) => (
+                {['№', 'Kurs nomi', 'Narxi', 'Davomiyligi', "O'qituvchilar", 'Arxiv.Sana', 'Amal'].map((h, i) => (
                   <th key={i} className={thCls}>{h}</th>
                 ))}
               </tr>

@@ -2,7 +2,7 @@
 
 import { usePathname, useRouter } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
-import { Bell, ChevronDown, Eye, EyeOff, Globe, LogOut, Paperclip, Plus, Trash2 } from 'lucide-react';
+import { Bell, ChevronDown, Eye, EyeOff, Globe, LogOut, Paperclip, Plus, Trash2, X } from 'lucide-react';
 import { useLocale } from 'next-intl';
 import { getUser, logout } from '@/lib/auth';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -431,14 +431,22 @@ export default function Topbar() {
         <DialogContent className="sm:max-w-md p-0 overflow-hidden gap-0">
           <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100 bg-gray-50">
             <DialogTitle className="text-sm font-semibold text-gray-900">Bildirishnomalar</DialogTitle>
-            {user?.role === 'superadmin' && (
+            <div className="flex items-center gap-2">
+              {user?.role === 'superadmin' && (
+                <button
+                  onClick={() => setShowCreate(true)}
+                  className="w-7 h-7 flex items-center justify-center rounded-full bg-blue-600 text-white hover:bg-blue-700 transition-colors"
+                >
+                  <Plus className="w-4 h-4" />
+                </button>
+              )}
               <button
-                onClick={() => setShowCreate(true)}
-                className="flex items-center gap-1 text-xs text-blue-600 hover:underline font-medium"
+                onClick={() => setBellOpen(false)}
+                className="w-7 h-7 flex items-center justify-center rounded-full hover:bg-gray-100 transition-colors"
               >
-                <Plus className="w-3.5 h-3.5" /> Yangi xabar
+                <X className="w-4 h-4 text-gray-500" />
               </button>
-            )}
+            </div>
           </div>
           <div className="max-h-[70vh] overflow-y-auto">
             {loadingAnns ? (

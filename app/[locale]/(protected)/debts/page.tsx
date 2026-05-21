@@ -22,6 +22,7 @@ interface Debt {
   course_id: string | null;
   course_name: string | null;
   amount: number;
+  paid_amount: number;
   due_date: string;
   status: 'unpaid' | 'partial' | 'overdue' | 'paid';
 }
@@ -153,15 +154,17 @@ export default function DebtsPage() {
 
   function openPayment(debt: Debt) {
     setPaymentTarget(debt);
-    setPaymentForm({ amount: formatAmount(String(debt.amount)), payment_type: 'cash', note: '' });
+    const remaining = debt.amount - (debt.paid_amount || 0);
+    setPaymentForm({ amount: formatAmount(String(remaining)), payment_type: 'cash', note: '' });
   }
 
   async function handlePayment(e: React.FormEvent) {
     e.preventDefault();
     if (!paymentTarget) return;
     const amt = parseAmount(paymentForm.amount);
+    const remaining = paymentTarget.amount - (paymentTarget.paid_amount || 0);
     if (!amt || amt <= 0) { toast.error("Summani kiriting"); return; }
-    if (amt > paymentTarget.amount) { toast.error("To'lov summasi qarzdan oshib ketdi"); return; }
+    if (amt > remaining) { toast.error("To'lov summasi qarzdan oshib ketdi"); return; }
     setPaymentSaving(true);
     try {
       await api.post('/api/v1/payments/', {
@@ -403,7 +406,7 @@ export default function DebtsPage() {
                 Summa (so&apos;m)
                 {paymentTarget && (
                   <span className="ml-2 text-xs text-gray-400 font-normal">
-                    Maksimal: {formatCurrency(paymentTarget.amount)}
+                    Maksimal: {formatCurrency(paymentTarget.amount - (paymentTarget.paid_amount || 0))}
                   </span>
                 )}
               </label>

@@ -487,14 +487,12 @@ export default function SettingsPage() {
                     >
                       <Pencil className="w-4 h-4" />
                     </button>
-                    {!tmpl.is_default && (
-                      <button
-                        onClick={() => setDeleteTarget(tmpl)}
-                        className="p-1.5 rounded hover:bg-gray-100 text-gray-400 hover:text-red-500 transition-colors"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    )}
+                    <button
+                      onClick={() => setDeleteTarget(tmpl)}
+                      className="p-1.5 rounded hover:bg-gray-100 text-gray-400 hover:text-red-500 transition-colors"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
                   </div>
                 </div>
                   <p className="text-sm text-gray-600 leading-relaxed mb-3">{tmpl.body}</p>
@@ -525,6 +523,11 @@ export default function SettingsPage() {
             <DialogTitle>{editingTemplate ? 'Shablonni tahrirlash' : 'Yangi shablon'}</DialogTitle>
           </DialogHeader>
           <div className="space-y-4 mt-2">
+            {editingTemplate?.is_default && (
+              <div className="bg-blue-50 border border-blue-200 rounded p-2 text-xs text-blue-700">
+                Bu standart shablon. O&apos;zgartirsangiz faqat sizning markazingiz uchun yangi nusxa yaratiladi.
+              </div>
+            )}
             <div>
               <label className={labelCls}>Shablon nomi</label>
               <input
@@ -608,7 +611,10 @@ export default function SettingsPage() {
             <DialogTitle>Shablonni o&apos;chirish</DialogTitle>
           </DialogHeader>
           <p className="text-sm text-gray-600 mt-1">
-            <span className="font-medium">{deleteTarget?.name}</span> shablonini o&apos;chirishni tasdiqlaysizmi?
+            {deleteTarget?.is_default
+              ? "Bu standart shablon o'chiriladi va barcha markazlarda ko'rinmay qoladi."
+              : <><span className="font-medium">{deleteTarget?.name}</span> shabloni o&apos;chiriladi.</>
+            }
           </p>
           <div className="flex gap-3 mt-4">
             <button

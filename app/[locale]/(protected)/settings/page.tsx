@@ -472,32 +472,31 @@ export default function SettingsPage() {
               {smsTemplates.map((tmpl, index) => (
                 <div key={tmpl.id} className="bg-white border border-gray-200 rounded-xl p-4 shadow-sm">
                   <div className="flex items-start justify-between mb-2">
-                    <div className="flex items-center gap-2">
-                      <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-blue-600 text-white text-xs font-bold shrink-0">
-                        {index + 1}
-                      </span>
-                      <span className="inline-block px-3 py-1 bg-gray-100 text-gray-800 rounded-full text-sm font-semibold">
-                        {tmpl.name}
-                      </span>
-                    </div>
-                    </div>
-                    <div className="flex items-center gap-1 flex-shrink-0 ml-2">
-                      <button
-                        onClick={() => openEdit(tmpl)}
-                        className="p-1.5 rounded hover:bg-gray-100 text-gray-400 hover:text-blue-600 transition-colors"
-                      >
-                        <Pencil className="w-4 h-4" />
-                      </button>
-                      {!tmpl.is_default && (
-                        <button
-                          onClick={() => setDeleteTarget(tmpl)}
-                          className="p-1.5 rounded hover:bg-gray-100 text-gray-400 hover:text-red-500 transition-colors"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      )}
-                    </div>
+                  <div className="flex items-center gap-2">
+                    <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-blue-600 text-white text-xs font-bold shrink-0">
+                      {index + 1}
+                    </span>
+                    <span className="inline-block px-3 py-1 bg-gray-100 text-gray-800 rounded-full text-sm font-semibold">
+                      {tmpl.name}
+                    </span>
                   </div>
+                  <div className="flex items-center gap-1 flex-shrink-0 ml-2">
+                    <button
+                      onClick={() => openEdit(tmpl)}
+                      className="p-1.5 rounded hover:bg-gray-100 text-gray-400 hover:text-blue-600 transition-colors"
+                    >
+                      <Pencil className="w-4 h-4" />
+                    </button>
+                    {!tmpl.is_default && (
+                      <button
+                        onClick={() => setDeleteTarget(tmpl)}
+                        className="p-1.5 rounded hover:bg-gray-100 text-gray-400 hover:text-red-500 transition-colors"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    )}
+                  </div>
+                </div>
                   <p className="text-sm text-gray-600 leading-relaxed mb-3">{tmpl.body}</p>
                   <div className="flex items-center justify-between">
                     <span className={cn('inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium', triggerBadge[tmpl.trigger] ?? 'bg-gray-100 text-gray-600')}>

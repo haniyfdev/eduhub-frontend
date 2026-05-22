@@ -5,6 +5,7 @@ import { CalendarCheck, Search, Send } from 'lucide-react';
 import toast, { Toaster } from 'react-hot-toast';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { SmsModal, type SmsRecipient } from '@/components/sms-modal';
 import api from '@/lib/axios';
 import { cn, formatPhone } from '@/lib/utils';
 
@@ -90,8 +91,6 @@ export default function AttendancePage() {
   const [calDays, setCalDays]           = useState<AttendanceDay[]>([]);
   const [calLoading, setCalLoading]     = useState(false);
   const [showSms, setShowSms]           = useState(false);
-  const [smsMsg, setSmsMsg]             = useState('');
-  const [sendingSms, setSendingSms]     = useState(false);
 
   const fetchSummary = useCallback(async (q: string) => {
     setLoading(true);
@@ -162,32 +161,25 @@ export default function AttendancePage() {
     }
   }
 
-  async function handleSms(e: React.FormEvent) {
-    e.preventDefault();
-    if (!smsMsg.trim()) return;
-    setSendingSms(true);
-    try {
-      const phones = rows.flatMap(r => {
-        const list: string[] = [];
-        if (getPhone(r.student_id, 'phone1')) list.push(r.phone);
-        if (r.second_phone && getPhone(r.student_id, 'phone2')) list.push(r.second_phone);
-        return list;
-      });
-      await Promise.all(
-        phones.map(phone =>
-          api.post('/api/v1/notifications/send-sms/', { phone, message: smsMsg }).catch(() => null)
-        )
-      );
-      toast.success('SMS yuborildi');
-      setShowSms(false);
-      setSmsMsg('');
-      setPhoneTargets({});
-    } catch {
-      toast.error('SMS yuborishda xatolik');
-    } finally {
-      setSendingSms(false);
-    }
+  async function handleSendSms(phones: string[], message: string) {
+    const results = await Promise.allSettled(
+      phones.map(phone =>
+        api.post('/api/v1/notifications/send-sms/', { phone, message })
+      )
+    );
+    const success = results.filter(r => r.status === 'fulfilled').length;
+    toast.success(`${success} ta SMS yuborildi`);
+    setPhoneTargets({});
   }
+
+  const smsRecipients: SmsRecipient[] = rows.flatMap(r => {
+    const recs: SmsRecipient[] = [];
+    if (phoneTargets[r.student_id]?.phone1)
+      recs.push({ id: `${r.student_id}_1`, name: r.student_name, phone: r.phone });
+    if (r.second_phone && phoneTargets[r.student_id]?.phone2)
+      recs.push({ id: `${r.student_id}_2`, name: r.student_name, phone: r.second_phone });
+    return recs;
+  });
 
   return (
     <div className="space-y-5">
@@ -380,41 +372,12 @@ export default function AttendancePage() {
         </DialogContent>
       </Dialog>
 
-      {/* SMS Modal */}
-      <Dialog open={showSms} onOpenChange={setShowSms}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>SMS yuborish — {checkedPhoneCount} ta raqam</DialogTitle>
-          </DialogHeader>
-          <form onSubmit={handleSms} className="space-y-4 mt-2">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Xabar <span className="text-red-500">*</span>
-              </label>
-              <textarea
-                value={smsMsg}
-                onChange={e => setSmsMsg(e.target.value)}
-                rows={4}
-                required
-                placeholder="SMS matni..."
-                className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
-              />
-              <p className="text-xs text-gray-400 mt-1">{smsMsg.length} belgi</p>
-            </div>
-            <div className="flex gap-3 pt-1">
-              <button type="button" onClick={() => setShowSms(false)}
-                className="flex-1 px-4 py-2 border border-gray-300 text-sm font-medium rounded hover:bg-gray-50">
-                Bekor qilish
-              </button>
-              <button type="submit" disabled={sendingSms || !smsMsg.trim()}
-                className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded hover:bg-blue-700 disabled:opacity-60">
-                <Send className="w-4 h-4" />
-                {sendingSms ? 'Yuborilmoqda...' : 'Yuborish'}
-              </button>
-            </div>
-          </form>
-        </DialogContent>
-      </Dialog>
+      <SmsModal
+        open={showSms}
+        onClose={() => setShowSms(false)}
+        recipients={smsRecipients}
+        onSend={handleSendSms}
+      />
     </div>
   );
 }

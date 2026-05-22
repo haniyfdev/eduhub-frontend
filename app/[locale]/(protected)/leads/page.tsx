@@ -6,6 +6,7 @@ import toast, { Toaster } from 'react-hot-toast';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Pagination } from '@/components/pagination';
+import { SmsModal, type SmsRecipient } from '@/components/sms-modal';
 import api from '@/lib/axios';
 import { cn, formatPhone, formatDMY } from '@/lib/utils';
 import { PaginatedResponse } from '@/types';
@@ -64,8 +65,6 @@ export default function LeadsPage() {
   const [touched, setTouched]           = useState<Record<string, boolean>>({});
   const [phoneSelection, setPhoneSelection] = useState<PhoneSelection>({});
   const [showSms, setShowSms]           = useState(false);
-  const [smsMessage, setSmsMessage]     = useState('');
-  const [sendingSms, setSendingSms]     = useState(false);
 
   const firstNameRef = useRef<HTMLInputElement>(null);
   const lastNameRef  = useRef<HTMLInputElement>(null);
@@ -128,27 +127,26 @@ export default function LeadsPage() {
     return acc;
   }, 0);
 
-  async function handleSendSms() {
-    if (!smsMessage.trim()) return;
-    setSendingSms(true);
+  async function handleSendSms(phones: string[], message: string) {
     let success = 0;
-    for (const l of leads) {
-      const sel = phoneSelection[l.id];
-      const phones: string[] = [];
-      if (sel?.phone1 && l.phone)        phones.push(l.phone);
-      if (sel?.phone2 && l.second_phone) phones.push(l.second_phone);
-      for (const phone of phones) {
-        try {
-          await api.post('/api/v1/notifications/send-sms/', { phone, message: smsMessage });
-          success++;
-        } catch { /* skip */ }
-      }
+    for (const phone of phones) {
+      try {
+        await api.post('/api/v1/notifications/send-sms/', { phone, message });
+        success++;
+      } catch { /* skip */ }
     }
     toast.success(`${success} ta SMS yuborildi`);
-    setShowSms(false);
-    setSmsMessage('');
-    setSendingSms(false);
   }
+
+  const smsRecipients: SmsRecipient[] = leads.flatMap(l => {
+    const sel = phoneSelection[l.id];
+    const recs: SmsRecipient[] = [];
+    if (sel?.phone1 && l.phone)
+      recs.push({ id: `${l.id}_1`, name: `${l.first_name} ${l.last_name}`, phone: l.phone });
+    if (sel?.phone2 && l.second_phone)
+      recs.push({ id: `${l.id}_2`, name: `${l.first_name} ${l.last_name}`, phone: l.second_phone });
+    return recs;
+  });
 
   async function handleIgnore() {
     if (!ignoreTarget) return;
@@ -471,29 +469,12 @@ export default function LeadsPage() {
         </DialogContent>
       </Dialog>
 
-      {/* SMS Dialog */}
-      <Dialog open={showSms} onOpenChange={open => { if (!open) setSmsMessage(''); setShowSms(open); }}>
-        <DialogContent className="sm:max-w-sm">
-          <DialogHeader><DialogTitle>SMS yuborish — {selectedSmsCount} ta raqam</DialogTitle></DialogHeader>
-          <div className="space-y-2 mt-2">
-            <textarea value={smsMessage} onChange={e => setSmsMessage(e.target.value)}
-              rows={4} placeholder="SMS matni..."
-              className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none" />
-            <p className="text-xs text-gray-400">{smsMessage.length} belgi</p>
-          </div>
-          <div className="flex gap-3 mt-4">
-            <button onClick={() => { setSmsMessage(''); setShowSms(false); }}
-              className="flex-1 px-4 py-2 border border-gray-300 text-sm font-medium rounded hover:bg-gray-50">
-              Bekor
-            </button>
-            <button onClick={handleSendSms} disabled={sendingSms || !smsMessage.trim()}
-              className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded hover:bg-blue-700 disabled:opacity-60">
-              <Send className="w-4 h-4" />
-              {sendingSms ? 'Yuborilmoqda...' : 'Yuborish'}
-            </button>
-          </div>
-        </DialogContent>
-      </Dialog>
+      <SmsModal
+        open={showSms}
+        onClose={() => setShowSms(false)}
+        recipients={smsRecipients}
+        onSend={handleSendSms}
+      />
     </div>
   );
 }

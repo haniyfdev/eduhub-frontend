@@ -6,6 +6,7 @@ import toast, { Toaster } from 'react-hot-toast';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Pagination } from '@/components/pagination';
+import { SmsModal, type SmsRecipient } from '@/components/sms-modal';
 import api from '@/lib/axios';
 import { cn, formatPhone, formatDMY } from '@/lib/utils';
 import { Student, PaginatedResponse } from '@/types';
@@ -41,7 +42,6 @@ export default function StudentsPage() {
   const overdueIdsRef = useRef<Set<string>>(new Set());
   const [phoneSelection, setPhoneSelection] = useState<PhoneSelection>({});
   const [showSmsConfirm, setShowSmsConfirm] = useState(false);
-  const [sendingSms, setSendingSms]     = useState(false);
 
   // ── Data fetching ──────────────────────────────────────────────────────────
 
@@ -101,25 +101,26 @@ export default function StudentsPage() {
     return acc;
   }, 0);
 
-  async function handleSendSms() {
-    setSendingSms(true);
+  async function handleSendSms(phones: string[], message: string) {
     let success = 0;
-    for (const s of students) {
-      const sel = phoneSelection[s.id];
-      const phones: string[] = [];
-      if (sel?.phone1 && s.phone)        phones.push(s.phone);
-      if (sel?.phone2 && s.second_phone) phones.push(s.second_phone);
-      for (const phone of phones) {
-        try {
-          await api.post(`/api/v1/students/${s.id}/send-sms/`, { phone });
-          success++;
-        } catch { /* skip */ }
-      }
+    for (const phone of phones) {
+      try {
+        await api.post('/api/v1/notifications/send-sms/', { phone, message });
+        success++;
+      } catch { /* skip */ }
     }
     toast.success(`${success} ta SMS yuborildi`);
-    setShowSmsConfirm(false);
-    setSendingSms(false);
   }
+
+  const smsRecipients: SmsRecipient[] = students.flatMap(s => {
+    const sel = phoneSelection[s.id];
+    const recs: SmsRecipient[] = [];
+    if (sel?.phone1 && s.phone)
+      recs.push({ id: `${s.id}_1`, name: `${s.first_name} ${s.last_name}`, phone: s.phone });
+    if (sel?.phone2 && s.second_phone)
+      recs.push({ id: `${s.id}_2`, name: `${s.first_name} ${s.last_name}`, phone: s.second_phone });
+    return recs;
+  });
 
   // ── Archive ────────────────────────────────────────────────────────────────
 
@@ -332,26 +333,12 @@ export default function StudentsPage() {
         </DialogContent>
       </Dialog>
 
-      {/* ══ SMS Confirm Dialog ══ */}
-      <Dialog open={showSmsConfirm} onOpenChange={setShowSmsConfirm}>
-        <DialogContent className="sm:max-w-sm">
-          <DialogHeader><DialogTitle>SMS yuborish</DialogTitle></DialogHeader>
-          <p className="text-sm text-gray-600 mt-1">
-            Tanlangan <span className="font-semibold">{selectedSmsCount} ta</span> raqamga SMS yuboriladi. Tasdiqlaysizmi?
-          </p>
-          <div className="flex gap-3 mt-4">
-            <button onClick={() => setShowSmsConfirm(false)}
-              className="flex-1 px-4 py-2 border border-gray-300 text-sm font-medium rounded hover:bg-gray-50">
-              Bekor
-            </button>
-            <button onClick={handleSendSms} disabled={sendingSms}
-              className="flex-1 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded hover:bg-blue-700 disabled:opacity-60 flex items-center justify-center gap-2">
-              <Send className="w-4 h-4" />
-              {sendingSms ? 'Yuborilmoqda...' : 'Yuborish'}
-            </button>
-          </div>
-        </DialogContent>
-      </Dialog>
+      <SmsModal
+        open={showSmsConfirm}
+        onClose={() => setShowSmsConfirm(false)}
+        recipients={smsRecipients}
+        onSend={handleSendSms}
+      />
     </div>
   );
 }

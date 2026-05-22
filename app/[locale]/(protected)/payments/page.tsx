@@ -4,8 +4,8 @@ import { useEffect, useState, useCallback } from 'react';
 import { Search, Send } from 'lucide-react';
 import toast, { Toaster } from 'react-hot-toast';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Pagination } from '@/components/pagination';
+import { SmsModal, type SmsRecipient } from '@/components/sms-modal';
 import api from '@/lib/axios';
 import { cn, formatCurrency, formatDMY } from '@/lib/utils';
 import { PaginatedResponse } from '@/types';
@@ -43,7 +43,6 @@ export default function PaymentsPage() {
 
   // SMS
   const [smsSelected, setSmsSelected]       = useState<Set<string>>(new Set());
-  const [sendingSms, setSendingSms]         = useState(false);
   const [showSmsConfirm, setShowSmsConfirm] = useState(false);
 
   const fetchPayments = useCallback(async () => {
@@ -75,20 +74,21 @@ export default function PaymentsPage() {
     });
   }
 
-  async function handleSendSms() {
-    setSendingSms(true);
+  async function handleSendSms(phones: string[], message: string) {
     let success = 0;
-    for (const id of Array.from(smsSelected)) {
+    for (const phone of phones) {
       try {
-        await api.post(`/api/v1/payments/${id}/send-sms/`);
+        await api.post('/api/v1/notifications/send-sms/', { phone, message });
         success++;
       } catch { /* skip */ }
     }
     toast.success(`${success} ta SMS yuborildi`);
     setSmsSelected(new Set());
-    setSendingSms(false);
-    setShowSmsConfirm(false);
   }
+
+  const smsRecipients: SmsRecipient[] = payments
+    .filter(p => smsSelected.has(p.id) && !!p.student_phone)
+    .map(p => ({ id: p.id, name: p.student_name, phone: p.student_phone! }));
 
   return (
     <div className="space-y-5">
@@ -185,29 +185,12 @@ export default function PaymentsPage() {
 
       <Pagination page={page} pageSize={pageSize} count={count} onPageChange={setPage} onPageSizeChange={(size) => { setPageSize(size); setPage(1); }} />
 
-      {/* ══ SMS Confirm ══ */}
-      <Dialog open={showSmsConfirm} onOpenChange={setShowSmsConfirm}>
-        <DialogContent className="sm:max-w-sm">
-          <DialogHeader>
-            <DialogTitle>SMS yuborish</DialogTitle>
-            <DialogDescription className="sr-only">SMS tasdiqlash</DialogDescription>
-          </DialogHeader>
-          <p className="text-sm text-gray-600 mt-1">
-            Tanlangan <span className="font-semibold">{smsSelected.size} ta</span> to&apos;lov egasiga SMS yuboriladi. Tasdiqlaysizmi?
-          </p>
-          <div className="flex gap-3 mt-4">
-            <button onClick={() => setShowSmsConfirm(false)}
-              className="flex-1 px-4 py-2 border border-gray-300 text-sm font-medium rounded hover:bg-gray-50">
-              Bekor
-            </button>
-            <button onClick={handleSendSms} disabled={sendingSms}
-              className="flex-1 px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded hover:bg-indigo-700 disabled:opacity-60 flex items-center justify-center gap-2">
-              <Send className="w-4 h-4" />
-              {sendingSms ? 'Yuborilmoqda...' : 'Yuborish'}
-            </button>
-          </div>
-        </DialogContent>
-      </Dialog>
+      <SmsModal
+        open={showSmsConfirm}
+        onClose={() => setShowSmsConfirm(false)}
+        recipients={smsRecipients}
+        onSend={handleSendSms}
+      />
     </div>
   );
 }

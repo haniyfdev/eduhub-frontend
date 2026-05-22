@@ -6,6 +6,7 @@ import toast, { Toaster } from 'react-hot-toast';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Pagination } from '@/components/pagination';
+import { SmsModal, type SmsRecipient } from '@/components/sms-modal';
 import api from '@/lib/axios';
 import { cn, formatCurrency, formatPhone } from '@/lib/utils';
 import { PaginatedResponse } from '@/types';
@@ -82,7 +83,6 @@ export default function DebtsPage() {
 
   const [phoneSelection, setPhoneSelection] = useState<PhoneSelection>({});
   const [showConfirm, setShowConfirm]       = useState(false);
-  const [sending, setSending]               = useState(false);
 
   // Payment modal
   const [paymentTarget, setPaymentTarget] = useState<Debt | null>(null);
@@ -131,26 +131,27 @@ export default function DebtsPage() {
     return acc;
   }, 0);
 
-  async function handleSend() {
-    setSending(true);
+  async function handleSend(phones: string[], message: string) {
     let success = 0;
-    for (const d of debts) {
-      if (d.status === 'paid') continue;
-      const sel = phoneSelection[d.id];
-      const phones: string[] = [];
-      if (sel?.phone1 && d.student_phone)        phones.push(d.student_phone);
-      if (sel?.phone2 && d.student_second_phone) phones.push(d.student_second_phone);
-      for (const phone of phones) {
-        try {
-          await api.post(`/api/v1/debts/${d.id}/send-sms/`, { phone });
-          success++;
-        } catch { /* skip */ }
-      }
+    for (const phone of phones) {
+      try {
+        await api.post('/api/v1/notifications/send-sms/', { phone, message });
+        success++;
+      } catch { /* skip */ }
     }
     toast.success(`${success} ta SMS yuborildi`);
-    setShowConfirm(false);
-    setSending(false);
   }
+
+  const smsRecipients: SmsRecipient[] = debts.flatMap(d => {
+    if (d.status === 'paid') return [];
+    const sel = phoneSelection[d.id];
+    const recs: SmsRecipient[] = [];
+    if (sel?.phone1 && d.student_phone)
+      recs.push({ id: `${d.id}_1`, name: d.student_name, phone: d.student_phone });
+    if (sel?.phone2 && d.student_second_phone)
+      recs.push({ id: `${d.id}_2`, name: d.student_name, phone: d.student_second_phone });
+    return recs;
+  });
 
   function openPayment(debt: Debt) {
     setPaymentTarget(debt);
@@ -356,26 +357,12 @@ export default function DebtsPage() {
         />
       )}
 
-      {/* ══ SMS Confirm ══ */}
-      <Dialog open={showConfirm} onOpenChange={setShowConfirm}>
-        <DialogContent className="sm:max-w-sm">
-          <DialogHeader><DialogTitle>SMS yuborish</DialogTitle></DialogHeader>
-          <p className="text-sm text-gray-600 mt-1">
-            Tanlangan <span className="font-semibold">{selectedCount} ta</span> raqamga SMS yuboriladi. Tasdiqlaysizmi?
-          </p>
-          <div className="flex gap-3 mt-4">
-            <button onClick={() => setShowConfirm(false)}
-              className="flex-1 px-4 py-2 border border-gray-300 text-sm font-medium rounded hover:bg-gray-50">
-              Bekor
-            </button>
-            <button onClick={handleSend} disabled={sending}
-              className="flex-1 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded hover:bg-blue-700 disabled:opacity-60 flex items-center justify-center gap-2">
-              <Send className="w-4 h-4" />
-              {sending ? 'Yuborilmoqda...' : 'Yuborish'}
-            </button>
-          </div>
-        </DialogContent>
-      </Dialog>
+      <SmsModal
+        open={showConfirm}
+        onClose={() => setShowConfirm(false)}
+        recipients={smsRecipients}
+        onSend={handleSend}
+      />
 
       {/* ══ Payment Modal ══ */}
       <Dialog open={!!paymentTarget} onOpenChange={(open) => { if (!open) setPaymentTarget(null); }}>

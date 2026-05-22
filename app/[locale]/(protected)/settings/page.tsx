@@ -495,7 +495,7 @@ export default function SettingsPage() {
                     </button>
                   </div>
                 </div>
-                  <p className="text-sm text-gray-600 leading-relaxed mb-3">{tmpl.body}</p>
+                  <p className="text-sm text-gray-600 whitespace-pre-wrap leading-relaxed mb-3">{tmpl.body}</p>
                   <div className="flex items-center justify-between">
                     <span className={cn('inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium', triggerBadge[tmpl.trigger] ?? 'bg-gray-100 text-gray-600')}>
                       {triggerLabel[tmpl.trigger] ?? tmpl.trigger}

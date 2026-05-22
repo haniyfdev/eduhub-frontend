@@ -523,11 +523,6 @@ export default function SettingsPage() {
             <DialogTitle>{editingTemplate ? 'Shablonni tahrirlash' : 'Yangi shablon'}</DialogTitle>
           </DialogHeader>
           <div className="space-y-4 mt-2">
-            {editingTemplate?.is_default && (
-              <div className="bg-blue-50 border border-blue-200 rounded p-2 text-xs text-blue-700">
-                Bu standart shablon. O&apos;zgartirsangiz faqat sizning markazingiz uchun yangi nusxa yaratiladi.
-              </div>
-            )}
             <div>
               <label className={labelCls}>Shablon nomi</label>
               <input

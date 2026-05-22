@@ -100,7 +100,7 @@ export default function PaymentsPage() {
         {smsSelected.size > 0 && (
           <button
             onClick={() => setShowSmsConfirm(true)}
-            disabled={sendingSms}
+            disabled={false}
             className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded hover:bg-indigo-700 transition-colors"
           >
             <Send className="w-4 h-4" />

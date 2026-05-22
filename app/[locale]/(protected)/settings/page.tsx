@@ -469,12 +469,18 @@ export default function SettingsPage() {
             </div>
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              {smsTemplates.map((tmpl) => (
+              {smsTemplates.map((tmpl, index) => (
                 <div key={tmpl.id} className="bg-white border border-gray-200 rounded-xl p-4 shadow-sm">
                   <div className="flex items-start justify-between mb-2">
-                    <span className="inline-block px-3 py-1 bg-gray-100 text-gray-800 rounded-full text-sm font-semibold">
-                      {tmpl.name}
-                    </span>
+                    <div className="flex items-center gap-2">
+                      <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-blue-600 text-white text-xs font-bold shrink-0">
+                        {index + 1}
+                      </span>
+                      <span className="inline-block px-3 py-1 bg-gray-100 text-gray-800 rounded-full text-sm font-semibold">
+                        {tmpl.name}
+                      </span>
+                    </div>
+                    </div>
                     <div className="flex items-center gap-1 flex-shrink-0 ml-2">
                       <button
                         onClick={() => openEdit(tmpl)}

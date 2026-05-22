@@ -44,16 +44,16 @@ const TRIGGER_CHOICES = [
   ['custom', 'Boshqa'],
 ];
 
-const TRIGGER_LABELS: Record<string, string> = {
+const triggerLabel: Record<string, string> = {
   debt_reminder: 'Qarz eslatmasi',
   payment_confirmed: "To'lov tasdiqi",
   lesson_reminder: 'Dars eslatmasi',
   course_started: 'Kurs boshlanishi',
-  overdue_debt: "Muddati o'tgan",
+  overdue_debt: "Muddati o'tgan qarz",
   custom: 'Boshqa',
 };
 
-const TRIGGER_COLORS: Record<string, string> = {
+const triggerBadge: Record<string, string> = {
   debt_reminder: 'bg-yellow-100 text-yellow-700',
   payment_confirmed: 'bg-green-100 text-green-700',
   lesson_reminder: 'bg-blue-100 text-blue-700',
@@ -267,20 +267,6 @@ export default function SettingsPage() {
     }
   }
 
-  async function handleToggleActive(tmpl: SmsTemplate) {
-    const newActive = !tmpl.is_active;
-    try {
-      await api.patch(`/api/v1/sms-templates/${tmpl.id}/`, { is_active: newActive });
-      if (newActive) {
-        setSmsTemplates((prev) => prev.map((t) => t.id === tmpl.id ? { ...t, is_active: true } : t));
-      } else {
-        setSmsTemplates((prev) => prev.filter((t) => t.id !== tmpl.id));
-      }
-    } catch (err: any) {
-      toast.error(err?.response?.data?.detail || 'Xatolik yuz berdi');
-    }
-  }
-
   async function handleDelete() {
     if (!deleteTarget) return;
     try {
@@ -460,92 +446,63 @@ export default function SettingsPage() {
             )}
           </div>
 
-          {/* Templates table */}
-          <div className="bg-white rounded border border-gray-200 shadow-sm overflow-hidden">
-            <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
-              <h2 className="text-sm font-semibold text-gray-900">SMS shablonlar</h2>
-              <button
-                onClick={openCreate}
-                className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 text-white text-sm font-medium rounded hover:bg-blue-700 transition-colors"
-              >
-                <Plus className="w-4 h-4" />
-                Shablon qo&apos;shish
-              </button>
-            </div>
-            {loadingSms ? (
-              <div className="p-5 space-y-3">
-                {Array(3).fill(0).map((_, i) => <Skeleton key={i} className="h-12 w-full" />)}
-              </div>
-            ) : smsTemplates.length === 0 ? (
-              <div className="px-5 py-10 text-center text-gray-400 text-sm">
-                Hech qanday shablon topilmadi
-              </div>
-            ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="bg-gray-50 border-b border-gray-200">
-                      {['#', 'Shablon nomi', 'Trigger', 'Matn', 'Holat', 'Amal'].map((h) => (
-                        <th key={h} className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap">{h}</th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-gray-100">
-                    {smsTemplates.map((tmpl, idx) => (
-                      <tr key={tmpl.id} className="hover:bg-gray-50">
-                        <td className="px-4 py-3 text-gray-400 text-xs">{idx + 1}</td>
-                        <td className="px-4 py-3 font-medium text-gray-900 whitespace-nowrap">{tmpl.name}</td>
-                        <td className="px-4 py-3">
-                          <span className={cn('px-2 py-0.5 rounded text-xs font-medium whitespace-nowrap', TRIGGER_COLORS[tmpl.trigger] ?? 'bg-gray-100 text-gray-600')}>
-                            {TRIGGER_LABELS[tmpl.trigger] ?? tmpl.trigger}
-                          </span>
-                        </td>
-                        <td className="px-4 py-3 text-gray-600 max-w-[240px]">
-                          <span className="block truncate">
-                            {tmpl.body.length > 60 ? tmpl.body.slice(0, 60) + '...' : tmpl.body}
-                          </span>
-                        </td>
-                        <td className="px-4 py-3">
-                          <button
-                            onClick={() => handleToggleActive(tmpl)}
-                            className={cn(
-                              'relative inline-flex h-5 w-9 items-center rounded-full transition-colors',
-                              tmpl.is_active ? 'bg-green-500' : 'bg-gray-300'
-                            )}
-                          >
-                            <span className={cn(
-                              'inline-block h-3.5 w-3.5 transform rounded-full bg-white transition-transform',
-                              tmpl.is_active ? 'translate-x-4' : 'translate-x-0.5'
-                            )} />
-                          </button>
-                        </td>
-                        <td className="px-4 py-3">
-                          <div className="flex items-center gap-1">
-                            <button
-                              onClick={() => openEdit(tmpl)}
-                              className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded transition-colors"
-                              title="Tahrirlash"
-                            >
-                              <Pencil className="w-3.5 h-3.5" />
-                            </button>
-                            {!tmpl.is_default && (
-                              <button
-                                onClick={() => setDeleteTarget(tmpl)}
-                                className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded transition-colors"
-                                title="O'chirish"
-                              >
-                                <Trash2 className="w-3.5 h-3.5" />
-                              </button>
-                            )}
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
+          {/* Templates header */}
+          <div className="flex items-center justify-between">
+            <h2 className="text-sm font-semibold text-gray-900">SMS shablonlar</h2>
+            <button
+              onClick={openCreate}
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 text-white text-sm font-medium rounded hover:bg-blue-700 transition-colors"
+            >
+              <Plus className="w-4 h-4" />
+              Shablon qo&apos;shish
+            </button>
           </div>
+
+          {/* Templates cards */}
+          {loadingSms ? (
+            <div className="space-y-3">
+              {Array(3).fill(0).map((_, i) => <Skeleton key={i} className="h-28 w-full rounded-xl" />)}
+            </div>
+          ) : smsTemplates.length === 0 ? (
+            <div className="py-10 text-center text-gray-400 text-sm">
+              Hech qanday shablon topilmadi
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {smsTemplates.map((tmpl) => (
+                <div key={tmpl.id} className="bg-white border border-gray-200 rounded-xl p-4 shadow-sm">
+                  <div className="flex items-start justify-between mb-2">
+                    <h3 className="font-semibold text-gray-900 text-sm">{tmpl.name}</h3>
+                    <div className="flex items-center gap-1 flex-shrink-0 ml-2">
+                      <button
+                        onClick={() => openEdit(tmpl)}
+                        className="p-1.5 rounded hover:bg-gray-100 text-gray-400 hover:text-blue-600 transition-colors"
+                      >
+                        <Pencil className="w-4 h-4" />
+                      </button>
+                      {!tmpl.is_default && (
+                        <button
+                          onClick={() => setDeleteTarget(tmpl)}
+                          className="p-1.5 rounded hover:bg-gray-100 text-gray-400 hover:text-red-500 transition-colors"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                  <p className="text-sm text-gray-600 leading-relaxed mb-3">{tmpl.body}</p>
+                  <div className="flex items-center justify-between">
+                    <span className={cn('inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium', triggerBadge[tmpl.trigger] ?? 'bg-gray-100 text-gray-600')}>
+                      {triggerLabel[tmpl.trigger] ?? tmpl.trigger}
+                    </span>
+                    {tmpl.is_default && (
+                      <span className="text-xs text-gray-400">Standart shablon</span>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       )}
 

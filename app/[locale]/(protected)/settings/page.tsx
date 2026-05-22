@@ -460,15 +460,15 @@ export default function SettingsPage() {
 
           {/* Templates cards */}
           {loadingSms ? (
-            <div className="space-y-3">
-              {Array(3).fill(0).map((_, i) => <Skeleton key={i} className="h-28 w-full rounded-xl" />)}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {Array(4).fill(0).map((_, i) => <Skeleton key={i} className="h-28 w-full rounded-xl" />)}
             </div>
           ) : smsTemplates.length === 0 ? (
             <div className="py-10 text-center text-gray-400 text-sm">
               Hech qanday shablon topilmadi
             </div>
           ) : (
-            <div className="space-y-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               {smsTemplates.map((tmpl) => (
                 <div key={tmpl.id} className="bg-white border border-gray-200 rounded-xl p-4 shadow-sm">
                   <div className="flex items-start justify-between mb-2">

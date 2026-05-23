@@ -58,16 +58,6 @@ interface GroupOption {
 
 const GENDER_LABELS: Record<string, string> = { a: 'Bolalar', b: 'Qizlar', c: 'Aralash' };
 
-const STATUS_BADGE: Record<string, string> = {
-  active: 'bg-green-50 text-green-700 border-green-200',
-  trial: 'bg-orange-50 text-orange-700 border-orange-200',
-  pending: 'bg-yellow-50 text-yellow-700 border-yellow-200',
-  archived: 'bg-gray-100 text-gray-600 border-gray-200',
-};
-const STATUS_LABEL: Record<string, string> = {
-  active: 'Faol', trial: 'Sinov', pending: 'Kutmoqda', archived: 'Arxivlangan',
-};
-
 type TabKey = 'students' | 'lessons' | 'info';
 
 function formatTime(iso: string | null): string {

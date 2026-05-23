@@ -72,6 +72,8 @@ const VARIABLES = [
   ['{company_name}', "O'quv markaz nomi"],
   ['{phone}', "O'quvchi telefon raqami"],
   ['{balance}', 'Qoldiq qarz miqdori'],
+  ['{lesson_time}', 'Dars boshlanish vaqti'],
+  ['{room_number}', 'Xona raqami'],
 ];
 
 const SAMPLE_VALUES: Record<string, string> = {
@@ -84,6 +86,8 @@ const SAMPLE_VALUES: Record<string, string> = {
   '{company_name}': 'EduHub',
   '{phone}': '+998901234567',
   '{balance}': "150,000 so'm",
+  '{lesson_time}': '09:00',
+  '{room_number}': '101',
 };
 
 const inputCls = 'w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500';

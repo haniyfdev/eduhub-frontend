@@ -46,6 +46,8 @@ const SAMPLE: Record<string, string> = {
   group_name: '1A guruh',
   teacher_name: 'Ustoz',
   course_name: 'Kurs',
+  lesson_time: '09:00',
+  room_number: '101',
 };
 
 function resolvePreview(body: string, first?: SmsRecipient): string {

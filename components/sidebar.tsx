@@ -91,10 +91,9 @@ export default function Sidebar() {
         <nav className="flex-1 px-2 py-3 overflow-y-auto space-y-4">
           {sections.map((section, si) => {
             const visibleItems = section.items.filter((item) => {
-              if (user?.role === 'superadmin') return item.key !== 'leads' && item.key !== 'attendance';
-              if ((item as { roles?: string[] | null }).roles) {
-                return ((item as { roles?: string[] | null }).roles ?? []).includes(user?.role ?? '');
-              }
+              const roles = (item as { roles?: string[] | null }).roles;
+              if (user?.role === 'superadmin') return true;
+              if (roles) return roles.includes(user?.role ?? '');
               return true;
             });
             if (visibleItems.length === 0) return null;

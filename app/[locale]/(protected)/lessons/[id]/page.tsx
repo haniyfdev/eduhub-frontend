@@ -236,6 +236,12 @@ export default function LessonAttendancePage() {
   }
 
   async function handleSave() {
+    const unmarked = students.filter(gs => !attendance[getStudentData(gs).id]?.status);
+    if (unmarked.length > 0) {
+      setShowConfirm(false);
+      toast.error(`${unmarked.map(gs => getStudentData(gs).name).join(', ')} belgilanmagan!`);
+      return;
+    }
     setSaving(true);
     try {
       const attendanceRows = students.reduce<{ student_id: string; status: string; note: string }[]>((acc, gs) => {
@@ -290,6 +296,7 @@ export default function LessonAttendancePage() {
     late: entries.filter((e) => e.status === 'late').length,
     unmarked: entries.filter((e) => !e.status).length,
   };
+  const allMarked = students.length > 0 && summary.unmarked === 0;
 
   if (loadingLesson) {
     return (
@@ -401,8 +408,13 @@ export default function LessonAttendancePage() {
           {isOngoing && !isLocked && (
             <button
               onClick={() => setShowConfirm(true)}
-              disabled={saving}
-              className="flex items-center gap-1.5 px-4 py-2 bg-green-600 text-white text-sm font-medium rounded hover:bg-green-700 disabled:opacity-60 transition-colors"
+              disabled={!allMarked || saving}
+              className={cn(
+                'flex items-center gap-1.5 px-4 py-2 text-sm font-medium rounded transition-colors',
+                allMarked
+                  ? 'bg-green-600 text-white hover:bg-green-700'
+                  : 'bg-gray-200 text-gray-400 cursor-not-allowed'
+              )}
             >
               <Save className="w-4 h-4" />
               Saqlash

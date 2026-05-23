@@ -286,7 +286,15 @@ export default function GroupsPage() {
                       <td className="px-4 py-3 text-gray-600 text-xs">
                         {g.start_time ? `${g.start_time} – ${g.end_time ?? ''}` : '—'}
                       </td>
-                      <td className="px-4 py-3 text-gray-600 text-xs">{g.room_name || '—'}</td>
+                      <td className="px-4 py-3">
+                        {g.room_name ? (
+                          <span className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-sky-100 text-sky-700 text-sm font-semibold">
+                            {g.room_name.replace('Xona ', '')}
+                          </span>
+                        ) : (
+                          <span className="text-gray-400">—</span>
+                        )}
+                      </td>
                       <td className="px-4 py-3">
                         <span className={cn('inline-flex items-center px-2 py-0.5 text-xs font-medium border rounded',
                           g.status === 'active' ? 'bg-green-50 text-green-700 border-green-200'

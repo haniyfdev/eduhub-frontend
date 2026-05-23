@@ -101,9 +101,9 @@ export default function StudentsPage() {
     return acc;
   }, 0);
 
-  async function handleSendSms(phones: string[], message: string) {
+  async function handleSendSms(items: { phone: string; message: string }[]) {
     let success = 0;
-    for (const phone of phones) {
+    for (const { phone, message } of items) {
       try {
         await api.post('/api/v1/notifications/send-sms/', { phone, message });
         success++;
@@ -115,10 +115,15 @@ export default function StudentsPage() {
   const smsRecipients: SmsRecipient[] = students.flatMap(s => {
     const sel = phoneSelection[s.id];
     const recs: SmsRecipient[] = [];
+    const base = {
+      name: `${s.first_name} ${s.last_name}`,
+      course_name: s.course_name || '',
+      group_name: s.current_group || '',
+    };
     if (sel?.phone1 && s.phone)
-      recs.push({ id: `${s.id}_1`, name: `${s.first_name} ${s.last_name}`, phone: s.phone });
+      recs.push({ id: `${s.id}_1`, phone: s.phone, ...base });
     if (sel?.phone2 && s.second_phone)
-      recs.push({ id: `${s.id}_2`, name: `${s.first_name} ${s.last_name}`, phone: s.second_phone });
+      recs.push({ id: `${s.id}_2`, phone: s.second_phone, ...base });
     return recs;
   });
 

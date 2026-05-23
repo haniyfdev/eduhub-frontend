@@ -161,9 +161,9 @@ export default function AttendancePage() {
     }
   }
 
-  async function handleSendSms(phones: string[], message: string) {
+  async function handleSendSms(items: { phone: string; message: string }[]) {
     const results = await Promise.allSettled(
-      phones.map(phone =>
+      items.map(({ phone, message }) =>
         api.post('/api/v1/notifications/send-sms/', { phone, message })
       )
     );

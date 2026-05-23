@@ -131,9 +131,9 @@ export default function DebtsPage() {
     return acc;
   }, 0);
 
-  async function handleSend(phones: string[], message: string) {
+  async function handleSend(items: { phone: string; message: string }[]) {
     let success = 0;
-    for (const phone of phones) {
+    for (const { phone, message } of items) {
       try {
         await api.post('/api/v1/notifications/send-sms/', { phone, message });
         success++;
@@ -146,10 +146,17 @@ export default function DebtsPage() {
     if (d.status === 'paid') return [];
     const sel = phoneSelection[d.id];
     const recs: SmsRecipient[] = [];
+    const base = {
+      name: d.student_name,
+      amount: String(Math.round(d.amount)),
+      due_date: d.due_date,
+      course_name: d.course_name || '',
+      group_name: d.group_name || '',
+    };
     if (sel?.phone1 && d.student_phone)
-      recs.push({ id: `${d.id}_1`, name: d.student_name, phone: d.student_phone });
+      recs.push({ id: `${d.id}_1`, phone: d.student_phone, ...base });
     if (sel?.phone2 && d.student_second_phone)
-      recs.push({ id: `${d.id}_2`, name: d.student_name, phone: d.student_second_phone });
+      recs.push({ id: `${d.id}_2`, phone: d.student_second_phone, ...base });
     return recs;
   });
 

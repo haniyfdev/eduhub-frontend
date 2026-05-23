@@ -74,9 +74,9 @@ export default function PaymentsPage() {
     });
   }
 
-  async function handleSendSms(phones: string[], message: string) {
+  async function handleSendSms(items: { phone: string; message: string }[]) {
     let success = 0;
-    for (const phone of phones) {
+    for (const { phone, message } of items) {
       try {
         await api.post('/api/v1/notifications/send-sms/', { phone, message });
         success++;

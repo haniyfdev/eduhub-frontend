@@ -18,13 +18,20 @@ export interface SmsRecipient {
   id: string;
   name: string;
   phone: string;
+  amount?: string;
+  due_date?: string;
+  company_name?: string;
+  course_name?: string;
+  group_name?: string;
+  teacher_name?: string;
+  balance?: string;
 }
 
 interface SmsModalProps {
   open: boolean;
   onClose: () => void;
   recipients: SmsRecipient[];
-  onSend: (phones: string[], message: string) => void;
+  onSend: (items: { phone: string; message: string }[]) => void;
 }
 
 const SAMPLE: Record<string, string> = {
@@ -41,6 +48,23 @@ function resolvePreview(body: string, first?: SmsRecipient): string {
   return body.replace(/\{(\w+)\}/g, (_, key) => {
     if (key === 'student_name' && first) return first.name;
     return SAMPLE[key] ?? `{${key}}`;
+  });
+}
+
+function resolveMessage(body: string, recipient: SmsRecipient): string {
+  return body.replace(/\{(\w+)\}/g, (_, key) => {
+    const map: Record<string, string> = {
+      student_name: recipient.name || '',
+      amount: recipient.amount || '',
+      due_date: recipient.due_date || '',
+      company_name: recipient.company_name || '',
+      course_name: recipient.course_name || '',
+      group_name: recipient.group_name || '',
+      teacher_name: recipient.teacher_name || '',
+      phone: recipient.phone || '',
+      balance: recipient.balance || '',
+    };
+    return map[key] ?? '';
   });
 }
 
@@ -72,7 +96,6 @@ export function SmsModal({ open, onClose, recipients, onSend }: SmsModalProps) {
     }
   }, [open]);
 
-  const phones = recipients.map(r => r.phone);
   const first = recipients[0];
 
   function recipientLabel(): string {
@@ -84,13 +107,14 @@ export function SmsModal({ open, onClose, recipients, onSend }: SmsModalProps) {
   }
 
   function handleSend() {
-    const message = tab === 'template' ? (selected?.body ?? '') : customText;
-    if (!message.trim() || phones.length === 0) return;
-    onSend(phones, message);
+    const body = tab === 'template' ? (selected?.body ?? '') : customText;
+    if (!body.trim() || recipients.length === 0) return;
+    const items = recipients.map(r => ({ phone: r.phone, message: resolveMessage(body, r) }));
+    onSend(items);
     onClose();
   }
 
-  const canSend = phones.length > 0 && (
+  const canSend = recipients.length > 0 && (
     tab === 'template' ? !!selected : !!customText.trim()
   );
 

@@ -127,9 +127,9 @@ export default function LeadsPage() {
     return acc;
   }, 0);
 
-  async function handleSendSms(phones: string[], message: string) {
+  async function handleSendSms(items: { phone: string; message: string }[]) {
     let success = 0;
-    for (const phone of phones) {
+    for (const { phone, message } of items) {
       try {
         await api.post('/api/v1/notifications/send-sms/', { phone, message });
         success++;
@@ -141,10 +141,14 @@ export default function LeadsPage() {
   const smsRecipients: SmsRecipient[] = leads.flatMap(l => {
     const sel = phoneSelection[l.id];
     const recs: SmsRecipient[] = [];
+    const base = {
+      name: `${l.first_name} ${l.last_name}`,
+      course_name: l.course?.name || '',
+    };
     if (sel?.phone1 && l.phone)
-      recs.push({ id: `${l.id}_1`, name: `${l.first_name} ${l.last_name}`, phone: l.phone });
+      recs.push({ id: `${l.id}_1`, phone: l.phone, ...base });
     if (sel?.phone2 && l.second_phone)
-      recs.push({ id: `${l.id}_2`, name: `${l.first_name} ${l.last_name}`, phone: l.second_phone });
+      recs.push({ id: `${l.id}_2`, phone: l.second_phone, ...base });
     return recs;
   });
 

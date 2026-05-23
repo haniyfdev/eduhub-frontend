@@ -43,6 +43,7 @@ interface Student {
 }
 
 interface Lesson {
+  
   id: string;
   topic: string;
   date: string;

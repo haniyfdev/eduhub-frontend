@@ -144,6 +144,12 @@ export default function LeadsPage() {
     const base = {
       name: `${l.first_name} ${l.last_name}`,
       course_name: l.course?.name || '',
+      group_name: '',
+      company_name: '',
+      teacher_name: '',
+      amount: '',
+      due_date: '',
+      balance: '',
     };
     if (sel?.phone1 && l.phone)
       recs.push({ id: `${l.id}_1`, phone: l.phone, ...base });
@@ -151,7 +157,6 @@ export default function LeadsPage() {
       recs.push({ id: `${l.id}_2`, phone: l.second_phone, ...base });
     return recs;
   });
-  console.log('SMS recipients:', smsRecipients);
 
   async function handleIgnore() {
     if (!ignoreTarget) return;

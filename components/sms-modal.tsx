@@ -52,8 +52,6 @@ function resolvePreview(body: string, first?: SmsRecipient): string {
 }
 
 function resolveMessage(body: string, recipient: SmsRecipient): string {
-  console.log('Resolving for:', recipient);
-  console.log('Body:', body);
   return body.replace(/\{(\w+)\}/g, (_, key) => {
     const map: Record<string, string> = {
       student_name: recipient.name || '',

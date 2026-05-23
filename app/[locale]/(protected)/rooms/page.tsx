@@ -1,8 +1,9 @@
 'use client';
 
 import { useEffect, useState, useCallback, useMemo } from 'react';
-import { DoorOpen, Calendar, List, Snowflake } from 'lucide-react';
+import { DoorOpen, Calendar, List, Snowflake, Plus } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
+import toast from 'react-hot-toast';
 import api from '@/lib/axios';
 import { cn } from '@/lib/utils';
 
@@ -47,7 +48,38 @@ function hashIdx(str: string): number {
   return Math.abs(h) % PALETTE.length;
 }
 
+function parseDays(schedule: string | null): string[] {
+  if (!schedule) return [];
+  const part = schedule.split(' ')[0];
+  return part.split(',').map(d => d.trim()).filter(Boolean);
+}
+
 // ─── Types ────────────────────────────────────────────────────────────────────
+
+interface Room {
+  id: string;
+  name: number;
+  gender_type: string | null;
+  capacity: number | null;
+  floor: number | null;
+  description: string | null;
+  status: string;
+  display_name: string;
+}
+
+interface GroupApiEntry {
+  id: string;
+  name: string;
+  course: { id: string; name: string } | null;
+  teacher: { id: string; first_name: string; last_name: string } | null;
+  schedule: string | null;
+  start_time: string | null;
+  end_time: string | null;
+  status: string;
+  room_id: string | null;
+  room_name: string | null;
+  students_count: number;
+}
 
 interface GroupEntry {
   id: string;
@@ -72,17 +104,60 @@ type ViewMode = 'weekly' | 'list';
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function RoomsPage() {
-  const [rooms,   setRooms]   = useState<RoomData[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error,   setError]   = useState(false);
-  const [view,    setView]    = useState<ViewMode>('weekly');
+  const [roomList,    setRoomList]    = useState<Room[]>([]);
+  const [rooms,       setRooms]       = useState<RoomData[]>([]);
+  const [loading,     setLoading]     = useState(true);
+  const [error,       setError]       = useState(false);
+  const [view,        setView]        = useState<ViewMode>('weekly');
+  const [showConfirm, setShowConfirm] = useState(false);
+  const [nextNumber,  setNextNumber]  = useState(1);
+  const [adding,      setAdding]      = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
     setError(false);
     try {
-      const { data } = await api.get('/api/v1/rooms/');
-      setRooms(Array.isArray(data) ? data : []);
+      const [roomsRes, groupsRes] = await Promise.all([
+        api.get('/api/v1/rooms/'),
+        api.get('/api/v1/groups/'),
+      ]);
+
+      const roomsRaw: Room[] = Array.isArray(roomsRes.data)
+        ? roomsRes.data
+        : (roomsRes.data?.results ?? []);
+      setRoomList(roomsRaw);
+
+      const groupsRaw: GroupApiEntry[] = Array.isArray(groupsRes.data)
+        ? groupsRes.data
+        : (groupsRes.data?.results ?? []);
+
+      const activeGroups = groupsRaw.filter(g => ['active', 'frozen'].includes(g.status));
+
+      const byRoom: Record<string, GroupEntry[]> = {};
+      for (const g of activeGroups) {
+        const key = g.room_name ?? 'Xona belgilanmagan';
+        if (!byRoom[key]) byRoom[key] = [];
+        byRoom[key].push({
+          id: g.id,
+          name: g.name,
+          course: g.course?.name ?? '—',
+          course_id: g.course?.id ?? null,
+          teacher: g.teacher
+            ? `${g.teacher.first_name} ${g.teacher.last_name}`.trim()
+            : '—',
+          days: parseDays(g.schedule),
+          start_time: g.start_time,
+          end_time: g.end_time,
+          status: g.status,
+          students_count: g.students_count,
+        });
+      }
+
+      setRooms(
+        Object.entries(byRoom)
+          .map(([room, groups]) => ({ room, groups }))
+          .sort((a, b) => a.room.localeCompare(b.room, 'uz')),
+      );
     } catch {
       setError(true);
     } finally {
@@ -93,24 +168,40 @@ export default function RoomsPage() {
   useEffect(() => { load(); }, [load]);
 
   const normalizeDay = (d: string) => DAY_ALIASES[d.trim()] ?? d.trim();
-
   const groupsForDay = (room: RoomData, dayKey: string) =>
     room.groups.filter(g => g.days.map(normalizeDay).includes(dayKey));
-
-  // Stable color per course (by course name hash)
   const courseColor = (course: string | null) => PALETTE[hashIdx(course || '')];
 
-  // All unique courses for legend
   const allCourses = useMemo(() =>
     Array.from(new Set(rooms.flatMap(r => r.groups.map(g => g.course)).filter(Boolean))),
   [rooms]);
 
-  // Flat list of all groups for list view
   const allGroups = useMemo(() =>
     rooms.flatMap(r => r.groups.map(g => ({ ...g, room: r.room }))),
   [rooms]);
 
-  // ── Skeleton helpers ────────────────────────────────────────────────────────
+  const handleAddRoom = () => {
+    const next = roomList.length > 0
+      ? Math.max(...roomList.map(r => r.name)) + 1
+      : 1;
+    setNextNumber(next);
+    setShowConfirm(true);
+  };
+
+  const handleConfirm = async () => {
+    setAdding(true);
+    try {
+      await api.post('/api/v1/rooms/', { name: nextNumber });
+      toast.success(`${nextNumber}-xona qo'shildi`);
+      setShowConfirm(false);
+      load();
+    } catch {
+      toast.error("Xona qo'shishda xatolik");
+    } finally {
+      setAdding(false);
+    }
+  };
+
   if (loading) return (
     <div className="p-6 space-y-4">
       <div className="flex items-center justify-between">
@@ -130,16 +221,37 @@ export default function RoomsPage() {
     </div>
   );
 
-  if (rooms.length === 0) return (
-    <div className="p-6 text-center py-24 text-gray-400">
-      <DoorOpen className="w-12 h-12 mx-auto mb-3 opacity-30" />
-      <p className="font-medium">Faol guruhlar topilmadi</p>
-      <p className="text-sm mt-1">Hozircha birorta xona mavjud emas</p>
-    </div>
-  );
-
   return (
     <div className="p-6 space-y-5">
+
+      {/* ── Confirmation Dialog ── */}
+      {showConfirm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+          <div className="bg-white rounded-xl p-6 shadow-xl w-full max-w-sm mx-4">
+            <h3 className="text-lg font-bold text-gray-900 mb-2">Yangi xona qo&apos;shish</h3>
+            <p className="text-gray-600 text-sm mb-5">
+              {nextNumber}-xonani qo&apos;shishni tasdiqlaysizmi?
+            </p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setShowConfirm(false)}
+                disabled={adding}
+                className="flex-1 px-4 py-2 border border-gray-300 text-sm font-medium rounded hover:bg-gray-50 disabled:opacity-60"
+              >
+                Bekor qilish
+              </button>
+              <button
+                onClick={handleConfirm}
+                disabled={adding}
+                className="flex-1 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded hover:bg-blue-700 disabled:opacity-60"
+              >
+                {adding ? "Qoʻshilmoqda..." : "Ha, qoʻshish"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* ── Header ── */}
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-3">
@@ -152,7 +264,12 @@ export default function RoomsPage() {
           </div>
         </div>
         <div className="flex items-center gap-2">
-          {/* View toggle */}
+          <button
+            onClick={handleAddRoom}
+            className="flex items-center gap-1.5 px-3 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700"
+          >
+            <Plus className="w-4 h-4" /> Xona qo&apos;shish
+          </button>
           <div className="flex rounded-lg border border-gray-200 overflow-hidden">
             <button
               onClick={() => setView('weekly')}
@@ -176,8 +293,17 @@ export default function RoomsPage() {
         </div>
       </div>
 
+      {/* ── Empty State ── */}
+      {rooms.length === 0 && (
+        <div className="text-center py-24 text-gray-400">
+          <DoorOpen className="w-12 h-12 mx-auto mb-3 opacity-30" />
+          <p className="font-medium">Faol guruhlar topilmadi</p>
+          <p className="text-sm mt-1">Hozircha birorta xona mavjud emas</p>
+        </div>
+      )}
+
       {/* ── Weekly Grid ── */}
-      {view === 'weekly' && (
+      {rooms.length > 0 && view === 'weekly' && (
         <div className="bg-white rounded-xl border border-gray-200 overflow-hidden shadow-sm">
           <div className="overflow-x-auto">
             <table className="w-full text-sm" style={{ minWidth: 900 }}>
@@ -199,14 +325,12 @@ export default function RoomsPage() {
                 {rooms.map((room, ri) => (
                   <tr key={room.room}
                     className={cn('border-b border-gray-100', ri % 2 === 0 ? 'bg-white' : 'bg-gray-50/30')}>
-                    {/* Room name — sticky */}
                     <td className="px-4 py-3 font-semibold text-gray-800 align-top border-r border-gray-200 whitespace-nowrap sticky left-0 bg-inherit z-10">
                       <div className="flex items-center gap-2">
                         <DoorOpen className="w-4 h-4 text-blue-400 shrink-0" />
                         {room.room}
                       </div>
                     </td>
-                    {/* Day cells */}
                     {DAYS.map(d => {
                       const groups = groupsForDay(room, d.key);
                       return (
@@ -255,7 +379,7 @@ export default function RoomsPage() {
       )}
 
       {/* ── List View ── */}
-      {view === 'list' && (
+      {rooms.length > 0 && view === 'list' && (
         <div className="bg-white rounded-xl border border-gray-200 overflow-hidden shadow-sm">
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
@@ -278,7 +402,7 @@ export default function RoomsPage() {
                       <td className="px-4 py-3 font-medium text-gray-700">
                         <div className="flex items-center gap-1.5">
                           <DoorOpen className="w-3.5 h-3.5 text-gray-400 shrink-0" />
-                          {(g as GroupEntry & { room: string }).room}
+                          {g.room}
                         </div>
                       </td>
                       <td className="px-4 py-3">

@@ -23,7 +23,8 @@ interface Group {
   schedule: string | null;
   start_time: string | null;
   end_time: string | null;
-  room: string;
+  room_id: string | null;
+  room_name: string | null;
   status: 'active' | 'archived' | 'frozen';
 }
 
@@ -285,7 +286,7 @@ export default function GroupsPage() {
                       <td className="px-4 py-3 text-gray-600 text-xs">
                         {g.start_time ? `${g.start_time} – ${g.end_time ?? ''}` : '—'}
                       </td>
-                      <td className="px-4 py-3 text-gray-600 text-xs">{g.room || '—'}</td>
+                      <td className="px-4 py-3 text-gray-600 text-xs">{g.room_name || '—'}</td>
                       <td className="px-4 py-3">
                         <span className={cn('inline-flex items-center px-2 py-0.5 text-xs font-medium border rounded',
                           g.status === 'active' ? 'bg-green-50 text-green-700 border-green-200'

@@ -146,9 +146,11 @@ export default function DebtsPage() {
     if (d.status === 'paid') return [];
     const sel = phoneSelection[d.id];
     const recs: SmsRecipient[] = [];
+    const remaining = d.amount - (d.paid_amount || 0);
     const base = {
       name: d.student_name,
-      amount: String(Math.round(d.amount)),
+      type: 'student' as const,
+      amount: String(Math.round(remaining)),
       due_date: d.due_date,
       course_name: d.course_name || '',
       group_name: d.group_name || '',

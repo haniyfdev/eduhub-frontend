@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { Send } from 'lucide-react';
+import toast from 'react-hot-toast';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import api from '@/lib/axios';
 import { cn } from '@/lib/utils';
@@ -18,6 +19,7 @@ export interface SmsRecipient {
   id: string;
   name: string;
   phone: string;
+  type?: 'student' | 'lead';
   amount?: string;
   due_date?: string;
   company_name?: string;
@@ -26,6 +28,8 @@ export interface SmsRecipient {
   teacher_name?: string;
   balance?: string;
 }
+
+const FINANCIAL_TRIGGERS = ['debt_reminder', 'overdue_debt', 'payment_confirmed'];
 
 interface SmsModalProps {
   open: boolean;
@@ -97,6 +101,10 @@ export function SmsModal({ open, onClose, recipients, onSend }: SmsModalProps) {
   }, [open]);
 
   const first = recipients[0];
+  const allLeads = recipients.length > 0 && recipients.every(r => r.type === 'lead');
+  const visibleTemplates = allLeads
+    ? templates.filter(t => !FINANCIAL_TRIGGERS.includes(t.trigger))
+    : templates;
 
   function recipientLabel(): string {
     if (recipients.length === 0) return 'Qabul qiluvchilar tanlanmagan';
@@ -109,6 +117,10 @@ export function SmsModal({ open, onClose, recipients, onSend }: SmsModalProps) {
   function handleSend() {
     const body = tab === 'template' ? (selected?.body ?? '') : customText;
     if (!body.trim() || recipients.length === 0) return;
+    if (tab === 'template' && selected && allLeads && FINANCIAL_TRIGGERS.includes(selected.trigger)) {
+      toast.error("Bu shablon leads uchun mos emas");
+      return;
+    }
     const items = recipients.map(r => ({ phone: r.phone, message: resolveMessage(body, r) }));
     onSend(items);
     onClose();
@@ -153,11 +165,16 @@ export function SmsModal({ open, onClose, recipients, onSend }: SmsModalProps) {
         {/* Tab content */}
         {tab === 'template' ? (
           <div className="space-y-3 mt-2">
-            {templates.length === 0 ? (
+            {allLeads && (
+              <div className="bg-amber-50 border border-amber-200 rounded p-2">
+                <p className="text-xs text-amber-700">⚠️ Leadlar uchun moliyaviy shablonlar mavjud emas</p>
+              </div>
+            )}
+            {visibleTemplates.length === 0 ? (
               <p className="text-sm text-gray-400 text-center py-6">Shablonlar topilmadi</p>
             ) : (
               <div className="space-y-2 max-h-52 overflow-y-auto pr-1">
-                {templates.map((t, index) => (
+                {visibleTemplates.map((t, index) => (
                   <div
                     key={t.id}
                     onClick={() => setSelected(selected?.id === t.id ? null : t)}

@@ -143,6 +143,7 @@ export default function LeadsPage() {
     const recs: SmsRecipient[] = [];
     const base = {
       name: `${l.first_name} ${l.last_name}`,
+      type: 'lead' as const,
       course_name: l.course?.name || '',
       group_name: '',
       company_name: '',

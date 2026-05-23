@@ -39,6 +39,7 @@ interface Student {
   joined_at?: string;
   created_at?: string;
   left_at?: string | null;
+  current_group?: string | null;
 }
 
 interface Lesson {
@@ -444,9 +445,40 @@ export default function GroupDetailPage() {
                           <td className={cn('px-4 py-3', isLeft ? 'text-gray-400' : 'text-gray-600')}>{s.second_phone ? formatPhone(s.second_phone) : '—'}</td>
                           <td className={cn('px-4 py-3', isLeft ? 'text-gray-400' : 'text-gray-600')}>{formatDMY(s.birth_date) || '—'}</td>
                           <td className="px-4 py-3">
-                            <span className={cn('inline-flex items-center px-2 py-0.5 text-xs font-medium border rounded', STATUS_BADGE[s.status] ?? 'bg-gray-100 text-gray-600 border-gray-200')}>
-                              {STATUS_LABEL[s.status] ?? s.status}
-                            </span>
+                            {/* Student still in this group */}
+                            {!s.left_at && s.status === 'active' && (
+                              <span className="px-2 py-0.5 bg-green-100 text-green-700 rounded-full text-xs font-medium">
+                                Faol
+                              </span>
+                            )}
+                            {!s.left_at && s.status === 'trial' && (
+                              <span className="px-2 py-0.5 bg-orange-100 text-orange-700 rounded-full text-xs font-medium">
+                                Sinov
+                              </span>
+                            )}
+                            {!s.left_at && s.status === 'frozen' && (
+                              <span className="px-2 py-0.5 bg-sky-100 text-sky-700 rounded-full text-xs font-medium">
+                                Muzlatilgan
+                              </span>
+                            )}
+                            {/* Student transferred to another group */}
+                            {s.left_at && s.current_group && (
+                              <span className="px-2 py-0.5 bg-blue-100 text-blue-700 rounded-full text-xs font-medium">
+                                Faol ({s.current_group})
+                              </span>
+                            )}
+                            {/* Student archived */}
+                            {!s.left_at && s.status === 'archived' && (
+                              <span className="px-2 py-0.5 bg-gray-100 text-gray-500 rounded-full text-xs font-medium">
+                                Arxivlangan
+                              </span>
+                            )}
+                            {/* Student transferred but now archived */}
+                            {s.left_at && !s.current_group && (
+                              <span className="px-2 py-0.5 bg-gray-100 text-gray-500 rounded-full text-xs font-medium">
+                                Arxivlangan
+                              </span>
+                            )}
                           </td>
                           <td className="px-4 py-3">
                             {isLeft ? (

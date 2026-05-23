@@ -131,16 +131,18 @@ export default function LessonAttendancePage() {
     }
   }, [id]);
 
-  const fetchStudentsAndAttendance = useCallback(async (groupId: string) => {
+  const fetchStudentsAndAttendance = useCallback(async () => {
     setLoadingStudents(true);
     try {
-      const [groupRes, attendanceRes] = await Promise.allSettled([
-        api.get<{ students: GroupStudentRaw[] }>(`/api/v1/groups/${groupId}/`),
+      const [studentsRes, attendanceRes] = await Promise.allSettled([
+        api.get<GroupStudentRaw[]>(`/api/v1/lessons/${id}/students/`),
         api.get<AttendanceRecord[]>(`/api/v1/lessons/${id}/attendance/`),
       ]);
 
-      if (groupRes.status !== 'fulfilled') return;
-      const list: GroupStudentRaw[] = groupRes.value.data.students ?? [];
+      if (studentsRes.status !== 'fulfilled') return;
+      const list: GroupStudentRaw[] = Array.isArray(studentsRes.value.data)
+        ? studentsRes.value.data
+        : [];
       setStudents(list);
 
       const init: Record<string, AttendanceEntry> = {};
@@ -187,8 +189,7 @@ export default function LessonAttendancePage() {
     // Faqat bir marta fetch
     if (attendanceFetchedRef.current) return;
     attendanceFetchedRef.current = true;
-    const groupId = getGroupId(lesson);
-    if (groupId) fetchStudentsAndAttendance(groupId);
+    fetchStudentsAndAttendance();
   }, [lesson, fetchStudentsAndAttendance]);
 
   useEffect(() => {

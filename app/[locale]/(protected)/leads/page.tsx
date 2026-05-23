@@ -151,6 +151,7 @@ export default function LeadsPage() {
       recs.push({ id: `${l.id}_2`, phone: l.second_phone, ...base });
     return recs;
   });
+  console.log('SMS recipients:', smsRecipients);
 
   async function handleIgnore() {
     if (!ignoreTarget) return;

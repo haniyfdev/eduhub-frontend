@@ -409,7 +409,7 @@ export default function GroupDetailPage() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="bg-gray-50 border-b border-gray-200">
-                  {['№', 'Ism', 'Telefon', 'Ota-ona tel', "Tug'ilgan sana", 'Holat', 'Kirgan sana', 'Amallar'].map((h) => (
+                  {['№', 'Ism', 'Telefon', 'Ota-ona tel', "Tug'ilgan sana", 'Holat', 'Amallar'].map((h) => (
                     <th key={h} className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">{h}</th>
                   ))}
                 </tr>
@@ -417,12 +417,12 @@ export default function GroupDetailPage() {
               <tbody className="divide-y divide-gray-100">
                 {loadingStudents
                   ? Array(5).fill(0).map((_, i) => (
-                    <tr key={i}>{Array(8).fill(0).map((_, j) => (
+                    <tr key={i}>{Array(7).fill(0).map((_, j) => (
                       <td key={j} className="px-4 py-3"><Skeleton className="h-4 w-full" /></td>
                     ))}</tr>
                   ))
                   : students.length === 0
-                    ? <tr><td colSpan={8} className="px-4 py-14 text-center text-gray-400 text-sm">O&apos;quvchilar yo&apos;q</td></tr>
+                    ? <tr><td colSpan={7} className="px-4 py-14 text-center text-gray-400 text-sm">O&apos;quvchilar yo&apos;q</td></tr>
                     : students.map((s, idx) => {
                       const isLeft = !!s.left_at;
                       return (
@@ -470,9 +470,6 @@ export default function GroupDetailPage() {
                                 Arxivlangan
                               </span>
                             )}
-                          </td>
-                          <td className={cn('px-4 py-3 text-sm', isLeft ? 'text-gray-400' : 'text-gray-600')}>
-                            {s.joined_at ? formatDMY(s.joined_at) : '—'}
                           </td>
                           <td className="px-4 py-3">
                             {isLeft ? (

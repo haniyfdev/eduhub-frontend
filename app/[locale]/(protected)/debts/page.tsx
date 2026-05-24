@@ -177,8 +177,8 @@ export default function DebtsPage() {
     const base = {
       name: d.student_name,
       type: 'student' as const,
-      amount: vars.amount || '',
-      balance: vars.balance || String(Math.round(remaining)),
+      balance: String(Math.round(d.amount)),
+      amount: String(Math.round(d.paid_amount || 0)),
       due_date: vars.due_date || d.due_date,
       course_name: vars.course_name || d.course_name || '',
       group_name: vars.group_name || d.group_name || '',

@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { useLocale } from 'next-intl';
 import { Plus, Search, Minus, Snowflake, Play } from 'lucide-react';
@@ -95,6 +95,14 @@ export default function GroupsPage() {
   const [freezeTarget, setFreezeTarget] = useState<{ id: string; name: string } | null>(null);
   const [unfreezeTarget, setUnfreezeTarget] = useState<{ id: string; name: string } | null>(null);
 
+  const courseRef    = useRef<HTMLSelectElement>(null);
+  const teacherRef   = useRef<HTMLSelectElement>(null);
+  const genderRef    = useRef<HTMLSelectElement>(null);
+  const roomRef      = useRef<HTMLSelectElement>(null);
+  const startTimeRef = useRef<HTMLInputElement>(null);
+  const endTimeRef   = useRef<HTMLInputElement>(null);
+  const saveRef      = useRef<HTMLButtonElement>(null);
+
   const fetchGroups = useCallback(async () => {
     setLoading(true);
     setError(false);
@@ -132,6 +140,8 @@ export default function GroupsPage() {
 
   async function handleAdd(e: React.FormEvent) {
     e.preventDefault();
+
+    if (!form.room_id) { toast.error('Xona tanlash majburiy'); return; }
 
     const startErr = validateTime(form.start_time, 'Boshlanish vaqti');
     if (startErr) { toast.error(startErr); return; }
@@ -427,8 +437,10 @@ export default function GroupsPage() {
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Kurs <span className="text-red-500">*</span></label>
               <select
+                ref={courseRef}
                 value={form.course_id}
                 onChange={(e) => setForm((f) => ({ ...f, course_id: e.target.value }))}
+                onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); teacherRef.current?.focus(); } }}
                 className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                 required
               >
@@ -438,10 +450,12 @@ export default function GroupsPage() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">O'qituvchi <span className="text-red-500">*</span></label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">O&apos;qituvchi <span className="text-red-500">*</span></label>
               <select
+                ref={teacherRef}
                 value={form.teacher_id}
                 onChange={(e) => setForm((f) => ({ ...f, teacher_id: e.target.value }))}
+                onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); genderRef.current?.focus(); } }}
                 className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                 required
               >
@@ -452,25 +466,38 @@ export default function GroupsPage() {
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Guruh turi</label>
-              <div className="flex gap-2">
-                {[
-                  { value: 'a', label: 'Bolalar', style: 'border-blue-300 bg-blue-50 text-blue-700' },
-                  { value: 'b', label: 'Qizlar', style: 'border-pink-300 bg-pink-50 text-pink-700' },
-                  { value: 'c', label: 'Aralash', style: 'border-purple-300 bg-purple-50 text-purple-700' },
-                ].map(({ value, label, style }) => (
-                  <button
-                    key={value}
-                    type="button"
-                    onClick={() => setForm((f) => ({ ...f, gender_type: f.gender_type === value ? '' : value }))}
-                    className={cn(
-                      'flex-1 py-2 text-xs font-medium border rounded transition-colors',
-                      form.gender_type === value ? style : 'border-gray-300 text-gray-600 hover:bg-gray-50'
-                    )}
-                  >
-                    {label}
-                  </button>
+              <select
+                ref={genderRef}
+                value={form.gender_type}
+                onChange={(e) => setForm((f) => ({ ...f, gender_type: e.target.value }))}
+                onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); roomRef.current?.focus(); } }}
+                className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="">Tanlang (ixtiyoriy)</option>
+                <option value="a">Bolalar</option>
+                <option value="b">Qizlar</option>
+                <option value="c">Aralash</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Xona <span className="text-red-500">*</span></label>
+              <select
+                ref={roomRef}
+                value={form.room_id}
+                onChange={(e) => setForm((f) => ({ ...f, room_id: e.target.value }))}
+                onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); startTimeRef.current?.focus(); } }}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="">Tanlang</option>
+                {rooms.map((r) => (
+                  <option key={r.id} value={r.id}>
+                    {r.name}-xona
+                    {r.gender_type ? ` (${r.gender_type.toUpperCase()})` : ''}
+                    {r.capacity ? ` — ${r.capacity} o'rin` : ''}
+                  </option>
                 ))}
-              </div>
+              </select>
             </div>
 
             {/* Weekday picker */}
@@ -500,22 +527,26 @@ export default function GroupsPage() {
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Boshlanish vaqti <span className="text-red-500">*</span></label>
                 <input
+                  ref={startTimeRef}
                   type="text"
                   value={form.start_time}
                   maxLength={5}
                   placeholder="HH:MM"
                   onChange={(e) => setForm((f) => ({ ...f, start_time: makeTimeInput(e.target.value) }))}
+                  onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); endTimeRef.current?.focus(); } }}
                   className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Tugash vaqti <span className="text-red-500">*</span></label>
                 <input
+                  ref={endTimeRef}
                   type="text"
                   value={form.end_time}
                   maxLength={5}
                   placeholder="HH:MM"
                   onChange={(e) => setForm((f) => ({ ...f, end_time: makeTimeInput(e.target.value) }))}
+                  onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); saveRef.current?.click(); } }}
                   className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
               </div>
@@ -530,24 +561,6 @@ export default function GroupsPage() {
               </div>
             )}
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Xona</label>
-              <select
-                value={form.room_id}
-                onChange={(e) => setForm((f) => ({ ...f, room_id: e.target.value }))}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-              >
-                <option value="">Xona tanlang (ixtiyoriy)</option>
-                {rooms.map((r) => (
-                  <option key={r.id} value={r.id}>
-                    {r.name}-xona
-                    {r.gender_type ? ` (${r.gender_type.toUpperCase()})` : ''}
-                    {r.capacity ? ` — ${r.capacity} o'rin` : ''}
-                  </option>
-                ))}
-              </select>
-            </div>
-
             <div className="flex gap-3 pt-2">
               <button
                 type="button"
@@ -557,6 +570,7 @@ export default function GroupsPage() {
                 Bekor qilish
               </button>
               <button
+                ref={saveRef}
                 type="submit"
                 disabled={saving}
                 className="flex-1 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded hover:bg-blue-700 disabled:opacity-60"

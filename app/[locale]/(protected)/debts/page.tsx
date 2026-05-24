@@ -132,11 +132,11 @@ export default function DebtsPage() {
     return acc;
   }, 0);
 
-  const selectedStudentIds = [...new Set(
+  const selectedStudentIds = Array.from(new Set(
     debts
       .filter(d => d.status !== 'paid' && (phoneSelection[d.id]?.phone1 || phoneSelection[d.id]?.phone2))
       .map(d => d.student)
-  )];
+  ));
 
   async function openSmsModal() {
     if (selectedStudentIds.length === 0) return;

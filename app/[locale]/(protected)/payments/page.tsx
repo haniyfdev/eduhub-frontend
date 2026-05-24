@@ -76,9 +76,9 @@ export default function PaymentsPage() {
     });
   }
 
-  const selectedStudentIds = [...new Set(
+  const selectedStudentIds = Array.from(new Set(
     payments.filter(p => smsSelected.has(p.id) && p.student_id).map(p => p.student_id!)
-  )];
+  ));
 
   async function openSmsModal() {
     if (smsSelected.size === 0) return;

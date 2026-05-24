@@ -12,6 +12,7 @@ import { PaginatedResponse } from '@/types';
 
 interface Payment {
   id: string;
+  student_id?: string;
   student_name: string;
   student_phone?: string;
   course_name: string;
@@ -44,6 +45,7 @@ export default function PaymentsPage() {
   // SMS
   const [smsSelected, setSmsSelected]       = useState<Set<string>>(new Set());
   const [showSmsConfirm, setShowSmsConfirm] = useState(false);
+  const [smsVariables, setSmsVariables]     = useState<Record<string, Record<string, string>>>({});
 
   const fetchPayments = useCallback(async () => {
     setLoading(true);
@@ -74,6 +76,23 @@ export default function PaymentsPage() {
     });
   }
 
+  const selectedStudentIds = [...new Set(
+    payments.filter(p => smsSelected.has(p.id) && p.student_id).map(p => p.student_id!)
+  )];
+
+  async function openSmsModal() {
+    if (smsSelected.size === 0) return;
+    if (selectedStudentIds.length > 0) {
+      try {
+        const { data } = await api.post('/api/v1/sms-variables/', { student_ids: selectedStudentIds });
+        setSmsVariables(data);
+      } catch {
+        setSmsVariables({});
+      }
+    }
+    setShowSmsConfirm(true);
+  }
+
   async function handleSendSms(templateId: string | null, customMessage: string | null, recipients: SmsRecipient[]) {
     try {
       await api.post('/api/v1/notifications/send-sms/', {
@@ -96,14 +115,24 @@ export default function PaymentsPage() {
 
   const smsRecipients: SmsRecipient[] = payments
     .filter(p => smsSelected.has(p.id) && !!p.student_phone)
-    .map(p => ({
-      id: p.id,
-      name: p.student_name,
-      phone: p.student_phone!,
-      type: 'student' as const,
-      amount: String(p.amount || ''),
-      due_date: '',
-    }));
+    .map(p => {
+      const vars = p.student_id ? (smsVariables[p.student_id] ?? {}) : {};
+      return {
+        id: p.student_id || p.id,
+        name: p.student_name,
+        phone: p.student_phone!,
+        type: 'student' as const,
+        amount: String(p.amount || ''),
+        balance: vars.balance || '',
+        due_date: vars.due_date || '',
+        course_name: vars.course_name || p.course_name || '',
+        group_name: vars.group_name || p.group_display || '',
+        teacher_name: vars.teacher_name || '',
+        company_name: vars.company_name || '',
+        lesson_time: vars.lesson_time || '',
+        room_number: vars.room_number || '',
+      };
+    });
 
   return (
     <div className="space-y-5">
@@ -114,7 +143,7 @@ export default function PaymentsPage() {
         <h1 className="text-xl font-bold text-gray-900">To&apos;lovlar</h1>
         {smsSelected.size > 0 && (
           <button
-            onClick={() => setShowSmsConfirm(true)}
+            onClick={openSmsModal}
             disabled={false}
             className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded hover:bg-indigo-700 transition-colors"
           >

@@ -91,6 +91,7 @@ export default function AttendancePage() {
   const [calDays, setCalDays]           = useState<AttendanceDay[]>([]);
   const [calLoading, setCalLoading]     = useState(false);
   const [showSms, setShowSms]           = useState(false);
+  const [smsVariables, setSmsVariables] = useState<Record<string, Record<string, string>>>({});
 
   const fetchSummary = useCallback(async (q: string) => {
     setLoading(true);
@@ -161,6 +162,21 @@ export default function AttendancePage() {
     }
   }
 
+  const selectedStudentIds = rows
+    .filter(r => phoneTargets[r.student_id]?.phone1 || phoneTargets[r.student_id]?.phone2)
+    .map(r => r.student_id);
+
+  async function openSmsModal() {
+    if (selectedStudentIds.length === 0) return;
+    try {
+      const { data } = await api.post('/api/v1/sms-variables/', { student_ids: selectedStudentIds });
+      setSmsVariables(data);
+    } catch {
+      setSmsVariables({});
+    }
+    setShowSms(true);
+  }
+
   async function handleSendSms(templateId: string | null, customMessage: string | null, recipients: SmsRecipient[]) {
     try {
       await api.post('/api/v1/notifications/send-sms/', {
@@ -182,8 +198,22 @@ export default function AttendancePage() {
   }
 
   const smsRecipients: SmsRecipient[] = rows.flatMap(r => {
+    const vars = smsVariables[r.student_id] ?? {};
     const recs: SmsRecipient[] = [];
-    const base = { id: r.student_id, name: r.student_name, type: 'student' as const, amount: '', due_date: '' };
+    const base = {
+      id: r.student_id,
+      name: r.student_name,
+      type: 'student' as const,
+      amount: vars.amount || '',
+      balance: vars.balance || '',
+      due_date: vars.due_date || '',
+      course_name: vars.course_name || r.course || '',
+      group_name: vars.group_name || r.group || '',
+      teacher_name: vars.teacher_name || '',
+      company_name: vars.company_name || '',
+      lesson_time: vars.lesson_time || '',
+      room_number: vars.room_number || '',
+    };
     if (phoneTargets[r.student_id]?.phone1)
       recs.push({ ...base, phone: r.phone });
     if (r.second_phone && phoneTargets[r.student_id]?.phone2)
@@ -203,7 +233,7 @@ export default function AttendancePage() {
         </div>
         {checkedPhoneCount > 0 && (
           <button
-            onClick={() => setShowSms(true)}
+            onClick={openSmsModal}
             className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors"
           >
             <Send className="w-4 h-4" />

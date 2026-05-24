@@ -83,6 +83,7 @@ export default function DebtsPage() {
 
   const [phoneSelection, setPhoneSelection] = useState<PhoneSelection>({});
   const [showConfirm, setShowConfirm]       = useState(false);
+  const [smsVariables, setSmsVariables]     = useState<Record<string, Record<string, string>>>({});
 
   // Payment modal
   const [paymentTarget, setPaymentTarget] = useState<Debt | null>(null);
@@ -131,6 +132,23 @@ export default function DebtsPage() {
     return acc;
   }, 0);
 
+  const selectedStudentIds = [...new Set(
+    debts
+      .filter(d => d.status !== 'paid' && (phoneSelection[d.id]?.phone1 || phoneSelection[d.id]?.phone2))
+      .map(d => d.student)
+  )];
+
+  async function openSmsModal() {
+    if (selectedStudentIds.length === 0) return;
+    try {
+      const { data } = await api.post('/api/v1/sms-variables/', { student_ids: selectedStudentIds });
+      setSmsVariables(data);
+    } catch {
+      setSmsVariables({});
+    }
+    setShowConfirm(true);
+  }
+
   async function handleSend(templateId: string | null, customMessage: string | null, recipients: SmsRecipient[]) {
     try {
       await api.post('/api/v1/notifications/send-sms/', {
@@ -153,15 +171,21 @@ export default function DebtsPage() {
   const smsRecipients: SmsRecipient[] = debts.flatMap(d => {
     if (d.status === 'paid') return [];
     const sel = phoneSelection[d.id];
+    const vars = smsVariables[d.student] ?? {};
     const recs: SmsRecipient[] = [];
     const remaining = d.amount - (d.paid_amount || 0);
     const base = {
       name: d.student_name,
       type: 'student' as const,
-      amount: String(Math.round(remaining)),
-      due_date: d.due_date,
-      course_name: d.course_name || '',
-      group_name: d.group_name || '',
+      amount: vars.amount || '',
+      balance: vars.balance || String(Math.round(remaining)),
+      due_date: vars.due_date || d.due_date,
+      course_name: vars.course_name || d.course_name || '',
+      group_name: vars.group_name || d.group_name || '',
+      teacher_name: vars.teacher_name || '',
+      company_name: vars.company_name || '',
+      lesson_time: vars.lesson_time || '',
+      room_number: vars.room_number || '',
     };
     if (sel?.phone1 && d.student_phone)
       recs.push({ id: d.student, phone: d.student_phone, ...base });
@@ -216,7 +240,7 @@ export default function DebtsPage() {
         <h1 className="text-xl font-bold text-gray-900">Qarzdorlar</h1>
         {selectedCount > 0 && (
           <button
-            onClick={() => setShowConfirm(true)}
+            onClick={openSmsModal}
             className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded hover:bg-blue-700 transition-colors"
           >
             <Send className="w-4 h-4" />

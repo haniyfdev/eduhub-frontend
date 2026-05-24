@@ -65,6 +65,7 @@ export default function LeadsPage() {
   const [touched, setTouched]           = useState<Record<string, boolean>>({});
   const [phoneSelection, setPhoneSelection] = useState<PhoneSelection>({});
   const [showSms, setShowSms]           = useState(false);
+  const [smsVariables, setSmsVariables] = useState<Record<string, Record<string, string>>>({});
 
   const firstNameRef = useRef<HTMLInputElement>(null);
   const lastNameRef  = useRef<HTMLInputElement>(null);
@@ -127,6 +128,21 @@ export default function LeadsPage() {
     return acc;
   }, 0);
 
+  const selectedLeadIds = leads
+    .filter(l => phoneSelection[l.id]?.phone1 || phoneSelection[l.id]?.phone2)
+    .map(l => l.id);
+
+  async function openSmsModal() {
+    if (selectedLeadIds.length === 0) return;
+    try {
+      const { data } = await api.post('/api/v1/sms-variables/', { lead_ids: selectedLeadIds });
+      setSmsVariables(data);
+    } catch {
+      setSmsVariables({});
+    }
+    setShowSms(true);
+  }
+
   async function handleSendSms(templateId: string | null, customMessage: string | null, recipients: SmsRecipient[]) {
     try {
       await api.post('/api/v1/notifications/send-sms/', {
@@ -148,21 +164,24 @@ export default function LeadsPage() {
 
   const smsRecipients: SmsRecipient[] = leads.flatMap(l => {
     const sel = phoneSelection[l.id];
+    const vars = smsVariables[l.id] ?? {};
     const recs: SmsRecipient[] = [];
     const base = {
       name: `${l.first_name} ${l.last_name}`,
       type: 'lead' as const,
-      course_name: l.course?.name || '',
-      group_name: '',
-      company_name: '',
-      teacher_name: '',
+      course_name: vars.course_name || l.course?.name || '',
+      group_name: vars.group_name || '',
+      company_name: vars.company_name || '',
+      teacher_name: vars.teacher_name || '',
+      lesson_time: vars.lesson_time || '',
+      room_number: vars.room_number || '',
       amount: '',
       due_date: '',
     };
     if (sel?.phone1 && l.phone)
-      recs.push({ id: `${l.id}_1`, phone: l.phone, ...base });
+      recs.push({ id: l.id, phone: l.phone, ...base });
     if (sel?.phone2 && l.second_phone)
-      recs.push({ id: `${l.id}_2`, phone: l.second_phone, ...base });
+      recs.push({ id: l.id, phone: l.second_phone, ...base });
     return recs;
   });
 
@@ -233,7 +252,7 @@ export default function LeadsPage() {
         <h1 className="text-xl font-bold text-gray-900">Leadlar</h1>
         <div className="flex items-center gap-2">
           {selectedSmsCount > 0 && (
-            <button onClick={() => setShowSms(true)}
+            <button onClick={openSmsModal}
               className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded hover:bg-indigo-700 transition-colors">
               <Send className="w-4 h-4" />
               SMS ({selectedSmsCount})

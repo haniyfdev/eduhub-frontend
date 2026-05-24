@@ -64,7 +64,8 @@ const triggerBadge: Record<string, string> = {
 
 const VARIABLES = [
   ['{student_name}', "O'quvchi to'liq ismi"],
-  ['{amount}', "Qarz/to'lov summasi"],
+  ['{amount}', "To'lov summasi"],
+  ['{balance}', 'Qarz summasi'],
   ['{due_date}', "To'lov muddati"],
   ['{course_name}', 'Kurs nomi'],
   ['{group_name}', 'Guruh nomi (masalan 2B)'],
@@ -78,6 +79,7 @@ const VARIABLES = [
 const SAMPLE_VALUES: Record<string, string> = {
   '{student_name}': 'Jasur Karimov',
   '{amount}': "300,000 so'm",
+  '{balance}': "100,000 so'm",
   '{due_date}': '01/06/2026',
   '{course_name}': 'Ingliz tili',
   '{group_name}': '2B',

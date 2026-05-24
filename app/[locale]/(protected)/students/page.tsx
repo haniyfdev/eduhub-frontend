@@ -157,6 +157,7 @@ async function openSmsModal() {
       name: `${s.first_name} ${s.last_name}`,
       type: 'student' as const,
       amount: vars.amount || '',
+      balance: vars.balance || '',
       due_date: vars.due_date || '',
       course_name: vars.course_name || s.course_name || '',
       group_name: vars.group_name || s.current_group || '',

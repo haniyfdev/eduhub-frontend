@@ -74,15 +74,23 @@ export default function PaymentsPage() {
     });
   }
 
-  async function handleSendSms(items: { phone: string; message: string }[]) {
-    let success = 0;
-    for (const { phone, message } of items) {
-      try {
-        await api.post('/api/v1/notifications/send-sms/', { phone, message });
-        success++;
-      } catch { /* skip */ }
+  async function handleSendSms(templateId: string | null, customMessage: string | null, recipients: SmsRecipient[]) {
+    try {
+      await api.post('/api/v1/notifications/send-sms/', {
+        template_id: templateId,
+        message: customMessage,
+        recipients: recipients.map(r => ({
+          type: r.type,
+          id: r.id,
+          phone: r.phone,
+          amount: r.amount || '',
+          due_date: r.due_date || '',
+        })),
+      });
+      toast.success(`${recipients.length} ta SMS yuborildi`);
+    } catch {
+      toast.error('SMS yuborishda xatolik');
     }
-    toast.success(`${success} ta SMS yuborildi`);
     setSmsSelected(new Set());
   }
 

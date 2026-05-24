@@ -34,7 +34,7 @@ interface SmsModalProps {
   open: boolean;
   onClose: () => void;
   recipients: SmsRecipient[];
-  onSend: (items: { phone: string; message: string }[]) => void;
+  onSend: (templateId: string | null, customMessage: string | null, recipients: SmsRecipient[]) => void;
 }
 
 const SAMPLE: Record<string, string> = {
@@ -53,22 +53,6 @@ function resolvePreview(body: string, first?: SmsRecipient): string {
   return body.replace(/\{(\w+)\}/g, (_, key) => {
     if (key === 'student_name' && first) return first.name;
     return SAMPLE[key] ?? `{${key}}`;
-  });
-}
-
-function resolveMessage(body: string, recipient: SmsRecipient): string {
-  return body.replace(/\{(\w+)\}/g, (_, key) => {
-    const map: Record<string, string> = {
-      student_name: recipient.name || '',
-      amount: recipient.amount || '',
-      due_date: recipient.due_date || '',
-      company_name: recipient.company_name || '',
-      course_name: recipient.course_name || '',
-      group_name: recipient.group_name || '',
-      teacher_name: recipient.teacher_name || '',
-      phone: recipient.phone || '',
-    };
-    return map[key] ?? '';
   });
 }
 
@@ -115,14 +99,18 @@ export function SmsModal({ open, onClose, recipients, onSend }: SmsModalProps) {
   }
 
   function handleSend() {
-    const body = tab === 'template' ? (selected?.body ?? '') : customText;
-    if (!body.trim() || recipients.length === 0) return;
-    if (tab === 'template' && selected && allLeads && FINANCIAL_TRIGGERS.includes(selected.trigger)) {
-      toast.error("Bu shablon leads uchun mos emas");
-      return;
+    if (recipients.length === 0) return;
+    if (tab === 'template') {
+      if (!selected) return;
+      if (allLeads && FINANCIAL_TRIGGERS.includes(selected.trigger)) {
+        toast.error("Bu shablon leads uchun mos emas");
+        return;
+      }
+      onSend(selected.id, null, recipients);
+    } else {
+      if (!customText.trim()) return;
+      onSend(null, customText, recipients);
     }
-    const items = recipients.map(r => ({ phone: r.phone, message: resolveMessage(body, r) }));
-    onSend(items);
     onClose();
   }
 

@@ -204,8 +204,8 @@ export default function DebtsPage() {
     if (!paymentTarget) return;
     const amt = parseAmount(paymentForm.amount);
     const remaining = paymentTarget.amount - (paymentTarget.paid_amount || 0);
-    if (!amt || amt <= 0) { toast.error("Summani kiriting"); return; }
-    if (amt > remaining) { toast.error("To'lov summasi qarzdan oshib ketdi"); return; }
+    if (amt < 10000) { toast.error("Minimal to'lov 10,000 so'm"); return; }
+    if (amt > remaining) { toast.error(`Maksimal to'lov ${formatAmount(String(remaining))} so'm`); return; }
     setPaymentSaving(true);
     try {
       await api.post('/api/v1/payments/', {
@@ -447,6 +447,22 @@ export default function DebtsPage() {
                 autoFocus
                 placeholder="0"
               />
+              {paymentTarget && (() => {
+                const amt = parseAmount(paymentForm.amount);
+                const remaining = paymentTarget.amount - (paymentTarget.paid_amount || 0);
+                const rem = remaining - amt;
+                if (amt < 10000) return null;
+                return (
+                  <p className={cn('text-xs mt-1 font-medium',
+                    rem <= 0 ? 'text-emerald-600' : 'text-orange-500'
+                  )}>
+                    {rem <= 0
+                      ? "✓ To'liq to'lanadi"
+                      : `◑ Qisman — ${formatAmount(String(Math.round(rem)))} so'm qoladi`
+                    }
+                  </p>
+                );
+              })()}
             </div>
 
             <div>

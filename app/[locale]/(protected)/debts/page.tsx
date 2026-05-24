@@ -195,8 +195,8 @@ export default function DebtsPage() {
 
   function openPayment(debt: Debt) {
     setPaymentTarget(debt);
-    const remaining = debt.amount - (debt.paid_amount || 0);
-    setPaymentForm({ amount: formatAmount(String(remaining)), payment_type: 'cash', note: '' });
+    const remaining = Math.abs(Number(debt.amount - (debt.paid_amount || 0)));
+    setPaymentForm({ amount: formatAmount(String(Math.round(remaining))), payment_type: 'cash', note: '' });
   }
 
   async function handlePayment(e: React.FormEvent) {
@@ -204,8 +204,8 @@ export default function DebtsPage() {
     if (!paymentTarget) return;
     const amt = parseAmount(paymentForm.amount);
     const remaining = paymentTarget.amount - (paymentTarget.paid_amount || 0);
-    if (amt < 10000) { toast.error("Minimal to'lov 10,000 so'm"); return; }
-    if (amt > remaining) { toast.error(`Maksimal to'lov ${formatAmount(String(remaining))} so'm`); return; }
+    if (amt < 1000) { toast.error("Minimal to'lov 1,000 so'm"); return; }
+    if (amt > remaining) { toast.error(`Maksimal: ${formatAmount(String(remaining))} so'm`); return; }
     setPaymentSaving(true);
     try {
       await api.post('/api/v1/payments/', {
@@ -441,7 +441,12 @@ export default function DebtsPage() {
                 type="text"
                 inputMode="numeric"
                 value={paymentForm.amount}
-                onChange={(e) => setPaymentForm((f) => ({ ...f, amount: formatAmount(e.target.value) }))}
+                onChange={(e) => {
+                  const val = parseAmount(formatAmount(e.target.value));
+                  const remaining = paymentTarget ? Math.abs(Number(paymentTarget.amount - (paymentTarget.paid_amount || 0))) : Infinity;
+                  if (val > remaining) return;
+                  setPaymentForm((f) => ({ ...f, amount: formatAmount(e.target.value) }));
+                }}
                 className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                 required
                 autoFocus
@@ -451,7 +456,7 @@ export default function DebtsPage() {
                 const amt = parseAmount(paymentForm.amount);
                 const remaining = paymentTarget.amount - (paymentTarget.paid_amount || 0);
                 const rem = remaining - amt;
-                if (amt < 10000) return null;
+                if (amt < 1000) return null;
                 return (
                   <p className={cn('text-xs mt-1 font-medium',
                     rem <= 0 ? 'text-emerald-600' : 'text-orange-500'

@@ -21,6 +21,7 @@ export interface SmsRecipient {
   phone: string;
   type?: 'student' | 'lead';
   amount?: string;
+  balance?: string;
   due_date?: string;
   company_name?: string;
   course_name?: string;
@@ -42,6 +43,7 @@ interface SmsModalProps {
 const SAMPLE: Record<string, string> = {
   student_name: "O'quvchi",
   amount: '500,000',
+  balance: '100,000',
   company_name: "O'quv markaz",
   due_date: '01.06.2026',
   group_name: '1A guruh',
@@ -62,6 +64,7 @@ function resolvePreview(body: string, first?: SmsRecipient): string {
       teacher_name: first.teacher_name || SAMPLE.teacher_name,
       company_name: first.company_name || SAMPLE.company_name,
       amount:       first.amount       || SAMPLE.amount,
+      balance:      first.balance      || SAMPLE.balance,
       due_date:     first.due_date     || SAMPLE.due_date,
       lesson_time:  first.lesson_time  || SAMPLE.lesson_time,
       room_number:  first.room_number  || SAMPLE.room_number,

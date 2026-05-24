@@ -140,8 +140,10 @@ async function openSmsModal() {
     const { data } = await api.post('/api/v1/students/sms-variables/', {
       student_ids: selectedStudentIds,
     });
+    console.log('sms-variables response:', data);
     setSmsVariables(data);
-  } catch {
+  } catch (err) {
+    console.error('sms-variables error:', err);
     setSmsVariables({});
   }
   setShowSmsConfirm(true);

@@ -26,7 +26,6 @@ export interface SmsRecipient {
   course_name?: string;
   group_name?: string;
   teacher_name?: string;
-  balance?: string;
 }
 
 const FINANCIAL_TRIGGERS = ['debt_reminder', 'overdue_debt', 'payment_confirmed'];
@@ -68,7 +67,6 @@ function resolveMessage(body: string, recipient: SmsRecipient): string {
       group_name: recipient.group_name || '',
       teacher_name: recipient.teacher_name || '',
       phone: recipient.phone || '',
-      balance: recipient.balance || '',
     };
     return map[key] ?? '';
   });

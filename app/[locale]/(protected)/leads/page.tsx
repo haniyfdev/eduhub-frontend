@@ -150,7 +150,6 @@ export default function LeadsPage() {
       teacher_name: '',
       amount: '',
       due_date: '',
-      balance: '',
     };
     if (sel?.phone1 && l.phone)
       recs.push({ id: `${l.id}_1`, phone: l.phone, ...base });

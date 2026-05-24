@@ -71,7 +71,6 @@ const VARIABLES = [
   ['{teacher_name}', "O'qituvchi ismi"],
   ['{company_name}', "O'quv markaz nomi"],
   ['{phone}', "O'quvchi telefon raqami"],
-  ['{balance}', 'Qoldiq qarz miqdori'],
   ['{lesson_time}', 'Dars boshlanish vaqti'],
   ['{room_number}', 'Xona raqami'],
 ];
@@ -85,7 +84,6 @@ const SAMPLE_VALUES: Record<string, string> = {
   '{teacher_name}': 'Sardor Azimov',
   '{company_name}': 'EduHub',
   '{phone}': '+998901234567',
-  '{balance}': "150,000 so'm",
   '{lesson_time}': '09:00',
   '{room_number}': '101',
 };

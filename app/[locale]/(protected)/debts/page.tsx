@@ -156,9 +156,9 @@ export default function DebtsPage() {
       group_name: d.group_name || '',
     };
     if (sel?.phone1 && d.student_phone)
-      recs.push({ id: `${d.id}_1`, phone: d.student_phone, ...base });
+      recs.push({ id: d.student, phone: d.student_phone, ...base });
     if (sel?.phone2 && d.student_second_phone)
-      recs.push({ id: `${d.id}_2`, phone: d.student_second_phone, ...base });
+      recs.push({ id: d.student, phone: d.student_second_phone, ...base });
     return recs;
   });
 

@@ -117,13 +117,16 @@ export default function StudentsPage() {
     const recs: SmsRecipient[] = [];
     const base = {
       name: `${s.first_name} ${s.last_name}`,
+      type: 'student' as const,
+      amount: '',
+      due_date: '',
       course_name: s.course_name || '',
       group_name: s.current_group || '',
     };
     if (sel?.phone1 && s.phone)
-      recs.push({ id: `${s.id}_1`, phone: s.phone, ...base });
+      recs.push({ id: s.id, phone: s.phone, ...base });
     if (sel?.phone2 && s.second_phone)
-      recs.push({ id: `${s.id}_2`, phone: s.second_phone, ...base });
+      recs.push({ id: s.id, phone: s.second_phone, ...base });
     return recs;
   });
 

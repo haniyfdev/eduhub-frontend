@@ -88,7 +88,14 @@ export default function PaymentsPage() {
 
   const smsRecipients: SmsRecipient[] = payments
     .filter(p => smsSelected.has(p.id) && !!p.student_phone)
-    .map(p => ({ id: p.id, name: p.student_name, phone: p.student_phone! }));
+    .map(p => ({
+      id: p.id,
+      name: p.student_name,
+      phone: p.student_phone!,
+      type: 'student' as const,
+      amount: String(p.amount || ''),
+      due_date: '',
+    }));
 
   return (
     <div className="space-y-5">

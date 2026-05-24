@@ -174,10 +174,11 @@ export default function AttendancePage() {
 
   const smsRecipients: SmsRecipient[] = rows.flatMap(r => {
     const recs: SmsRecipient[] = [];
+    const base = { id: r.student_id, name: r.student_name, type: 'student' as const, amount: '', due_date: '' };
     if (phoneTargets[r.student_id]?.phone1)
-      recs.push({ id: `${r.student_id}_1`, name: r.student_name, phone: r.phone });
+      recs.push({ ...base, phone: r.phone });
     if (r.second_phone && phoneTargets[r.student_id]?.phone2)
-      recs.push({ id: `${r.student_id}_2`, name: r.student_name, phone: r.second_phone });
+      recs.push({ ...base, phone: r.second_phone });
     return recs;
   });
 

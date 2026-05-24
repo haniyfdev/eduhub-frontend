@@ -110,26 +110,58 @@ export default function StudentsPage() {
           type: r.type,
           id: r.id,
           phone: r.phone,
+          student_name: r.name,
           amount: r.amount || '',
           due_date: r.due_date || '',
+          course_name: r.course_name || '',
+          group_name: r.group_name || '',
+          teacher_name: r.teacher_name || '',
+          company_name: r.company_name || '',
+          lesson_time: r.lesson_time || '',
+          room_number: r.room_number || '',
         })),
       });
+
       toast.success(`${recipients.length} ta SMS yuborildi`);
     } catch {
       toast.error('SMS yuborishda xatolik');
     }
   }
 
+const selectedStudentIds = students
+  .filter(s => phoneSelection[s.id]?.phone1 || phoneSelection[s.id]?.phone2)
+  .map(s => s.id);
+
+const [smsVariables, setSmsVariables] = useState<Record<string, Record<string, string>>>({});
+
+async function openSmsModal() {
+  if (selectedStudentIds.length === 0) return;
+  try {
+    const { data } = await api.post('/api/v1/students/sms-variables/', {
+      student_ids: selectedStudentIds,
+    });
+    setSmsVariables(data);
+  } catch {
+    setSmsVariables({});
+  }
+  setShowSmsConfirm(true);
+}
+
   const smsRecipients: SmsRecipient[] = students.flatMap(s => {
     const sel = phoneSelection[s.id];
+    const vars = smsVariables[s.id] ?? {};
     const recs: SmsRecipient[] = [];
     const base = {
       name: `${s.first_name} ${s.last_name}`,
       type: 'student' as const,
-      amount: '',
-      due_date: '',
-      course_name: s.course_name || '',
-      group_name: s.current_group || '',
+      amount: vars.amount || '',
+      due_date: vars.due_date || '',
+      course_name: vars.course_name || s.course_name || '',
+      group_name: vars.group_name || s.current_group || '',
+      teacher_name: vars.teacher_name || '',
+      company_name: vars.company_name || '',
+      lesson_time: vars.lesson_time || '',
+      room_number: vars.room_number || '',
     };
     if (sel?.phone1 && s.phone)
       recs.push({ id: s.id, phone: s.phone, ...base });
@@ -171,7 +203,7 @@ export default function StudentsPage() {
         <h1 className="text-xl font-bold text-gray-900">O&apos;quvchilar</h1>
         {selectedSmsCount > 0 && (
           <button
-            onClick={() => setShowSmsConfirm(true)}
+            onClick={openSmsModal}
             className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded hover:bg-indigo-700 transition-colors"
           >
             <Send className="w-4 h-4" />

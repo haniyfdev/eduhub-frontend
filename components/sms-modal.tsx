@@ -26,6 +26,8 @@ export interface SmsRecipient {
   course_name?: string;
   group_name?: string;
   teacher_name?: string;
+  lesson_time?: string;
+  room_number?: string;
 }
 
 const FINANCIAL_TRIGGERS = ['debt_reminder', 'overdue_debt', 'payment_confirmed'];
@@ -51,8 +53,20 @@ const SAMPLE: Record<string, string> = {
 
 function resolvePreview(body: string, first?: SmsRecipient): string {
   return body.replace(/\{(\w+)\}/g, (_, key) => {
-    if (key === 'student_name' && first) return first.name;
-    return SAMPLE[key] ?? `{${key}}`;
+    if (!first) return SAMPLE[key] ?? `{${key}}`;
+    const map: Record<string, string> = {
+      student_name: first.name,
+      phone:        first.phone,
+      course_name:  first.course_name || SAMPLE.course_name,
+      group_name:   first.group_name  || SAMPLE.group_name,
+      teacher_name: first.teacher_name || SAMPLE.teacher_name,
+      company_name: first.company_name || SAMPLE.company_name,
+      amount:       first.amount       || SAMPLE.amount,
+      due_date:     first.due_date     || SAMPLE.due_date,
+      lesson_time:  first.lesson_time  || SAMPLE.lesson_time,
+      room_number:  first.room_number  || SAMPLE.room_number,
+    };
+    return map[key] ?? `{${key}}`;
   });
 }
 

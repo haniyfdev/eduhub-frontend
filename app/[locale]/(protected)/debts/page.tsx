@@ -173,7 +173,6 @@ export default function DebtsPage() {
     const sel = phoneSelection[d.id];
     const vars = smsVariables[d.student] ?? {};
     const recs: SmsRecipient[] = [];
-    const remaining = d.amount - (d.paid_amount || 0);
     const base = {
       name: d.student_name,
       type: 'student' as const,

@@ -172,7 +172,9 @@ export default function RoomsPage() {
 
   const normalizeDay = (d: string) => DAY_ALIASES[d.trim()] ?? d.trim();
   const groupsForDay = (room: RoomData, dayKey: string) =>
-    room.groups.filter(g => g.days.map(normalizeDay).includes(dayKey));
+    room.groups
+      .filter(g => g.days.map(normalizeDay).includes(dayKey))
+      .sort((a, b) => (a.start_time ?? '').localeCompare(b.start_time ?? ''));
   const courseColor = (course: string | null) => PALETTE[hashIdx(course || '')];
 
   const allCourses = useMemo(() =>
@@ -180,7 +182,9 @@ export default function RoomsPage() {
   [rooms]);
 
   const allGroups = useMemo(() =>
-    rooms.flatMap(r => r.groups.map(g => ({ ...g, room: r.room }))),
+    rooms
+      .flatMap(r => r.groups.map(g => ({ ...g, room: r.room })))
+      .sort((a, b) => (a.start_time ?? '').localeCompare(b.start_time ?? '')),
   [rooms]);
 
   const handleAddRoom = () => {

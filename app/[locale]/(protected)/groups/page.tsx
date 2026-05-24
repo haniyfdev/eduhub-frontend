@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { useLocale } from 'next-intl';
 import { Plus, Search, Minus, Snowflake, Play } from 'lucide-react';
@@ -30,6 +30,7 @@ interface Group {
 
 interface Course { id: string; name: string; }
 interface Teacher { id: string; first_name: string; last_name: string; }
+interface Room { id: string; name: number; gender_type: string | null; capacity: number | null; }
 
 const DAYS = [
   { key: 'Du', label: 'Du' },
@@ -43,7 +44,7 @@ const DAYS = [
 
 const EMPTY_FORM = {
   course_id: '', teacher_id: '', gender_type: '',
-  days: [] as string[], start_time: '', end_time: '', room: '',
+  days: [] as string[], start_time: '', end_time: '', room_id: '',
 };
 
 function buildSchedule(days: string[]): string {
@@ -78,6 +79,7 @@ export default function GroupsPage() {
   const [groups, setGroups] = useState<Group[]>([]);
   const [courses, setCourses] = useState<Course[]>([]);
   const [teachers, setTeachers] = useState<Teacher[]>([]);
+  const [rooms, setRooms] = useState<Room[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const [search, setSearch] = useState('');
@@ -118,6 +120,7 @@ export default function GroupsPage() {
   useEffect(() => {
     api.get<PaginatedResponse<Course>>('/api/v1/courses/?status=active&page_size=100').then(({ data }) => setCourses(data.results ?? [])).catch(() => {});
     api.get<PaginatedResponse<Teacher>>('/api/v1/teachers/?status=active&page_size=100').then(({ data }) => setTeachers(data.results ?? [])).catch(() => {});
+    api.get('/api/v1/rooms/?status=active').then(({ data }) => setRooms(Array.isArray(data) ? data : (data?.results ?? []))).catch(() => {});
   }, []);
 
   function toggleDay(day: string) {
@@ -129,8 +132,6 @@ export default function GroupsPage() {
 
   async function handleAdd(e: React.FormEvent) {
     e.preventDefault();
-
-    if (!form.room) { toast.error('Xona kiritilishi shart'); return; }
 
     const startErr = validateTime(form.start_time, 'Boshlanish vaqti');
     if (startErr) { toast.error(startErr); return; }
@@ -151,7 +152,7 @@ export default function GroupsPage() {
         ...(schedule ? { schedule } : {}),
         ...(form.start_time ? { start_time: form.start_time } : {}),
         ...(form.end_time ? { end_time: form.end_time } : {}),
-        room: form.room,
+        ...(form.room_id ? { room_id: form.room_id } : {}),
       });
       toast.success("Guruh muvaffaqiyatli qo'shildi");
       setShowAdd(false);
@@ -530,14 +531,21 @@ export default function GroupsPage() {
             )}
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Xona <span className="text-red-500">*</span></label>
-              <input
-                type="text"
-                value={form.room}
-                onChange={(e) => setForm((f) => ({ ...f, room: e.target.value }))}
-                required
-                className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
+              <label className="block text-sm font-medium text-gray-700 mb-1">Xona</label>
+              <select
+                value={form.room_id}
+                onChange={(e) => setForm((f) => ({ ...f, room_id: e.target.value }))}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="">Xona tanlang (ixtiyoriy)</option>
+                {rooms.map((r) => (
+                  <option key={r.id} value={r.id}>
+                    {r.name}-xona
+                    {r.gender_type ? ` (${r.gender_type.toUpperCase()})` : ''}
+                    {r.capacity ? ` — ${r.capacity} o'rin` : ''}
+                  </option>
+                ))}
+              </select>
             </div>
 
             <div className="flex gap-3 pt-2">

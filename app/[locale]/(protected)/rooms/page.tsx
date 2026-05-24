@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useCallback, useMemo } from 'react';
+import { useEffect, useState, useCallback, useMemo, useRef } from 'react';
 import { DoorOpen, Calendar, List, Snowflake, Plus } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import toast from 'react-hot-toast';
@@ -112,6 +112,9 @@ export default function RoomsPage() {
   const [showConfirm, setShowConfirm] = useState(false);
   const [nextNumber,  setNextNumber]  = useState(1);
   const [adding,      setAdding]      = useState(false);
+  const [roomForm,    setRoomForm]    = useState({ floor: '', capacity: '', gender_type: '' });
+  const capacityRef = useRef<HTMLInputElement>(null);
+  const genderRef   = useRef<HTMLSelectElement>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -185,13 +188,19 @@ export default function RoomsPage() {
       ? Math.max(...roomList.map(r => r.name)) + 1
       : 1;
     setNextNumber(next);
+    setRoomForm({ floor: '', capacity: '', gender_type: '' });
     setShowConfirm(true);
   };
 
   const handleConfirm = async () => {
     setAdding(true);
     try {
-      await api.post('/api/v1/rooms/', { name: nextNumber });
+      await api.post('/api/v1/rooms/', {
+        name: nextNumber,
+        floor: roomForm.floor ? Number(roomForm.floor) : null,
+        capacity: roomForm.capacity ? Number(roomForm.capacity) : null,
+        gender_type: roomForm.gender_type || null,
+      });
       toast.success(`${nextNumber}-xona qo'shildi`);
       setShowConfirm(false);
       load();
@@ -224,28 +233,67 @@ export default function RoomsPage() {
   return (
     <div className="p-6 space-y-5">
 
-      {/* ── Confirmation Dialog ── */}
+      {/* ── Add Room Modal ── */}
       {showConfirm && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-          <div className="bg-white rounded-xl p-6 shadow-xl w-full max-w-sm mx-4">
-            <h3 className="text-lg font-bold text-gray-900 mb-2">Yangi xona qo&apos;shish</h3>
-            <p className="text-gray-600 text-sm mb-5">
-              {nextNumber}-xonani qo&apos;shishni tasdiqlaysizmi?
-            </p>
-            <div className="flex gap-3">
+          <div className="bg-white rounded-xl p-6 shadow-xl w-full max-w-sm mx-4 space-y-4">
+            <h3 className="text-lg font-bold text-gray-900">{nextNumber}-xona qo&apos;shiladi</h3>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Qavat</label>
+              <input
+                type="number"
+                placeholder="Qavat raqami"
+                value={roomForm.floor}
+                onChange={e => setRoomForm(f => ({ ...f, floor: e.target.value }))}
+                onKeyDown={e => { if (e.key === 'Enter') capacityRef.current?.focus(); }}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Sig&apos;im</label>
+              <input
+                ref={capacityRef}
+                type="number"
+                placeholder="O'rindiqlar soni"
+                value={roomForm.capacity}
+                onChange={e => setRoomForm(f => ({ ...f, capacity: e.target.value }))}
+                onKeyDown={e => { if (e.key === 'Enter') genderRef.current?.focus(); }}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Tur</label>
+              <select
+                ref={genderRef}
+                value={roomForm.gender_type}
+                onChange={e => setRoomForm(f => ({ ...f, gender_type: e.target.value }))}
+                onKeyDown={e => { if (e.key === 'Enter') handleConfirm(); }}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="">Tanlang (ixtiyoriy)</option>
+                <option value="a">Bolalar (A)</option>
+                <option value="b">Qizlar (B)</option>
+                <option value="c">Aralash (C)</option>
+              </select>
+            </div>
+
+            <div className="flex gap-3 pt-1">
               <button
                 onClick={() => setShowConfirm(false)}
                 disabled={adding}
-                className="flex-1 px-4 py-2 border border-gray-300 text-sm font-medium rounded hover:bg-gray-50 disabled:opacity-60"
+                className="flex-1 px-4 py-2 border border-gray-300 text-sm font-medium rounded-lg hover:bg-gray-50 disabled:opacity-60"
               >
                 Bekor qilish
               </button>
               <button
                 onClick={handleConfirm}
                 disabled={adding}
-                className="flex-1 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded hover:bg-blue-700 disabled:opacity-60"
+                className="flex-1 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 disabled:opacity-60"
               >
-                {adding ? "Qoʻshilmoqda..." : "Ha, qoʻshish"}
+                {adding ? "Saqlanmoqda..." : "Saqlash"}
               </button>
             </div>
           </div>

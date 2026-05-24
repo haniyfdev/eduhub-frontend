@@ -137,7 +137,7 @@ const [smsVariables, setSmsVariables] = useState<Record<string, Record<string, s
 async function openSmsModal() {
   if (selectedStudentIds.length === 0) return;
   try {
-    const { data } = await api.post('/api/v1/students/sms-variables/', {
+    const { data } = await api.post('/api/v1/sms-variables/', {
       student_ids: selectedStudentIds,
     });
     console.log('sms-variables response:', data);

@@ -7,7 +7,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import api from '@/lib/axios';
 import { getUser } from '@/lib/auth';
-import { cn, formatCurrency } from '@/lib/utils';
+import { cn } from '@/lib/utils';
 import { User } from '@/types';
 
 interface CompanyInfo {
@@ -33,7 +33,7 @@ interface SmsTemplate {
   created_at: string;
 }
 
-type Tab = 'company' | 'sms' | 'discounts';
+type Tab = 'company' | 'sms';
 
 const TRIGGER_CHOICES = [
   ['debt_reminder', 'Qarzdorlik eslatmasi'],
@@ -286,7 +286,6 @@ export default function SettingsPage() {
   const tabs: Array<{ key: Tab; label: string; show: boolean }> = [
     { key: 'company', label: 'Kompaniya', show: canEditCompany },
     { key: 'sms', label: 'SMS shablonlar', show: canEditCompany },
-    { key: 'discounts', label: 'Chegirmalar', show: true },
   ];
 
   const visibleTabs = tabs.filter((t) => t.show);
@@ -316,9 +315,9 @@ export default function SettingsPage() {
 
       {/* Company settings tab */}
       {tab === 'company' && canEditCompany && (
-        <div className="space-y-5">
+        <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
           {user?.company_id && (
-            <div className="bg-white rounded border border-gray-200 shadow-sm p-6 max-w-xl">
+            <div className="bg-white rounded border border-gray-200 shadow-sm p-6">
               <h2 className="text-sm font-semibold text-gray-900 mb-4">Kompaniya ma&apos;lumotlari</h2>
               <div className="flex items-center gap-5 mb-5">
                 <div className="relative flex-shrink-0">
@@ -362,7 +361,7 @@ export default function SettingsPage() {
             </div>
           )}
 
-          <div className="bg-white rounded border border-gray-200 shadow-sm p-6 max-w-xl">
+          <div className="bg-white rounded border border-gray-200 shadow-sm p-6">
             <h2 className="text-sm font-semibold text-gray-900 mb-4">Kompaniya sozlamalari</h2>
             {loadingSettings ? (
               <div className="space-y-4">{Array(3).fill(0).map((_, i) => <Skeleton key={i} className="h-10 w-full" />)}</div>
@@ -515,11 +514,6 @@ export default function SettingsPage() {
         </div>
       )}
 
-      {/* Discounts tab */}
-      {(tab === 'discounts' || !canEditCompany) && (
-        <DiscountsTab />
-      )}
-
       {/* Add / Edit modal */}
       <Dialog open={showModal} onOpenChange={(open) => { if (!open) setShowModal(false); }}>
         <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
@@ -635,59 +629,3 @@ export default function SettingsPage() {
   );
 }
 
-function DiscountsTab() {
-  interface Discount {
-    id: string;
-    student: { id: string; first_name: string; last_name: string };
-    amount: number;
-    description: string;
-    valid_until: string | null;
-  }
-
-  const [discounts, setDiscounts] = useState<Discount[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    api.get<{ results: Discount[] }>('/api/v1/discounts/')
-      .then(({ data }) => setDiscounts(data.results ?? []))
-      .catch(() => {})
-      .finally(() => setLoading(false));
-  }, []);
-
-  return (
-    <div className="bg-white rounded border border-gray-200 shadow-sm overflow-hidden">
-      <div className="px-5 py-4 border-b border-gray-100">
-        <h2 className="text-sm font-semibold text-gray-900">Chegirmalar</h2>
-      </div>
-      {loading ? (
-        <div className="p-5 space-y-3">{Array(4).fill(0).map((_, i) => <Skeleton key={i} className="h-10 w-full" />)}</div>
-      ) : discounts.length === 0 ? (
-        <div className="px-5 py-10 text-center text-gray-400 text-sm">Chegirmalar topilmadi</div>
-      ) : (
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="bg-gray-50 border-b border-gray-200">
-              {["O'quvchi", 'Summa', 'Sabab', 'Amal qilish muddati'].map((h) => (
-                <th key={h} className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">{h}</th>
-              ))}
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-gray-100">
-            {discounts.map((d) => (
-              <tr key={d.id} className="hover:bg-gray-50">
-                <td className="px-4 py-3 font-medium text-gray-900">
-                  {d.student?.first_name} {d.student?.last_name}
-                </td>
-                <td className="px-4 py-3 text-green-600 font-medium">{formatCurrency(d.amount)}</td>
-                <td className="px-4 py-3 text-gray-600">{d.description || '—'}</td>
-                <td className="px-4 py-3 text-gray-500">
-                  {d.valid_until ? new Date(d.valid_until).toLocaleDateString('uz-UZ') : 'Cheksiz'}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      )}
-    </div>
-  );
-}

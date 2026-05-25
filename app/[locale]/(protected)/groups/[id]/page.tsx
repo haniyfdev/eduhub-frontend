@@ -21,7 +21,9 @@ interface GroupDetail {
   teacher: { id: string; first_name: string; last_name: string };
   students_count: number;
   schedule: string;
-  room: string;
+  room_name?: string | null;
+  start_time?: string | null;
+  end_time?: string | null;
   status: 'active' | 'archived' | 'frozen';
   created_at: string;
   students?: Student[];
@@ -315,7 +317,7 @@ export default function GroupDetailPage() {
               {group.course?.name}
               {group.teacher && <> &middot; {group.teacher.first_name} {group.teacher.last_name}</>}
               {group.schedule && <> &middot; {group.schedule}</>}
-              {group.room && <> &middot; {group.room}</>}
+              {group.room_name && <> &middot; {group.room_name}</>}
             </p>
           </div>
         </div>
@@ -574,7 +576,9 @@ export default function GroupDetailPage() {
               { label: "O'qituvchi", value: group.teacher ? `${group.teacher.first_name} ${group.teacher.last_name}` : null },
               { label: 'Guruh turi', value: GENDER_LABELS[group.gender_type] },
               { label: 'Dars jadvali', value: group.schedule },
-              { label: 'Xona', value: group.room },
+              { label: 'Xona', value: group.room_name || null },
+              { label: 'Dars boshlanish', value: group.start_time || null },
+              { label: 'Dars tugash', value: group.end_time || null },
               { label: "O'quvchilar soni", value: String(students.length) },
               { label: 'Holat', value: group.status === 'active' ? 'Faol' : 'Arxivlangan' },
               { label: 'Yaratilgan sana', value: formatDMY(group.created_at) },

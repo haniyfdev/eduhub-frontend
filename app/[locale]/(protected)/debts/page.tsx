@@ -34,10 +34,12 @@ interface PaymentForm {
   note: string;
 }
 
-function rowBg(debtStatus: Debt['status'], studentStatus: string): string {
+function rowBg(debtStatus: Debt['status'], studentStatus: string, dueDate: string): string {
   if (studentStatus === 'frozen') return 'bg-[#F0F9FF]';
+  const isOverdue = debtStatus === 'overdue' || 
+    (debtStatus !== 'paid' && dueDate && new Date(dueDate) < new Date());
+  if (isOverdue) return 'bg-red-100';
   switch (debtStatus) {
-    case 'overdue':  return 'bg-red-100';
     case 'unpaid':   return 'bg-yellow-100';
     case 'partial':  return 'bg-yellow-50';
     default:         return '';
@@ -313,7 +315,7 @@ export default function DebtsPage() {
                     const sel = phoneSelection[d.id] ?? { phone1: false, phone2: false };
                     const canSms = d.status !== 'paid';
                     return (
-                      <tr key={d.id} className={cn('transition-colors hover:brightness-95', rowBg(d.status, d.student_status))}>
+                      <tr key={d.id} className={cn('transition-colors hover:brightness-95', rowBg(d.status, d.student_status, d.due_date))}>
                         <td className="px-4 py-3 text-gray-500">{(page - 1) * pageSize + idx + 1}</td>
                         <td className="px-4 py-3 font-medium text-gray-900">
                           <span className="flex items-center gap-2 flex-wrap">

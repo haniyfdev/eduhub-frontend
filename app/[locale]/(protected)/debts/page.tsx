@@ -194,8 +194,9 @@ export default function DebtsPage() {
   });
 
   function openPayment(debt: Debt) {
+    console.log('debt object:', debt);
     setPaymentTarget(debt);
-    const remaining = Math.abs(Number(debt.amount - (debt.paid_amount || 0)));
+    const remaining = Math.abs(Number(debt.amount));
     setPaymentForm({ amount: formatAmount(String(Math.round(remaining))), payment_type: 'cash', note: '' });
   }
 
@@ -203,9 +204,9 @@ export default function DebtsPage() {
     e.preventDefault();
     if (!paymentTarget) return;
     const amt = parseAmount(paymentForm.amount);
-    const remaining = paymentTarget.amount - (paymentTarget.paid_amount || 0);
+    const remaining = Math.abs(Number(paymentTarget.amount));
     if (amt < 1000) { toast.error("Minimal to'lov 1,000 so'm"); return; }
-    if (amt > remaining) { toast.error(`Maksimal: ${formatAmount(String(remaining))} so'm`); return; }
+    if (amt > remaining) { toast.error(`Maksimal: ${formatAmount(String(Math.round(remaining)))} so'm`); return; }
     setPaymentSaving(true);
     try {
       await api.post('/api/v1/payments/', {
@@ -433,7 +434,7 @@ export default function DebtsPage() {
                 Summa (so&apos;m)
                 {paymentTarget && (
                   <span className="ml-2 text-xs text-gray-400 font-normal">
-                    Maksimal: {formatCurrency(paymentTarget.amount - (paymentTarget.paid_amount || 0))}
+                    Maksimal: {formatCurrency(Math.abs(Number(paymentTarget.amount)))}
                   </span>
                 )}
               </label>
@@ -443,7 +444,7 @@ export default function DebtsPage() {
                 value={paymentForm.amount}
                 onChange={(e) => {
                   const val = parseAmount(formatAmount(e.target.value));
-                  const remaining = paymentTarget ? Math.abs(Number(paymentTarget.amount - (paymentTarget.paid_amount || 0))) : Infinity;
+                  const remaining = paymentTarget ? Math.abs(Number(paymentTarget.amount)) : Infinity;
                   if (val > remaining) return;
                   setPaymentForm((f) => ({ ...f, amount: formatAmount(e.target.value) }));
                 }}
@@ -454,7 +455,7 @@ export default function DebtsPage() {
               />
               {paymentTarget && (() => {
                 const amt = parseAmount(paymentForm.amount);
-                const remaining = paymentTarget.amount - (paymentTarget.paid_amount || 0);
+                const remaining = Math.abs(Number(paymentTarget.amount));
                 const rem = remaining - amt;
                 if (amt < 1000) return null;
                 return (

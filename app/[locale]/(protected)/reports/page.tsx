@@ -422,9 +422,9 @@ export default function ReportsPage() {
                     <Pie data={courseIncome} dataKey="amount" nameKey="course"
                       cx="50%" cy="50%" outerRadius={110} innerRadius={0}
                       activeIndex={activePie1}
-                      activeShape={(props: Record<string, unknown>) => {
-                        const { cx, cy, innerRadius, outerRadius, startAngle, endAngle, fill } = props;
-                        return <Sector cx={cx as number} cy={cy as number} innerRadius={innerRadius as number} outerRadius={(outerRadius as number) + 8} startAngle={startAngle as number} endAngle={endAngle as number} fill={fill as string} />;
+                      activeShape={(props) => {
+                        const { cx = 0, cy = 0, innerRadius = 0, outerRadius = 0, startAngle = 0, endAngle = 0, fill = '' } = props;
+                        return <Sector cx={cx} cy={cy} innerRadius={innerRadius} outerRadius={outerRadius + 8} startAngle={startAngle} endAngle={endAngle} fill={fill} />;
                       }}
                       onMouseEnter={(_, index) => setActivePie1(index)}
                       onMouseLeave={() => setActivePie1(undefined)}>
@@ -512,9 +512,9 @@ export default function ReportsPage() {
                     <Pie data={referral.data} dataKey="count" nameKey="label"
                       cx="50%" cy="50%" outerRadius={110} innerRadius={50}
                       activeIndex={activePie2}
-                      activeShape={(props: Record<string, unknown>) => {
-                        const { cx, cy, innerRadius, outerRadius, startAngle, endAngle, fill } = props;
-                        return <Sector cx={cx as number} cy={cy as number} innerRadius={innerRadius as number} outerRadius={(outerRadius as number) + 8} startAngle={startAngle as number} endAngle={endAngle as number} fill={fill as string} />;
+                      activeShape={(props) => {
+                        const { cx = 0, cy = 0, innerRadius = 0, outerRadius = 0, startAngle = 0, endAngle = 0, fill = '' } = props;
+                        return <Sector cx={cx} cy={cy} innerRadius={innerRadius} outerRadius={outerRadius + 8} startAngle={startAngle} endAngle={endAngle} fill={fill} />;
                       }}
                       onMouseEnter={(_, index) => setActivePie2(index)}
                       onMouseLeave={() => setActivePie2(undefined)}>
@@ -559,9 +559,9 @@ export default function ReportsPage() {
                     <Pie data={expBreakdown} dataKey="value" nameKey="name"
                       cx="50%" cy="50%" outerRadius={110} innerRadius={50}
                       activeIndex={activePie3}
-                      activeShape={(props: Record<string, unknown>) => {
-                        const { cx, cy, innerRadius, outerRadius, startAngle, endAngle, fill } = props;
-                        return <Sector cx={cx as number} cy={cy as number} innerRadius={innerRadius as number} outerRadius={(outerRadius as number) + 8} startAngle={startAngle as number} endAngle={endAngle as number} fill={fill as string} />;
+                      activeShape={(props) => {
+                        const { cx = 0, cy = 0, innerRadius = 0, outerRadius = 0, startAngle = 0, endAngle = 0, fill = '' } = props;
+                        return <Sector cx={cx} cy={cy} innerRadius={innerRadius} outerRadius={outerRadius + 8} startAngle={startAngle} endAngle={endAngle} fill={fill} />;
                       }}
                       onMouseEnter={(_, index) => setActivePie3(index)}
                       onMouseLeave={() => setActivePie3(undefined)}>

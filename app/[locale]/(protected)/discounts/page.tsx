@@ -50,7 +50,7 @@ export default function DiscountsPage() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [tc]);
 
   useEffect(() => { fetchDiscounts(); }, [fetchDiscounts]);
 

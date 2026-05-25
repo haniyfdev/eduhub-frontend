@@ -85,7 +85,6 @@ const STATUS_LABEL: Record<string, string> = {
 
 export default function AttendancePage() {
   const t = useTranslations('attendance');
-  const common = useTranslations('common');
   const [rows, setRows]         = useState<AttendanceSummaryRow[]>([]);
   const [loading, setLoading]   = useState(true);
   const [search, setSearch]     = useState('');

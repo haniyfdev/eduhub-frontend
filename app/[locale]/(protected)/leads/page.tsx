@@ -105,7 +105,7 @@ export default function LeadsPage() {
     } finally {
       setLoading(false);
     }
-  }, [page, pageSize, search, statusFilter, courseFilter]);
+  }, [page, pageSize, search, statusFilter, courseFilter, tc]);
 
   useEffect(() => { fetchLeads(); }, [fetchLeads]);
   useEffect(() => { setPage(1); }, [search, statusFilter, courseFilter]);

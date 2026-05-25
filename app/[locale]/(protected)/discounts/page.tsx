@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
-import { Trash2 } from 'lucide-react';
+import { Minus } from 'lucide-react';
 import toast, { Toaster } from 'react-hot-toast';
 import { Skeleton } from '@/components/ui/skeleton';
 import api from '@/lib/axios';
@@ -122,9 +122,10 @@ export default function DiscountsPage() {
                           <button
                             onClick={() => handleDelete(d.id)}
                             disabled={deletingId === d.id}
-                            className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded transition-colors disabled:opacity-40"
+                            className="p-1 rounded text-red-400 hover:bg-red-50 hover:text-red-600 transition-colors disabled:opacity-40"
+                            title="Arxivlash"
                           >
-                            <Trash2 className="w-4 h-4" />
+                            <Minus className="w-4 h-4" />
                           </button>
                         </td>
                       </tr>

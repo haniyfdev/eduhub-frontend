@@ -5,6 +5,8 @@ import {
   AreaChart, Area, PieChart, Pie, Cell, Sector,
   XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
 } from 'recharts';
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const AnimatedPie = Pie as React.ComponentType<any>;
 import {
   TrendingUp, TrendingDown, DollarSign, AlertTriangle,
   Users, GraduationCap, Users2, Lightbulb, AlertCircle,
@@ -419,19 +421,19 @@ export default function ReportsPage() {
               <div className="shrink-0" style={{ width: 240, height: 260 }}>
                 <ResponsiveContainer width="100%" height="100%">
                   <PieChart>
-                    <Pie data={courseIncome} dataKey="amount" nameKey="course"
+                    <AnimatedPie data={courseIncome} dataKey="amount" nameKey="course"
                       cx="50%" cy="50%" outerRadius={110} innerRadius={0}
                       activeIndex={activePie1}
-                      activeShape={(props) => {
+                      activeShape={(props: { cx: number; cy: number; innerRadius: number; outerRadius: number; startAngle: number; endAngle: number; fill: string }) => {
                         const { cx = 0, cy = 0, innerRadius = 0, outerRadius = 0, startAngle = 0, endAngle = 0, fill = '' } = props;
                         return <Sector cx={cx} cy={cy} innerRadius={innerRadius} outerRadius={outerRadius + 8} startAngle={startAngle} endAngle={endAngle} fill={fill} />;
                       }}
-                      onMouseEnter={(_, index) => setActivePie1(index)}
+                      onMouseEnter={(_: unknown, index: number) => setActivePie1(index)}
                       onMouseLeave={() => setActivePie1(undefined)}>
                       {courseIncome.map((_, i) => (
                         <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />
                       ))}
-                    </Pie>
+                    </AnimatedPie>
                     <Tooltip contentStyle={{ border: '1px solid #E5E7EB', borderRadius: 8, fontSize: 12 }}
                       formatter={(v: unknown) => formatCurrency(Number(v))} />
                   </PieChart>
@@ -509,19 +511,19 @@ export default function ReportsPage() {
               <div className="shrink-0" style={{ width: 240, height: 240 }}>
                 <ResponsiveContainer width="100%" height="100%">
                   <PieChart>
-                    <Pie data={referral.data} dataKey="count" nameKey="label"
+                    <AnimatedPie data={referral.data} dataKey="count" nameKey="label"
                       cx="50%" cy="50%" outerRadius={110} innerRadius={50}
                       activeIndex={activePie2}
-                      activeShape={(props) => {
+                      activeShape={(props: { cx: number; cy: number; innerRadius: number; outerRadius: number; startAngle: number; endAngle: number; fill: string }) => {
                         const { cx = 0, cy = 0, innerRadius = 0, outerRadius = 0, startAngle = 0, endAngle = 0, fill = '' } = props;
                         return <Sector cx={cx} cy={cy} innerRadius={innerRadius} outerRadius={outerRadius + 8} startAngle={startAngle} endAngle={endAngle} fill={fill} />;
                       }}
-                      onMouseEnter={(_, index) => setActivePie2(index)}
+                      onMouseEnter={(_: unknown, index: number) => setActivePie2(index)}
                       onMouseLeave={() => setActivePie2(undefined)}>
                       {referral.data.map((item, i) => (
                         <Cell key={i} fill={REFERRAL_COLORS[item.source] ?? '#6B7280'} />
                       ))}
-                    </Pie>
+                    </AnimatedPie>
                     <Tooltip
                       contentStyle={{ border: '1px solid #E5E7EB', borderRadius: 8, fontSize: 12 }}
                       formatter={(_v: unknown, _n: unknown, props: { payload?: ReferralItem }) => [
@@ -556,19 +558,19 @@ export default function ReportsPage() {
               <div className="shrink-0" style={{ width: 240, height: 240 }}>
                 <ResponsiveContainer width="100%" height="100%">
                   <PieChart>
-                    <Pie data={expBreakdown} dataKey="value" nameKey="name"
+                    <AnimatedPie data={expBreakdown} dataKey="value" nameKey="name"
                       cx="50%" cy="50%" outerRadius={110} innerRadius={50}
                       activeIndex={activePie3}
-                      activeShape={(props) => {
+                      activeShape={(props: { cx: number; cy: number; innerRadius: number; outerRadius: number; startAngle: number; endAngle: number; fill: string }) => {
                         const { cx = 0, cy = 0, innerRadius = 0, outerRadius = 0, startAngle = 0, endAngle = 0, fill = '' } = props;
                         return <Sector cx={cx} cy={cy} innerRadius={innerRadius} outerRadius={outerRadius + 8} startAngle={startAngle} endAngle={endAngle} fill={fill} />;
                       }}
-                      onMouseEnter={(_, index) => setActivePie3(index)}
+                      onMouseEnter={(_: unknown, index: number) => setActivePie3(index)}
                       onMouseLeave={() => setActivePie3(undefined)}>
                       {expBreakdown.map((item, i) => (
                         <Cell key={i} fill={EXPENSE_PIE_COLORS[item.key] ?? '#6B7280'} />
                       ))}
-                    </Pie>
+                    </AnimatedPie>
                     <Tooltip
                       contentStyle={{ border: '1px solid #E5E7EB', borderRadius: 8, fontSize: 12 }}
                       formatter={(v: unknown, _n: unknown, props: { payload?: { key: string; name: string; value: number } }) => [

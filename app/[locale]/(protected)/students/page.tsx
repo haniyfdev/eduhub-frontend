@@ -80,7 +80,7 @@ export default function StudentsPage() {
     } finally {
       setLoading(false);
     }
-  }, [page, pageSize, search, statusFilter, courseFilter]);
+  }, [page, pageSize, search, statusFilter, courseFilter, tc]);
 
   useEffect(() => { fetchStudents(); }, [fetchStudents]);
   useEffect(() => { setPage(1); }, [search, statusFilter, courseFilter]);

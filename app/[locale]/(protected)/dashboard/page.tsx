@@ -6,7 +6,7 @@ import {
   Users2, UserPlus, TrendingUp, ArrowRight,
 } from 'lucide-react';
 import Link from 'next/link';
-import { useLocale } from 'next-intl';
+import { useLocale, useTranslations } from 'next-intl';
 import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
 } from 'recharts';
@@ -163,6 +163,8 @@ function FunnelWidget({ locale }: { locale: string }) {
 
 export default function DashboardPage() {
   const locale = useLocale();
+  const t = useTranslations('dashboard');
+  const tc = useTranslations('common');
 
   const [data, setData] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -340,11 +342,11 @@ export default function DashboardPage() {
   const d = data ? resolve(data) : null;
 
   const stats = d ? [
-    { label: 'Faol o\'quvchilar', value: d.students, icon: Users },
-    { label: 'Faol guruhlar', value: d.groups, icon: Users2 },
-    { label: 'Bu oy tushum', value: formatCurrency(d.revenue), icon: CreditCard },
-    { label: 'Qarzdorlar', value: d.debtors, icon: AlertCircle, variant: 'danger' as const },
-    { label: 'O\'qituvchilar', value: d.teachers, icon: GraduationCap, variant: 'success' as const },
+    { label: t('totalStudents'), value: d.students, icon: Users },
+    { label: t('activeGroups'), value: d.groups, icon: Users2 },
+    { label: t('monthlyRevenue'), value: formatCurrency(d.revenue), icon: CreditCard },
+    { label: t('debtors'), value: d.debtors, icon: AlertCircle, variant: 'danger' as const },
+    { label: tc('teacher'), value: d.teachers, icon: GraduationCap, variant: 'success' as const },
   ] : [];
 
   const inputCls = 'w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500';
@@ -365,18 +367,18 @@ export default function DashboardPage() {
 
       {error && (
         <div className="bg-red-50 border border-red-200 text-red-700 text-sm px-4 py-3 rounded-xl flex items-center justify-between">
-          <span>Xatolik yuz berdi</span>
-          <button onClick={fetchData} className="underline font-medium">Qayta urinish</button>
+          <span>{tc('error')}</span>
+          <button onClick={fetchData} className="underline font-medium">{tc('retry')}</button>
         </div>
       )}
 
       {/* Quick Actions */}
       <div className="grid grid-cols-2 xl:grid-cols-4 gap-3">
         {[
-          { label: "O'quvchi qo'shish", icon: UserPlus,     onClick: () => setShowStudentAdd(true),  cls: 'bg-blue-600 hover:bg-blue-700' },
-          { label: "To'lov kiritish",   icon: CreditCard,   onClick: () => setShowPaymentAdd(true),  cls: 'bg-emerald-600 hover:bg-emerald-700' },
-          { label: "Guruh yaratish",    icon: Users2,        onClick: () => setShowGroupAdd(true),    cls: 'bg-violet-600 hover:bg-violet-700' },
-          { label: "SMS yuborish",      icon: MessageSquare, onClick: () => setShowSms(true),         cls: 'bg-amber-500 hover:bg-amber-600' },
+          { label: t('addStudent'), icon: UserPlus,     onClick: () => setShowStudentAdd(true),  cls: 'bg-blue-600 hover:bg-blue-700' },
+          { label: t('addPayment'), icon: CreditCard,   onClick: () => setShowPaymentAdd(true),  cls: 'bg-emerald-600 hover:bg-emerald-700' },
+          { label: t('addGroup'),   icon: Users2,        onClick: () => setShowGroupAdd(true),    cls: 'bg-violet-600 hover:bg-violet-700' },
+          { label: t('sendSms'),    icon: MessageSquare, onClick: () => setShowSms(true),         cls: 'bg-amber-500 hover:bg-amber-600' },
         ].map(({ label, icon: Icon, onClick, cls }) => (
           <button key={label} onClick={onClick}
             className={cn('flex items-center justify-center gap-2.5 px-4 py-3.5 rounded-xl text-white text-sm font-semibold transition-colors shadow-sm', cls)}>
@@ -389,7 +391,7 @@ export default function DashboardPage() {
       {/* Conversion Funnel */}
       {!loading && d && (
         <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl border border-blue-100 shadow-sm p-5">
-          <h2 className="text-sm font-semibold text-gray-800 mb-4">O&apos;quvchi konversiyasi</h2>
+          <h2 className="text-sm font-semibold text-gray-800 mb-4">{t('conversion')}</h2>
           <FunnelWidget locale={locale} />
         </div>
       )}
@@ -401,7 +403,7 @@ export default function DashboardPage() {
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-sm font-semibold text-gray-900 flex items-center gap-2">
               <TrendingUp className="w-4 h-4 text-blue-500" />
-              Daromad dinamikasi
+              {t('revenueChart')}
             </h2>
             {d?.revenue ? (
               <div className="text-right">
@@ -438,14 +440,14 @@ export default function DashboardPage() {
         <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-5">
           <h2 className="text-sm font-semibold text-gray-900 mb-4 flex items-center gap-2">
             <AlertCircle className="w-4 h-4 text-red-400" />
-            Eng ko&apos;p qarzdorlar
+            {t('topDebtors')}
           </h2>
           {loading ? (
             <div className="space-y-3">{Array(4).fill(0).map((_, i) => <Skeleton key={i} className="h-12 w-full rounded-lg" />)}</div>
           ) : (d?.topDebtors?.length ?? 0) === 0 ? (
             <div className="flex flex-col items-center justify-center py-10">
               <AlertCircle className="w-8 h-8 text-gray-200 mb-2" />
-              <p className="text-sm text-gray-400">Qarzdor yo&apos;q</p>
+              <p className="text-sm text-gray-400">{tc('noData')}</p>
             </div>
           ) : (
             <div className="space-y-2">

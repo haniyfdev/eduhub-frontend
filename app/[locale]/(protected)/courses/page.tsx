@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState, useCallback, useRef } from 'react';
+import { useTranslations } from 'next-intl';
 import { Plus, Search, X, Pencil, Minus } from 'lucide-react';
 import toast, { Toaster } from 'react-hot-toast';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -45,6 +46,8 @@ function makeHandleKey(
 }
 
 export default function CoursesPage() {
+  const t = useTranslations('courses');
+  const common = useTranslations('common');
   const [courses, setCourses]           = useState<Course[]>([]);
   const [teachers, setTeachers]         = useState<Teacher[]>([]);
   const [loading, setLoading]           = useState(true);
@@ -131,11 +134,11 @@ export default function CoursesPage() {
       setCount(data.count ?? 0);
     } catch {
       setError(true);
-      toast.error("Ma'lumotlarni yuklashda xatolik");
+      toast.error(common('error'));
     } finally {
       setLoading(false);
     }
-  }, [page, pageSize, search, statusFilter]);
+  }, [page, pageSize, search, statusFilter, common]);
 
   useEffect(() => { fetchCourses(); }, [fetchCourses]);
   useEffect(() => { setPage(1); }, [search, statusFilter]);
@@ -208,10 +211,10 @@ export default function CoursesPage() {
       <Toaster position="top-right" />
 
       <div className="flex items-center justify-between">
-        <h1 className="text-xl font-bold text-gray-900">Kurslar</h1>
+        <h1 className="text-xl font-bold text-gray-900">{t('title')}</h1>
         <button onClick={openAdd}
           className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded hover:bg-blue-700 transition-colors">
-          <Plus className="w-4 h-4" /> Qo&apos;shish
+          <Plus className="w-4 h-4" /> {t('addCourse')}
         </button>
       </div>
 
@@ -219,12 +222,12 @@ export default function CoursesPage() {
         <div className="relative flex-1 max-w-xs">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
           <input type="text" value={search} onChange={(e) => setSearch(e.target.value)}
-            placeholder="Kurs nomini yozing..."
+            placeholder={t('searchPlaceholder')}
             className="w-full pl-9 pr-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
         </div>
         <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}
           className="px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-700">
-          <option value="">Barchasi</option>
+          <option value="">{common('all')}</option>
           <option value="active">Faol</option>
           <option value="archived">Arxivlangan</option>
         </select>
@@ -253,7 +256,7 @@ export default function CoursesPage() {
                   ))}</tr>
                 ))
                 : courses.length === 0
-                  ? <tr><td colSpan={8} className="px-4 py-16 text-center text-gray-400">Natija topilmadi</td></tr>
+                  ? <tr><td colSpan={8} className="px-4 py-16 text-center text-gray-400">{t('noCourses')}</td></tr>
                   : courses.map((c, idx) => (
                     <tr key={c.id} className={cn('transition-colors', c.status === 'archived' ? 'bg-yellow-50 hover:bg-yellow-100' : 'hover:bg-gray-50')}>
                       <td className="px-4 py-3 text-gray-400 text-xs">{(page - 1) * pageSize + idx + 1}</td>
@@ -445,7 +448,7 @@ export default function CoursesPage() {
             <div className="flex gap-3 pt-2">
               <button type="button" onClick={closeModal}
                 className="flex-1 px-4 py-2 border border-gray-300 text-sm font-medium rounded hover:bg-gray-50">
-                Bekor qilish
+                {common('cancel')}
               </button>
               <button
                 ref={saveRef}
@@ -453,7 +456,7 @@ export default function CoursesPage() {
                 disabled={saving || hasFormErrors}
                 className="flex-1 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded hover:bg-blue-700 disabled:opacity-60"
               >
-                {saving ? 'Saqlanmoqda...' : editTarget ? 'Saqlash' : "Qo'shish"}
+                {saving ? 'Saqlanmoqda...' : editTarget ? common('save') : t('addCourse')}
               </button>
             </div>
           </form>
@@ -469,7 +472,7 @@ export default function CoursesPage() {
           </p>
           <div className="flex gap-3 mt-4">
             <button onClick={() => setArchiveTarget(null)}
-              className="flex-1 px-4 py-2 border border-gray-300 text-sm font-medium rounded hover:bg-gray-50">Bekor qilish</button>
+              className="flex-1 px-4 py-2 border border-gray-300 text-sm font-medium rounded hover:bg-gray-50">{common('cancel')}</button>
             <button onClick={confirmArchive}
               className="flex-1 px-4 py-2 bg-red-600 text-white text-sm font-medium rounded hover:bg-red-700">Ha, arxivlash</button>
           </div>

@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState, useCallback, useRef } from 'react';
+import { useTranslations } from 'next-intl';
 import { Plus, Search, Minus, Eye, EyeOff, Banknote, Percent, Users } from 'lucide-react';
 import toast, { Toaster } from 'react-hot-toast';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -110,6 +111,8 @@ function makeHandleKey(
 }
 
 export default function TeachersPage() {
+  const t = useTranslations('teachers');
+  const common = useTranslations('common');
   const [activeTab, setActiveTab] = useState<'teachers' | 'staff'>('teachers');
 
   // ── Teacher state ─────────────────────────────────────────────────────────
@@ -202,11 +205,11 @@ export default function TeachersPage() {
       setCount(data.count ?? 0);
     } catch {
       setError(true);
-      toast.error("Ma'lumotlarni yuklashda xatolik");
+      toast.error(common('error'));
     } finally {
       setLoading(false);
     }
-  }, [page, pageSize, search, subjectFilter, statusFilter]);
+  }, [page, pageSize, search, subjectFilter, statusFilter, common]);
 
   useEffect(() => { fetchTeachers(); }, [fetchTeachers]);
   useEffect(() => { setPage(1); }, [search, subjectFilter, statusFilter]);
@@ -329,14 +332,14 @@ export default function TeachersPage() {
 
       <div className="flex items-center justify-between">
         <h1 className="text-xl font-bold text-gray-900">
-          {activeTab === 'teachers' ? "O'qituvchilar" : 'Xodimlar'}
+          {activeTab === 'teachers' ? t('title') : 'Xodimlar'}
         </h1>
         {activeTab === 'teachers' ? (
           <button
             onClick={() => { setShowAdd(true); setTimeout(() => firstNameRef.current?.focus(), 100); }}
             className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded hover:bg-blue-700 transition-colors"
           >
-            <Plus className="w-4 h-4" /> Qo&apos;shish
+            <Plus className="w-4 h-4" /> {t('addTeacher')}
           </button>
         ) : (
           <button
@@ -351,8 +354,8 @@ export default function TeachersPage() {
       {/* Tabs */}
       <div className="flex gap-1 border-b border-gray-200">
         {([
-          { id: 'teachers', label: "O'qituvchilar" },
-          { id: 'staff',    label: 'Xodimlar' },
+          { id: 'teachers', label: t('tabs.teachers') },
+          { id: 'staff',    label: t('tabs.staff') },
         ] as const).map(tab => (
           <button key={tab.id} onClick={() => setActiveTab(tab.id)}
             className={cn(
@@ -414,7 +417,7 @@ export default function TeachersPage() {
                       ))}</tr>
                     ))
                     : teachers.length === 0
-                      ? <tr><td colSpan={9} className="px-4 py-16 text-center text-gray-400">Natija topilmadi</td></tr>
+                      ? <tr><td colSpan={9} className="px-4 py-16 text-center text-gray-400">{t('noTeachers')}</td></tr>
                       : teachers.map((t, idx) => (
                         <tr key={t.id} className={cn('transition-colors', t.status === 'archived' ? 'bg-yellow-50 hover:bg-yellow-100' : 'hover:bg-gray-50')}>
                           <td className="px-4 py-3 text-gray-400 text-xs">{(page - 1) * pageSize + idx + 1}</td>
@@ -710,7 +713,7 @@ export default function TeachersPage() {
             <div className="flex gap-3 pt-2">
               <button type="button" onClick={closeModal}
                 className="flex-1 px-4 py-2 border border-gray-300 text-sm font-medium rounded hover:bg-gray-50">
-                Bekor qilish
+                {common('cancel')}
               </button>
               <button
                 ref={saveRef}
@@ -718,7 +721,7 @@ export default function TeachersPage() {
                 disabled={saving || hasFormErrors}
                 className="flex-1 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded hover:bg-blue-700 disabled:opacity-60"
               >
-                {saving ? 'Saqlanmoqda...' : 'Saqlash'}
+                {saving ? 'Saqlanmoqda...' : common('save')}
               </button>
             </div>
           </form>
@@ -735,7 +738,7 @@ export default function TeachersPage() {
           <div className="flex gap-3 mt-4">
             <button onClick={() => setArchiveTarget(null)}
               className="flex-1 px-4 py-2 border border-gray-300 text-sm font-medium rounded hover:bg-gray-50">
-              Bekor qilish
+              {common('cancel')}
             </button>
             <button onClick={confirmArchive}
               className="flex-1 px-4 py-2 bg-red-600 text-white text-sm font-medium rounded hover:bg-red-700">
@@ -801,11 +804,11 @@ export default function TeachersPage() {
             <div className="flex gap-3 pt-2">
               <button type="button" onClick={() => { setShowAddStaff(false); setStaffForm(blankStaffForm()); }}
                 className="flex-1 px-4 py-2 border border-gray-300 text-sm font-medium rounded hover:bg-gray-50">
-                Bekor qilish
+                {common('cancel')}
               </button>
               <button type="submit" disabled={savingStaff}
                 className="flex-1 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded hover:bg-blue-700 disabled:opacity-60">
-                {savingStaff ? 'Saqlanmoqda...' : 'Saqlash'}
+                {savingStaff ? 'Saqlanmoqda...' : common('save')}
               </button>
             </div>
           </form>
@@ -822,7 +825,7 @@ export default function TeachersPage() {
           <div className="flex gap-3 mt-4">
             <button onClick={() => setStaffArchiveTarget(null)}
               className="flex-1 px-4 py-2 border border-gray-300 text-sm font-medium rounded hover:bg-gray-50">
-              Bekor qilish
+              {common('cancel')}
             </button>
             <button onClick={handleArchiveStaff} disabled={staffArchiving}
               className="flex-1 px-4 py-2 bg-red-600 text-white text-sm font-medium rounded hover:bg-red-700 disabled:opacity-60">

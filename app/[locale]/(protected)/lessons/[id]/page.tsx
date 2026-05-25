@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { useLocale } from 'next-intl';
+import { useLocale, useTranslations } from 'next-intl';
 import { ArrowLeft, Save, Pencil, Check, X, Clock } from 'lucide-react';
 import toast, { Toaster } from 'react-hot-toast';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -85,6 +85,8 @@ export default function LessonAttendancePage() {
   const id = params.id as string;
   const router = useRouter();
   const locale = useLocale();
+  const t = useTranslations('lessons');
+  const common = useTranslations('common');
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -402,7 +404,7 @@ export default function LessonAttendancePage() {
               disabled={starting}
               className="flex items-center gap-1.5 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded hover:bg-blue-700 disabled:opacity-60 transition-colors"
             >
-              {starting ? 'Boshlanmoqda...' : 'Darsni boshlash'}
+              {starting ? 'Boshlanmoqda...' : t('startLesson')}
             </button>
           )}
           {isOngoing && !isLocked && (
@@ -417,7 +419,7 @@ export default function LessonAttendancePage() {
               )}
             >
               <Save className="w-4 h-4" />
-              Saqlash
+              {t('saveAttendance')}
             </button>
           )}
           {isLocked && (
@@ -550,14 +552,14 @@ export default function LessonAttendancePage() {
               onClick={() => setShowConfirm(false)}
               className="flex-1 px-4 py-2 border border-gray-300 text-sm font-medium rounded hover:bg-gray-50"
             >
-              Yo&apos;q
+              {common('no')}
             </button>
             <button
               onClick={handleSave}
               disabled={saving}
               className="flex-1 px-4 py-2 bg-green-600 text-white text-sm font-medium rounded hover:bg-green-700 disabled:opacity-60"
             >
-              {saving ? 'Saqlanmoqda...' : 'Tasdiqlayman'}
+              {saving ? 'Saqlanmoqda...' : common('confirm')}
             </button>
           </div>
         </DialogContent>

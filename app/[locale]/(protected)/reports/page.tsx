@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState, useCallback, useMemo } from 'react';
+import { useTranslations } from 'next-intl';
 import {
   AreaChart, Area, PieChart, Pie, Cell, Sector,
   XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
@@ -134,6 +135,8 @@ function DateField({ value, onChange }: { value: string; onChange: (v: string) =
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function ReportsPage() {
+  const t = useTranslations('reports');
+  const common = useTranslations('common');
   const [fromDate, setFromDate] = useState(monthStartStr);
   const [toDate,   setToDate]   = useState(todayStr);
   const [loading,  setLoading]  = useState(true);
@@ -285,14 +288,14 @@ export default function ReportsPage() {
       {/* ── Header + Date Filter ── */}
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Hisobotlar</h1>
-          <p className="text-sm text-gray-500 mt-0.5">Moliyaviy tahlil va statistika</p>
+          <h1 className="text-2xl font-bold text-gray-900">{t('title')}</h1>
+          <p className="text-sm text-gray-500 mt-0.5">{t('subtitle')}</p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <div className="flex rounded-lg border border-gray-200 overflow-hidden text-xs font-medium">
             {([
-              { label: 'Joriy oy',  preset: 'current_month' as const, from: monthStartStr, to: todayStr },
-              { label: 'Joriy yil', preset: 'current_year' as const, from: thisYearStart, to: todayStr },
+              { label: t('currentMonth'),  preset: 'current_month' as const, from: monthStartStr, to: todayStr },
+              { label: t('currentYear'), preset: 'current_year' as const, from: thisYearStart, to: todayStr },
             ]).map(({ label, preset, from, to }) => (
               <button key={label}
                 onClick={() => { setActivePreset(preset); setFromDate(from()); setToDate(to()); }}
@@ -752,11 +755,11 @@ export default function ReportsPage() {
             <div className="flex gap-3 pt-2">
               <button type="button" onClick={() => setShowExpModal(false)}
                 className="flex-1 px-4 py-2 border border-gray-300 text-sm font-medium rounded-lg hover:bg-gray-50">
-                Bekor qilish
+                {common('cancel')}
               </button>
               <button type="submit" disabled={savingExp}
                 className="flex-1 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 disabled:opacity-60">
-                {savingExp ? 'Saqlanmoqda...' : 'Saqlash'}
+                {savingExp ? 'Saqlanmoqda...' : common('save')}
               </button>
             </div>
           </form>

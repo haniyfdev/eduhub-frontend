@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState, useCallback, useRef } from 'react';
+import { useTranslations } from 'next-intl';
 import { Search, ArrowUpFromLine, Banknote, Percent, Users } from 'lucide-react';
 import { Pagination } from '@/components/pagination';
 import toast, { Toaster } from 'react-hot-toast';
@@ -15,13 +16,6 @@ import { cn, formatPhone, formatDMY, formatCurrency } from '@/lib/utils';
 import { PaginatedResponse } from '@/types';
 
 type Tab = 'students' | 'teachers' | 'groups' | 'courses';
-
-const TABS: { key: Tab; label: string }[] = [
-  { key: 'students', label: "O'quvchilar" },
-  { key: 'teachers', label: "O'qituvchilar" },
-  { key: 'groups', label: 'Guruhlar' },
-  { key: 'courses', label: 'Kurslar' },
-];
 
 interface ArchiveStudent {
   id: string;
@@ -121,6 +115,16 @@ interface ConfirmState {
 }
 
 export default function ArchivePage() {
+  const t = useTranslations('archive');
+  const common = useTranslations('common');
+
+  const TABS: { key: Tab; label: string }[] = [
+    { key: 'students', label: t('tabs.students') },
+    { key: 'teachers', label: t('tabs.teachers') },
+    { key: 'groups',   label: t('tabs.groups') },
+    { key: 'courses',  label: t('tabs.courses') },
+  ];
+
   const [tab, setTab] = useState<Tab>('students');
   const [search, setSearch] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
@@ -158,11 +162,11 @@ export default function ArchivePage() {
       setArchiveStudents(data.results ?? []);
       setTotalCount(data.count ?? 0);
     } catch {
-      toast.error("Ma'lumotlarni yuklashda xatolik");
+      toast.error(common('error'));
     } finally {
       setLoading(false);
     }
-  }, [debouncedSearch, reasonFilter, page, pageSize]);
+  }, [debouncedSearch, reasonFilter, page, pageSize, common]);
 
   const fetchTeachers = useCallback(async () => {
     setLoading(true);
@@ -173,11 +177,11 @@ export default function ArchivePage() {
       setTeachers(data.results ?? []);
       setTotalCount(data.count ?? 0);
     } catch {
-      toast.error("Ma'lumotlarni yuklashda xatolik");
+      toast.error(common('error'));
     } finally {
       setLoading(false);
     }
-  }, [debouncedSearch, page, pageSize]);
+  }, [debouncedSearch, page, pageSize, common]);
 
   const fetchGroups = useCallback(async () => {
     setLoading(true);
@@ -188,11 +192,11 @@ export default function ArchivePage() {
       setGroups(data.results ?? []);
       setTotalCount(data.count ?? 0);
     } catch {
-      toast.error("Ma'lumotlarni yuklashda xatolik");
+      toast.error(common('error'));
     } finally {
       setLoading(false);
     }
-  }, [debouncedSearch, page, pageSize]);
+  }, [debouncedSearch, page, pageSize, common]);
 
   const fetchCourses = useCallback(async () => {
     setLoading(true);
@@ -203,11 +207,11 @@ export default function ArchivePage() {
       setCourses(data.results ?? []);
       setTotalCount(data.count ?? 0);
     } catch {
-      toast.error("Ma'lumotlarni yuklashda xatolik");
+      toast.error(common('error'));
     } finally {
       setLoading(false);
     }
-  }, [debouncedSearch, page, pageSize]);
+  }, [debouncedSearch, page, pageSize, common]);
 
   useEffect(() => {
     if (tab === 'students') fetchStudents();
@@ -233,13 +237,13 @@ export default function ArchivePage() {
       } else if (source === 'course') {
         await api.post(`/api/v1/courses/${id}/restore/`);
       }
-      toast.success('Muvaffaqiyatli tiklandi');
+      toast.success(common('success'));
       if (tab === 'students') fetchStudents();
       else if (tab === 'teachers') fetchTeachers();
       else if (tab === 'groups') fetchGroups();
       else if (tab === 'courses') fetchCourses();
     } catch {
-      toast.error('Xatolik yuz berdi');
+      toast.error(common('error'));
     } finally {
       setRestoring(null);
     }
@@ -291,13 +295,13 @@ export default function ArchivePage() {
           </DialogHeader>
           <p className="text-sm text-gray-600">{getDialogBody()}</p>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setConfirm(null)}>Bekor qilish</Button>
-            <Button onClick={handleRestore} className="bg-green-600 hover:bg-green-700 text-white">Tiklash</Button>
+            <Button variant="outline" onClick={() => setConfirm(null)}>{common('cancel')}</Button>
+            <Button onClick={handleRestore} className="bg-green-600 hover:bg-green-700 text-white">{t('restore')}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
-      <h1 className="text-xl font-bold text-gray-900">Arxiv</h1>
+      <h1 className="text-xl font-bold text-gray-900">{t('title')}</h1>
 
       {/* Tabs */}
       <div className="flex gap-1 border-b border-gray-200">

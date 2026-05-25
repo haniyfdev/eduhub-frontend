@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
+import { useTranslations } from 'next-intl';
 import { Search, AlertCircle, Send, Banknote, Snowflake } from 'lucide-react';
 import toast, { Toaster } from 'react-hot-toast';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -73,6 +74,8 @@ const parseAmount = (val: string) =>
 type PhoneSelection = Record<string, { phone1: boolean; phone2: boolean }>;
 
 export default function DebtsPage() {
+  const t = useTranslations('debts');
+  const common = useTranslations('common');
   const [debts, setDebts]           = useState<Debt[]>([]);
   const [loading, setLoading]       = useState(true);
   const [error, setError]           = useState(false);
@@ -110,11 +113,11 @@ export default function DebtsPage() {
       setPhoneSelection(init);
     } catch {
       setError(true);
-      toast.error("Ma'lumotlarni yuklashda xatolik");
+      toast.error(common('error'));
     } finally {
       setLoading(false);
     }
-  }, [page, pageSize, search, statusFilter]);
+  }, [page, pageSize, search, statusFilter, common]);
 
   useEffect(() => { fetchDebts(); }, [fetchDebts]);
   useEffect(() => { setPage(1); }, [search, statusFilter]);
@@ -239,7 +242,7 @@ export default function DebtsPage() {
 
       {/* Header */}
       <div className="flex items-center justify-between">
-        <h1 className="text-xl font-bold text-gray-900">Qarzdorlar</h1>
+        <h1 className="text-xl font-bold text-gray-900">{t('title')}</h1>
         {selectedCount > 0 && (
           <button
             onClick={openSmsModal}
@@ -270,7 +273,7 @@ export default function DebtsPage() {
             type="text"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Ism yoki guruh..."
+            placeholder={t('searchPlaceholder')}
             className="w-full pl-9 pr-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
         </div>
@@ -310,7 +313,7 @@ export default function DebtsPage() {
                   ))}</tr>
                 ))
                 : debts.length === 0
-                  ? <tr><td colSpan={9} className="px-4 py-16 text-center text-gray-400">Natija topilmadi</td></tr>
+                  ? <tr><td colSpan={9} className="px-4 py-16 text-center text-gray-400">{t('noDebts')}</td></tr>
                   : debts.map((d, idx) => {
                     const sel = phoneSelection[d.id] ?? { phone1: false, phone2: false };
                     const canSms = d.status !== 'paid';
@@ -503,11 +506,11 @@ export default function DebtsPage() {
             <div className="flex gap-3 pt-1">
               <button type="button" onClick={() => setPaymentTarget(null)}
                 className="flex-1 px-4 py-2 border border-gray-300 text-sm font-medium rounded hover:bg-gray-50">
-                Bekor qilish
+                {common('cancel')}
               </button>
               <button type="submit" disabled={paymentSaving}
                 className="flex-1 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded hover:bg-blue-700 disabled:opacity-60">
-                {paymentSaving ? 'Saqlanmoqda...' : 'Saqlash'}
+                {paymentSaving ? 'Saqlanmoqda...' : t('pay')}
               </button>
             </div>
           </form>

@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { useLocale } from 'next-intl';
+import { useLocale, useTranslations } from 'next-intl';
 import { ArrowLeft, Plus, Search, Minus, ArrowLeftRight, Snowflake, Play } from 'lucide-react';
 import toast, { Toaster } from 'react-hot-toast';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -73,6 +73,8 @@ export default function GroupDetailPage() {
   const id = params.id as string;
   const router = useRouter();
   const locale = useLocale();
+  const t = useTranslations('groups');
+  const common = useTranslations('common');
   const user = getUser(); // yoki useAuth() — qaysi hook ishlatayotgan bo'lsang
   const canEdit = ['boss', 'manager', 'admin'].includes(user?.role ?? '');
 
@@ -260,9 +262,9 @@ export default function GroupDetailPage() {
   }
 
   const TABS: { key: TabKey; label: string }[] = [
-    { key: 'students', label: "O'quvchilar" },
-    { key: 'lessons', label: 'Darslar' },
-    { key: 'info', label: "Ma'lumot" },
+    { key: 'students', label: t('tabs.students') },
+    { key: 'lessons', label: t('tabs.lessons') },
+    { key: 'info', label: t('tabs.info') },
   ];
 
 
@@ -339,7 +341,7 @@ export default function GroupDetailPage() {
         <div className="flex items-center justify-between gap-3 px-4 py-3 bg-sky-50 border border-sky-200 rounded-lg">
           <div className="flex items-center gap-2 text-sky-700">
             <Snowflake className="w-4 h-4 flex-shrink-0" />
-            <span className="text-sm font-medium">Bu guruh hozir muzlatilgan. Oylik qarz hisoblanmaydi.</span>
+            <span className="text-sm font-medium">{t('frozenBanner')}</span>
           </div>
           {canEdit && (
             <button
@@ -685,7 +687,7 @@ export default function GroupDetailPage() {
 
           <div className="flex gap-3 pt-2 border-t border-gray-100">
             <button onClick={() => setShowAddStudent(false)} className="flex-1 px-4 py-2 border border-gray-300 text-sm font-medium rounded hover:bg-gray-50">
-              Bekor qilish
+              {common('cancel')}
             </button>
             <button
               onClick={handleAddBulk}
@@ -735,8 +737,8 @@ export default function GroupDetailPage() {
             </button>
           </div>
           <div className="flex gap-3 mt-4">
-            <button onClick={() => { setArchiveTarget(null); setArchiveReason(''); }} className="flex-1 px-4 py-2 border border-gray-300 text-sm font-medium rounded hover:bg-gray-50">Bekor qilish</button>
-            <button onClick={handleArchiveStudent} disabled={!archiveReason} className="flex-1 px-4 py-2 bg-red-600 text-white text-sm font-medium rounded hover:bg-red-700 disabled:opacity-50">Arxivlash</button>
+            <button onClick={() => { setArchiveTarget(null); setArchiveReason(''); }} className="flex-1 px-4 py-2 border border-gray-300 text-sm font-medium rounded hover:bg-gray-50">{common('cancel')}</button>
+            <button onClick={handleArchiveStudent} disabled={!archiveReason} className="flex-1 px-4 py-2 bg-red-600 text-white text-sm font-medium rounded hover:bg-red-700 disabled:opacity-50">{common('archive')}</button>
           </div>
         </DialogContent>
       </Dialog>
@@ -776,9 +778,9 @@ export default function GroupDetailPage() {
               />
             </div>
             <div className="flex gap-3 pt-1">
-              <button type="button" onClick={() => setShowAddLesson(false)} className="flex-1 px-4 py-2 border border-gray-300 text-sm font-medium rounded hover:bg-gray-50">Bekor</button>
+              <button type="button" onClick={() => setShowAddLesson(false)} className="flex-1 px-4 py-2 border border-gray-300 text-sm font-medium rounded hover:bg-gray-50">{common('cancel')}</button>
               <button type="submit" disabled={savingLesson} className="flex-1 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded hover:bg-blue-700 disabled:opacity-60">
-                {savingLesson ? 'Saqlanmoqda...' : 'Saqlash'}
+                {savingLesson ? 'Saqlanmoqda...' : common('save')}
               </button>
             </div>
           </form>

@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState, useCallback, useMemo, useRef } from 'react';
+import { useTranslations } from 'next-intl';
 import { DoorOpen, Calendar, List, Snowflake, Plus } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import toast from 'react-hot-toast';
@@ -104,6 +105,8 @@ type ViewMode = 'weekly' | 'list';
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function RoomsPage() {
+  const t = useTranslations('rooms');
+  const common = useTranslations('common');
   const [roomList,    setRoomList]    = useState<Room[]>([]);
   const [rooms,       setRooms]       = useState<RoomData[]>([]);
   const [loading,     setLoading]     = useState(true);
@@ -290,14 +293,14 @@ export default function RoomsPage() {
                 disabled={adding}
                 className="flex-1 px-4 py-2 border border-gray-300 text-sm font-medium rounded-lg hover:bg-gray-50 disabled:opacity-60"
               >
-                Bekor qilish
+                {common('cancel')}
               </button>
               <button
                 onClick={handleConfirm}
                 disabled={adding}
                 className="flex-1 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 disabled:opacity-60"
               >
-                {adding ? "Saqlanmoqda..." : "Saqlash"}
+                {adding ? "Saqlanmoqda..." : common('save')}
               </button>
             </div>
           </div>
@@ -311,8 +314,8 @@ export default function RoomsPage() {
             <DoorOpen className="w-5 h-5 text-white" />
           </div>
           <div>
-            <h1 className="text-xl font-bold text-gray-900">Xonalar jadvali</h1>
-            <p className="text-sm text-gray-500">Faol guruhlarning haftalik ko&apos;rinishi</p>
+            <h1 className="text-xl font-bold text-gray-900">{t('title')}</h1>
+            <p className="text-sm text-gray-500">{t('subtitle')}</p>
           </div>
         </div>
         <div className="flex items-center gap-2">
@@ -320,7 +323,7 @@ export default function RoomsPage() {
             onClick={handleAddRoom}
             className="flex items-center gap-1.5 px-3 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700"
           >
-            <Plus className="w-4 h-4" /> Xona qo&apos;shish
+            <Plus className="w-4 h-4" /> {t('addRoom')}
           </button>
           <div className="flex rounded-lg border border-gray-200 overflow-hidden">
             <button

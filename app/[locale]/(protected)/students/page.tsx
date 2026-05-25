@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback, useRef } from 'react';
 import { Search, Send, Minus, Snowflake, Tag } from 'lucide-react';
 import toast, { Toaster } from 'react-hot-toast';
+import { useTranslations } from 'next-intl';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Pagination } from '@/components/pagination';
@@ -20,15 +21,15 @@ const STATUS_STYLES: Record<string, string> = {
   archived: 'bg-gray-100 text-gray-600 border-gray-200',
   frozen:   'bg-cyan-100 text-cyan-700 border-cyan-300',
 };
-const STATUS_LABELS: Record<string, string> = {
-  pending: 'Kutilmoqda', active: 'Faol', trial: 'Sinov', archived: 'Arxivlangan', frozen: 'Muzlatilgan',
-};
 
 interface Course { id: string; name: string; }
 
 type PhoneSelection = Record<string, { phone1: boolean; phone2: boolean }>;
 
 export default function StudentsPage() {
+  const t  = useTranslations('students');
+  const tc = useTranslations('common');
+
   const [students, setStudents]         = useState<Student[]>([]);
   const [courses, setCourses]           = useState<Course[]>([]);
   const [loading, setLoading]           = useState(true);
@@ -49,8 +50,6 @@ export default function StudentsPage() {
   const [user, setUser]                     = useState<User | null>(null);
 
   useEffect(() => { setUser(getUser()); }, []);
-
-  // ── Data fetching ──────────────────────────────────────────────────────────
 
   useEffect(() => {
     api.get<PaginatedResponse<{ student: string }>>('/api/v1/debts/?status=overdue&page_size=200')
@@ -77,7 +76,7 @@ export default function StudentsPage() {
       setPhoneSelection(init);
     } catch {
       setError(true);
-      toast.error("Ma'lumotlarni yuklashda xatolik");
+      toast.error(tc('error'));
     } finally {
       setLoading(false);
     }
@@ -91,8 +90,6 @@ export default function StudentsPage() {
       .then(({ data }) => setCourses(data.results))
       .catch(() => {});
   }, []);
-
-  // ── SMS ────────────────────────────────────────────────────────────────────
 
   function togglePhone(id: string, key: 'phone1' | 'phone2') {
     setPhoneSelection((prev) => ({
@@ -131,30 +128,28 @@ export default function StudentsPage() {
 
       toast.success(`${recipients.length} ta SMS yuborildi`);
     } catch {
-      toast.error('SMS yuborishda xatolik');
+      toast.error(tc('error'));
     }
   }
 
-const selectedStudentIds = students
-  .filter(s => phoneSelection[s.id]?.phone1 || phoneSelection[s.id]?.phone2)
-  .map(s => s.id);
+  const selectedStudentIds = students
+    .filter(s => phoneSelection[s.id]?.phone1 || phoneSelection[s.id]?.phone2)
+    .map(s => s.id);
 
-const [smsVariables, setSmsVariables] = useState<Record<string, Record<string, string>>>({});
+  const [smsVariables, setSmsVariables] = useState<Record<string, Record<string, string>>>({});
 
-async function openSmsModal() {
-  if (selectedStudentIds.length === 0) return;
-  try {
-    const { data } = await api.post('/api/v1/sms-variables/', {
-      student_ids: selectedStudentIds,
-    });
-    console.log('sms-variables response:', data);
-    setSmsVariables(data);
-  } catch (err) {
-    console.error('sms-variables error:', err);
-    setSmsVariables({});
+  async function openSmsModal() {
+    if (selectedStudentIds.length === 0) return;
+    try {
+      const { data } = await api.post('/api/v1/sms-variables/', {
+        student_ids: selectedStudentIds,
+      });
+      setSmsVariables(data);
+    } catch {
+      setSmsVariables({});
+    }
+    setShowSmsConfirm(true);
   }
-  setShowSmsConfirm(true);
-}
 
   const smsRecipients: SmsRecipient[] = students.flatMap(s => {
     const sel = phoneSelection[s.id];
@@ -180,8 +175,6 @@ async function openSmsModal() {
     return recs;
   });
 
-  // ── Discount ────────────────────────────────────────────────────────────────
-
   const canDiscount = ['boss', 'manager'].includes(user?.role ?? '');
 
   function toggleSelect(id: string) {
@@ -204,18 +197,16 @@ async function openSmsModal() {
     course_price: s.course_price || 0,
   }));
 
-  // ── Archive ────────────────────────────────────────────────────────────────
-
   async function confirmArchive() {
     if (!archiveTarget || !archiveReason) return;
     try {
       await api.post(`/api/v1/students/${archiveTarget.id}/archive/`, { reason: archiveReason });
-      toast.success("O'quvchi arxivlandi");
+      toast.success(tc('success'));
       setArchiveTarget(null);
       setArchiveReason('');
       fetchStudents();
     } catch {
-      toast.error('Xatolik yuz berdi');
+      toast.error(tc('error'));
     }
   }
 
@@ -226,21 +217,29 @@ async function openSmsModal() {
     return '';
   }
 
-  // ── Render ─────────────────────────────────────────────────────────────────
+  const statusLabel = (status: string) => {
+    switch (status) {
+      case 'pending':  return tc('all') === 'All' ? 'Pending' : 'Kutilmoqda';
+      case 'active':   return tc('active');
+      case 'trial':    return 'Trial';
+      case 'archived': return tc('archived');
+      case 'frozen':   return tc('frozen');
+      default:         return status;
+    }
+  };
 
   return (
     <div className="space-y-5">
       <Toaster position="top-right" />
 
-      {/* Header */}
       <div className="flex items-center justify-between">
-        <h1 className="text-xl font-bold text-gray-900">O&apos;quvchilar</h1>
+        <h1 className="text-xl font-bold text-gray-900">{t('title')}</h1>
         <div className="flex gap-2">
           {selectedSmsCount > 0 && (
             <button onClick={openSmsModal}
               className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded hover:bg-indigo-700 transition-colors">
               <Send className="w-4 h-4" />
-              SMS yuborish ({selectedSmsCount})
+              SMS ({selectedSmsCount})
             </button>
           )}
           {selectedIds.size > 0 && allSameCourse && canDiscount && (
@@ -253,41 +252,40 @@ async function openSmsModal() {
         </div>
       </div>
 
-      {/* Filters */}
       <div className="flex gap-3">
         <div className="relative flex-1 max-w-xs">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
           <input
-            type="text" value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Ism yoki guruh raqami..."
+            type="text" value={search} onChange={(e) => setSearch(e.target.value)}
+            placeholder={t('searchPlaceholder')}
             className="w-full pl-9 pr-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
         </div>
         <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}
           className="px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-700">
-          <option value="">Barchasi</option>
-          <option value="active">Faol</option>
-          <option value="frozen">Muzlatilgan</option>
-          <option value="archived">Arxivlangan</option>
+          <option value="">{tc('all')}</option>
+          <option value="active">{tc('active')}</option>
+          <option value="frozen">{tc('frozen')}</option>
+          <option value="archived">{tc('archived')}</option>
         </select>
         <select value={courseFilter} onChange={(e) => setCourseFilter(e.target.value)}
           className="px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-700">
-          <option value="">Barcha kurslar</option>
+          <option value="">{tc('all')}</option>
           {courses.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
         </select>
       </div>
 
-{/* Table */}
       <div className="bg-white rounded border border-gray-200 shadow-sm overflow-hidden">
         {error ? (
           <div className="flex flex-col items-center justify-center py-16 text-gray-500">
-            <p className="mb-3 text-sm">Xatolik yuz berdi</p>
-            <button onClick={fetchStudents} className="text-sm text-blue-600 underline">Qayta urinish</button>
+            <p className="mb-3 text-sm">{tc('error')}</p>
+            <button onClick={fetchStudents} className="text-sm text-blue-600 underline">{tc('retry')}</button>
           </div>
         ) : (
           <table className="w-full text-sm">
             <thead>
               <tr className="bg-gray-50 border-b border-gray-200">
-                {['№', '', 'Ism', 'Telefon', 'Ota-ona tel', 'Guruh', 'Kurs', "Tug'ilgan", 'Holat', 'Amal'].map((h) => (
+                {['№', '', tc('name'), tc('phone'), 'Ota-ona tel', tc('group'), tc('course'), tc('birthDate'), tc('status'), tc('actions')].map((h) => (
                   <th key={h} className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">{h}</th>
                 ))}
               </tr>
@@ -300,13 +298,11 @@ async function openSmsModal() {
                   ))}</tr>
                 ))
                 : students.length === 0
-                  ? <tr><td colSpan={10} className="px-4 py-16 text-center text-gray-400">Natija topilmadi</td></tr>
+                  ? <tr><td colSpan={10} className="px-4 py-16 text-center text-gray-400">{t('noStudents')}</td></tr>
                   : students.map((s, idx) => (
                     <tr key={s.id} className={cn('transition-colors hover:brightness-95', rowBg(s))}>
-                      {/* 1. № */}
                       <td className="px-4 py-3 text-gray-400 text-xs">{(page - 1) * pageSize + idx + 1}</td>
 
-                      {/* 2. Discount checkbox */}
                       {canDiscount && (
                         <td className="px-3 py-3">
                           <input type="checkbox" checked={selectedIds.has(s.id)}
@@ -316,10 +312,8 @@ async function openSmsModal() {
                       )}
                       {!canDiscount && <td />}
 
-                      {/* 3. Ism */}
                       <td className="px-4 py-3 font-medium text-gray-900">{s.first_name} {s.last_name}</td>
-                      
-                      {/* 3. Telefon */}
+
                       <td className="px-4 py-3">
                         <label className="flex items-center gap-2 cursor-pointer select-none">
                           <input type="checkbox" checked={phoneSelection[s.id]?.phone1 ?? false}
@@ -328,7 +322,6 @@ async function openSmsModal() {
                         </label>
                       </td>
 
-                      {/* 4. Ota-ona tel */}
                       <td className="px-4 py-3">
                         {s.second_phone ? (
                           <label className="flex items-center gap-2 cursor-pointer select-none">
@@ -339,31 +332,24 @@ async function openSmsModal() {
                         ) : <span className="text-gray-400">—</span>}
                       </td>
 
-                      {/* 5. Guruh */}
                       <td className="px-4 py-3 font-medium text-gray-700">{s.current_group || '—'}</td>
-
-                      {/* 6. Kurs */}
                       <td className="px-4 py-3 text-gray-600">{s.course_name || '—'}</td>
-
-                      {/* 7. Tug'ilgan */}
                       <td className="px-4 py-3 text-gray-600">{formatDMY(s.birth_date)}</td>
 
-                      {/* 8. Holat */}
                       <td className="px-4 py-3">
                         <span className={cn('inline-flex items-center gap-1 px-2 py-0.5 text-xs font-medium border rounded',
                           STATUS_STYLES[s.status] ?? 'bg-gray-100 text-gray-600 border-gray-200')}>
                           {s.status === 'frozen' && <Snowflake className="w-3 h-3 flex-shrink-0" />}
-                          {STATUS_LABELS[s.status] ?? s.status}
+                          {statusLabel(s.status)}
                         </span>
                       </td>
 
-                      {/* 9. Amal */}
                       <td className="px-4 py-3">
                         {s.status !== 'archived' ? (
                           <button
                             onClick={() => setArchiveTarget({ id: s.id, name: `${s.first_name} ${s.last_name}`, status: s.status })}
                             className="p-1 rounded text-red-400 hover:bg-red-50 hover:text-red-600 transition-colors"
-                            title="Arxivlash"
+                            title={tc('archive')}
                           >
                             <Minus className="w-4 h-4" />
                           </button>
@@ -383,11 +369,10 @@ async function openSmsModal() {
       <Pagination page={page} pageSize={pageSize} count={count}
         onPageChange={setPage} onPageSizeChange={(ps) => { setPageSize(ps); setPage(1); }} />
 
-      {/* ══ Archive Dialog ══ */}
       <Dialog open={!!archiveTarget} onOpenChange={(open) => { if (!open) { setArchiveTarget(null); setArchiveReason(''); } }}>
         <DialogContent className="sm:max-w-sm">
           <DialogHeader>
-            <DialogTitle>{archiveTarget?.name}ni arxivlash</DialogTitle>
+            <DialogTitle>{archiveTarget?.name} — {tc('archive')}</DialogTitle>
           </DialogHeader>
           <div className="mt-4 space-y-3">
             {archiveTarget?.status !== 'trial' && (
@@ -400,8 +385,8 @@ async function openSmsModal() {
               >
                 <span className="text-2xl leading-none">🎓</span>
                 <div>
-                  <p className="font-medium text-sm text-gray-900">Kursni bitirdi</p>
-                  <p className="text-xs text-gray-500 mt-0.5">O&apos;quv rejasi to&apos;liq tugadi</p>
+                  <p className="font-medium text-sm text-gray-900">{t('graduated')}</p>
+                  <p className="text-xs text-gray-500 mt-0.5">{t('graduatedDesc')}</p>
                 </div>
               </button>
             )}
@@ -414,19 +399,19 @@ async function openSmsModal() {
             >
               <span className="text-2xl leading-none">🚪</span>
               <div>
-                <p className="font-medium text-sm text-gray-900">Tashlab ketdi</p>
-                <p className="text-xs text-gray-500 mt-0.5">Kurs tugamasdan chiqib ketdi</p>
+                <p className="font-medium text-sm text-gray-900">{t('droppedOut')}</p>
+                <p className="text-xs text-gray-500 mt-0.5">{t('droppedOutDesc')}</p>
               </div>
             </button>
           </div>
           <div className="flex gap-3 mt-4">
             <button onClick={() => { setArchiveTarget(null); setArchiveReason(''); }}
               className="flex-1 px-4 py-2 border border-gray-300 text-sm font-medium rounded hover:bg-gray-50">
-              Bekor qilish
+              {tc('cancel')}
             </button>
             <button onClick={confirmArchive} disabled={!archiveReason}
               className="flex-1 px-4 py-2 bg-red-600 text-white text-sm font-medium rounded hover:bg-red-700 disabled:opacity-50">
-              Arxivlash
+              {tc('archive')}
             </button>
           </div>
         </DialogContent>

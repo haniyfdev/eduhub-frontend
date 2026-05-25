@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
-import { useLocale } from 'next-intl';
+import { useLocale, useTranslations } from 'next-intl';
 import { Plus, Search, Minus, Snowflake, Play } from 'lucide-react';
 import toast, { Toaster } from 'react-hot-toast';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -75,6 +75,8 @@ function validateTime(t: string, label: string): string | null {
 export default function GroupsPage() {
   const router = useRouter();
   const locale = useLocale();
+  const t = useTranslations('groups');
+  const common = useTranslations('common');
 
   const [groups, setGroups] = useState<Group[]>([]);
   const [courses, setCourses] = useState<Course[]>([]);
@@ -116,11 +118,11 @@ export default function GroupsPage() {
       setCount(data.count ?? 0);
     } catch {
       setError(true);
-      toast.error("Ma'lumotlarni yuklashda xatolik");
+      toast.error(common('error'));
     } finally {
       setLoading(false);
     }
-  }, [page, pageSize, search, statusFilter, courseFilter]);
+  }, [page, pageSize, search, statusFilter, courseFilter, common]);
 
   useEffect(() => { fetchGroups(); }, [fetchGroups]);
   useEffect(() => { setPage(1); }, [search, statusFilter, courseFilter]);
@@ -217,12 +219,12 @@ export default function GroupsPage() {
     <div className="space-y-5">
       <Toaster position="top-right" />
       <div className="flex items-center justify-between">
-        <h1 className="text-xl font-bold text-gray-900">Guruhlar</h1>
+        <h1 className="text-xl font-bold text-gray-900">{t('title')}</h1>
         <button
           onClick={() => setShowAdd(true)}
           className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded hover:bg-blue-700 transition-colors"
         >
-          <Plus className="w-4 h-4" /> Qo'shish
+          <Plus className="w-4 h-4" /> {t('addGroup')}
         </button>
       </div>
 
@@ -233,13 +235,13 @@ export default function GroupsPage() {
             type="text"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="O'qituvchi yoki guruh..."
+            placeholder={t('searchPlaceholder')}
             className="w-full pl-9 pr-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
         </div>
         <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}
           className="px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-700">
-          <option value="">Barchasi</option>
+          <option value="">{common('all')}</option>
           <option value="active">Faol</option>
           <option value="frozen">Muzlatilgan</option>
           <option value="archived">Arxivlangan</option>
@@ -274,7 +276,7 @@ export default function GroupsPage() {
                   ))}</tr>
                 ))
                 : groups.length === 0
-                  ? <tr><td colSpan={10} className="px-4 py-16 text-center text-gray-400">Natija topilmadi</td></tr>
+                  ? <tr><td colSpan={10} className="px-4 py-16 text-center text-gray-400">{t('noGroups')}</td></tr>
                   : groups.map((g, idx) => (
                     <tr
                       key={g.id}
@@ -379,7 +381,7 @@ export default function GroupsPage() {
           <div className="flex gap-3 mt-4">
             <button onClick={() => setArchiveTarget(null)}
               className="flex-1 px-4 py-2 border border-gray-300 text-sm font-medium rounded hover:bg-gray-50">
-              Bekor qilish
+              {common('cancel')}
             </button>
             <button onClick={confirmArchive}
               className="flex-1 px-4 py-2 bg-red-600 text-white text-sm font-medium rounded hover:bg-red-700">
@@ -399,7 +401,7 @@ export default function GroupsPage() {
           <div className="flex gap-3 mt-4">
             <button onClick={() => setFreezeTarget(null)}
               className="flex-1 px-4 py-2 border border-gray-300 text-sm font-medium rounded hover:bg-gray-50">
-              Bekor qilish
+              {common('cancel')}
             </button>
             <button onClick={confirmFreeze}
               className="flex-1 px-4 py-2 bg-sky-600 text-white text-sm font-medium rounded hover:bg-sky-700">
@@ -419,7 +421,7 @@ export default function GroupsPage() {
           <div className="flex gap-3 mt-4">
             <button onClick={() => setUnfreezeTarget(null)}
               className="flex-1 px-4 py-2 border border-gray-300 text-sm font-medium rounded hover:bg-gray-50">
-              Bekor qilish
+              {common('cancel')}
             </button>
             <button onClick={confirmUnfreeze}
               className="flex-1 px-4 py-2 bg-green-600 text-white text-sm font-medium rounded hover:bg-green-700">
@@ -567,7 +569,7 @@ export default function GroupsPage() {
                 onClick={() => { setShowAdd(false); setForm(EMPTY_FORM); }}
                 className="flex-1 px-4 py-2 border border-gray-300 text-sm font-medium rounded hover:bg-gray-50"
               >
-                Bekor qilish
+                {common('cancel')}
               </button>
               <button
                 ref={saveRef}
@@ -575,7 +577,7 @@ export default function GroupsPage() {
                 disabled={saving}
                 className="flex-1 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded hover:bg-blue-700 disabled:opacity-60"
               >
-                {saving ? 'Saqlanmoqda...' : 'Saqlash'}
+                {saving ? 'Saqlanmoqda...' : common('save')}
               </button>
             </div>
           </form>

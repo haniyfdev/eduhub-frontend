@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState, useCallback, useMemo } from 'react';
+import { useTranslations } from 'next-intl';
 import { Banknote } from 'lucide-react';
 import toast, { Toaster } from 'react-hot-toast';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -122,6 +123,8 @@ function fmtDate(iso: string | null): string {
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function SalariesPage() {
+  const t = useTranslations('salaries');
+  const common = useTranslations('common');
   const [activeTab, setActiveTab] = useState<'debts' | 'history'>('debts');
 
   // ── Shared state ─────────────────────────────────────────────────────────────
@@ -375,16 +378,16 @@ export default function SalariesPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Maoshlar</h1>
-          <p className="text-sm text-gray-500 mt-0.5">O&apos;qituvchi va xodimlar maoshi</p>
+          <h1 className="text-2xl font-bold text-gray-900">{t('title')}</h1>
+          <p className="text-sm text-gray-500 mt-0.5">{t('subtitle')}</p>
         </div>
       </div>
 
       {/* Tabs */}
       <div className="flex gap-1 border-b border-gray-200">
         {([
-          { id: 'debts',   label: 'Maosh qarzdorligi' },
-          { id: 'history', label: "To'lovlar tarixi" },
+          { id: 'debts',   label: t('tabs.debts') },
+          { id: 'history', label: t('tabs.history') },
         ] as const).map(tab => (
           <button key={tab.id} onClick={() => setActiveTab(tab.id)}
             className={cn(
@@ -406,11 +409,11 @@ export default function SalariesPage() {
               className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none" />
             <button onClick={handleGenerate} disabled={generating}
               className="px-3 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors">
-              {generating ? 'Hisoblanmoqda...' : 'Hisoblash'}
+              {generating ? common('loading') : t('calculate')}
             </button>
             <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)}
               className="px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white focus:ring-2 focus:ring-blue-500 outline-none text-gray-700">
-              <option value="all">Barchasi</option>
+              <option value="all">{common('all')}</option>
               <option value="unpaid">To&apos;lanmagan</option>
               <option value="partial">Qisman</option>
               <option value="paid">To&apos;langan</option>
@@ -628,7 +631,7 @@ export default function SalariesPage() {
                     className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none" />
                   <select value={histCategory} onChange={e => setHistCategory(e.target.value)}
                     className="px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white focus:ring-2 focus:ring-blue-500 outline-none text-gray-700">
-                    <option value="all">Barchasi</option>
+                    <option value="all">{common('all')}</option>
                     <option value="teacher_salary">O&apos;qituvchi</option>
                     <option value="staff_salary">Xodim</option>
                   </select>
@@ -769,7 +772,7 @@ export default function SalariesPage() {
                 <div className="flex gap-3 pt-1">
                   <button onClick={() => setTeacherDetail(null)}
                     className="flex-1 px-4 py-2 border border-gray-300 text-sm font-medium rounded-lg hover:bg-gray-50 transition-colors">
-                    Yopish
+                    {common('close')}
                   </button>
                   {t.overall_status !== 'paid' && (
                     <button
@@ -832,11 +835,11 @@ export default function SalariesPage() {
                 <div className="flex gap-3 pt-1">
                   <button onClick={() => { setTeacherPay(null); setBulkAmounts({}); }}
                     className="flex-1 px-4 py-2 border border-gray-300 text-sm font-medium rounded-lg hover:bg-gray-50 transition-colors">
-                    Bekor qilish
+                    {common('cancel')}
                   </button>
                   <button onClick={handleTeacherPay} disabled={bulkPaying}
                     className="flex-1 px-4 py-2 bg-emerald-600 text-white text-sm font-medium rounded-lg hover:bg-emerald-700 disabled:opacity-60 transition-colors">
-                    {bulkPaying ? 'Saqlanmoqda...' : 'Tasdiqlash'}
+                    {bulkPaying ? common('loading') : common('confirm')}
                   </button>
                 </div>
               </div>
@@ -888,11 +891,11 @@ export default function SalariesPage() {
                 <div className="flex gap-3 pt-1">
                   <button onClick={() => setPayTarget(null)}
                     className="flex-1 px-4 py-2 border border-gray-300 text-sm font-medium rounded-lg hover:bg-gray-50 transition-colors">
-                    Bekor qilish
+                    {common('cancel')}
                   </button>
                   <button onClick={handlePay} disabled={paying}
                     className="flex-1 px-4 py-2 bg-emerald-600 text-white text-sm font-medium rounded-lg hover:bg-emerald-700 disabled:opacity-60 transition-colors">
-                    {paying ? 'Saqlanmoqda...' : 'Tasdiqlash'}
+                    {paying ? common('loading') : common('confirm')}
                   </button>
                 </div>
               </div>

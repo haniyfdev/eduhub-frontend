@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
+import { useTranslations } from 'next-intl';
 import { CalendarCheck, Search, Send } from 'lucide-react';
 import toast, { Toaster } from 'react-hot-toast';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -83,6 +84,8 @@ const STATUS_LABEL: Record<string, string> = {
 };
 
 export default function AttendancePage() {
+  const t = useTranslations('attendance');
+  const common = useTranslations('common');
   const [rows, setRows]         = useState<AttendanceSummaryRow[]>([]);
   const [loading, setLoading]   = useState(true);
   const [search, setSearch]     = useState('');
@@ -229,7 +232,7 @@ export default function AttendancePage() {
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
           <CalendarCheck className="w-6 h-6 text-blue-600" />
-          <h1 className="text-xl font-bold text-gray-900">Davomat</h1>
+          <h1 className="text-xl font-bold text-gray-900">{t('title')}</h1>
         </div>
         {checkedPhoneCount > 0 && (
           <button
@@ -248,7 +251,7 @@ export default function AttendancePage() {
         <input
           value={search}
           onChange={e => setSearch(e.target.value)}
-          placeholder="Ism yoki guruh raqami..."
+          placeholder={t('searchPlaceholder')}
           className="w-full pl-9 pr-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
         />
       </div>
@@ -275,7 +278,7 @@ export default function AttendancePage() {
             ) : rows.length === 0 ? (
               <tr>
                 <td colSpan={7} className="px-4 py-16 text-center text-gray-400">
-                  Davomat ma&apos;lumoti topilmadi
+                  {t('noAttendance')}
                 </td>
               </tr>
             ) : rows.map((row, idx) => (

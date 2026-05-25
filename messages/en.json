@@ -15,7 +15,8 @@
     "logout": "Logout",
     "archive": "Archive",
     "rooms": "Rooms",
-    "salaries": "Salaries"
+    "salaries": "Salaries",
+    "discounts": "Discounts"
   },
   "nav": {
     "dashboard": "Dashboard",

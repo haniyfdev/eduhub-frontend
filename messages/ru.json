@@ -15,7 +15,8 @@
     "logout": "Выйти",
     "archive": "Архив",
     "rooms": "Кабинеты",
-    "salaries": "Зарплаты"
+    "salaries": "Зарплаты",
+    "discounts": "Скидки"
   },
   "nav": {
     "dashboard": "Главная",

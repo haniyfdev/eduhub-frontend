@@ -30,4 +30,7 @@
 @layer base {
   * { @apply border-border; }
   body { @apply bg-background text-foreground; }
+  input[type="checkbox"] { cursor: pointer; }
+  label:has(input[type="checkbox"]),
+  [role="checkbox"] { cursor: pointer; }
 }

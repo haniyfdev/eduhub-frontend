@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback, useMemo } from 'react';
 import {
-  AreaChart, Area, PieChart, Pie, Cell,
+  AreaChart, Area, PieChart, Pie, Cell, Sector,
   XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
 } from 'recharts';
 import {
@@ -146,6 +146,10 @@ export default function ReportsPage() {
 
   const [activePreset, setActivePreset] = useState<'current_month' | 'current_year' | 'custom'>('current_month');
   const [churnOpen, setChurnOpen] = useState(false);
+
+  const [activePie1, setActivePie1] = useState<number | undefined>();
+  const [activePie2, setActivePie2] = useState<number | undefined>();
+  const [activePie3, setActivePie3] = useState<number | undefined>();
 
   // Expense modal
   const [showExpModal, setShowExpModal] = useState(false);
@@ -416,7 +420,14 @@ export default function ReportsPage() {
                 <ResponsiveContainer width="100%" height="100%">
                   <PieChart>
                     <Pie data={courseIncome} dataKey="amount" nameKey="course"
-                      cx="50%" cy="50%" outerRadius={110} innerRadius={0}>
+                      cx="50%" cy="50%" outerRadius={110} innerRadius={0}
+                      activeIndex={activePie1}
+                      activeShape={(props: Record<string, unknown>) => {
+                        const { cx, cy, innerRadius, outerRadius, startAngle, endAngle, fill } = props;
+                        return <Sector cx={cx as number} cy={cy as number} innerRadius={innerRadius as number} outerRadius={(outerRadius as number) + 8} startAngle={startAngle as number} endAngle={endAngle as number} fill={fill as string} />;
+                      }}
+                      onMouseEnter={(_, index) => setActivePie1(index)}
+                      onMouseLeave={() => setActivePie1(undefined)}>
                       {courseIncome.map((_, i) => (
                         <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />
                       ))}
@@ -499,7 +510,14 @@ export default function ReportsPage() {
                 <ResponsiveContainer width="100%" height="100%">
                   <PieChart>
                     <Pie data={referral.data} dataKey="count" nameKey="label"
-                      cx="50%" cy="50%" outerRadius={110} innerRadius={50}>
+                      cx="50%" cy="50%" outerRadius={110} innerRadius={50}
+                      activeIndex={activePie2}
+                      activeShape={(props: Record<string, unknown>) => {
+                        const { cx, cy, innerRadius, outerRadius, startAngle, endAngle, fill } = props;
+                        return <Sector cx={cx as number} cy={cy as number} innerRadius={innerRadius as number} outerRadius={(outerRadius as number) + 8} startAngle={startAngle as number} endAngle={endAngle as number} fill={fill as string} />;
+                      }}
+                      onMouseEnter={(_, index) => setActivePie2(index)}
+                      onMouseLeave={() => setActivePie2(undefined)}>
                       {referral.data.map((item, i) => (
                         <Cell key={i} fill={REFERRAL_COLORS[item.source] ?? '#6B7280'} />
                       ))}
@@ -539,7 +557,14 @@ export default function ReportsPage() {
                 <ResponsiveContainer width="100%" height="100%">
                   <PieChart>
                     <Pie data={expBreakdown} dataKey="value" nameKey="name"
-                      cx="50%" cy="50%" outerRadius={110} innerRadius={50}>
+                      cx="50%" cy="50%" outerRadius={110} innerRadius={50}
+                      activeIndex={activePie3}
+                      activeShape={(props: Record<string, unknown>) => {
+                        const { cx, cy, innerRadius, outerRadius, startAngle, endAngle, fill } = props;
+                        return <Sector cx={cx as number} cy={cy as number} innerRadius={innerRadius as number} outerRadius={(outerRadius as number) + 8} startAngle={startAngle as number} endAngle={endAngle as number} fill={fill as string} />;
+                      }}
+                      onMouseEnter={(_, index) => setActivePie3(index)}
+                      onMouseLeave={() => setActivePie3(undefined)}>
                       {expBreakdown.map((item, i) => (
                         <Cell key={i} fill={EXPENSE_PIE_COLORS[item.key] ?? '#6B7280'} />
                       ))}

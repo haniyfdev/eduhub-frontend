@@ -1,15 +1,17 @@
 'use client';
 
 import { useEffect, useState, useCallback, useRef } from 'react';
-import { Search, Send, Minus, Snowflake } from 'lucide-react';
+import { Search, Send, Minus, Snowflake, Tag } from 'lucide-react';
 import toast, { Toaster } from 'react-hot-toast';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Pagination } from '@/components/pagination';
 import { SmsModal, type SmsRecipient } from '@/components/sms-modal';
+import { DiscountModal, type DiscountStudent } from '@/components/discount-modal';
 import api from '@/lib/axios';
 import { cn, formatPhone, formatDMY } from '@/lib/utils';
-import { Student, PaginatedResponse } from '@/types';
+import { getUser } from '@/lib/auth';
+import { Student, PaginatedResponse, User } from '@/types';
 
 const STATUS_STYLES: Record<string, string> = {
   pending:  'bg-yellow-50 text-yellow-700 border-yellow-200',
@@ -42,6 +44,11 @@ export default function StudentsPage() {
   const overdueIdsRef = useRef<Set<string>>(new Set());
   const [phoneSelection, setPhoneSelection] = useState<PhoneSelection>({});
   const [showSmsConfirm, setShowSmsConfirm] = useState(false);
+  const [selectedIds, setSelectedIds]       = useState<Set<string>>(new Set());
+  const [discountOpen, setDiscountOpen]     = useState(false);
+  const [user, setUser]                     = useState<User | null>(null);
+
+  useEffect(() => { setUser(getUser()); }, []);
 
   // ── Data fetching ──────────────────────────────────────────────────────────
 
@@ -173,6 +180,30 @@ async function openSmsModal() {
     return recs;
   });
 
+  // ── Discount ────────────────────────────────────────────────────────────────
+
+  const canDiscount = ['boss', 'manager'].includes(user?.role ?? '');
+
+  function toggleSelect(id: string) {
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) { next.delete(id); } else { next.add(id); }
+      return next;
+    });
+  }
+
+  const selectedStudents = students.filter(s => selectedIds.has(s.id));
+  const allSameCourse = selectedStudents.length > 0 &&
+    selectedStudents.every(s => s.course === selectedStudents[0].course);
+
+  const discountStudents: DiscountStudent[] = selectedStudents.map(s => ({
+    id: s.id,
+    name: `${s.first_name} ${s.last_name}`,
+    course_id: s.course || '',
+    course_name: s.course_name || '',
+    course_price: s.course_price || 0,
+  }));
+
   // ── Archive ────────────────────────────────────────────────────────────────
 
   async function confirmArchive() {
@@ -204,15 +235,22 @@ async function openSmsModal() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <h1 className="text-xl font-bold text-gray-900">O&apos;quvchilar</h1>
-        {selectedSmsCount > 0 && (
-          <button
-            onClick={openSmsModal}
-            className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded hover:bg-indigo-700 transition-colors"
-          >
-            <Send className="w-4 h-4" />
-            SMS yuborish ({selectedSmsCount})
-          </button>
-        )}
+        <div className="flex gap-2">
+          {selectedSmsCount > 0 && (
+            <button onClick={openSmsModal}
+              className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded hover:bg-indigo-700 transition-colors">
+              <Send className="w-4 h-4" />
+              SMS yuborish ({selectedSmsCount})
+            </button>
+          )}
+          {selectedIds.size > 0 && allSameCourse && canDiscount && (
+            <button onClick={() => setDiscountOpen(true)}
+              className="flex items-center gap-2 px-4 py-2 bg-amber-500 text-white text-sm font-medium rounded hover:bg-amber-600 transition-colors">
+              <Tag className="w-4 h-4" />
+              Chegirma ({selectedIds.size})
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Filters */}
@@ -249,7 +287,7 @@ async function openSmsModal() {
           <table className="w-full text-sm">
             <thead>
               <tr className="bg-gray-50 border-b border-gray-200">
-                {['№', 'Ism', 'Telefon', 'Ota-ona tel', 'Guruh', 'Kurs', "Tug'ilgan", 'Holat', 'Amal'].map((h) => (
+                {['№', '', 'Ism', 'Telefon', 'Ota-ona tel', 'Guruh', 'Kurs', "Tug'ilgan", 'Holat', 'Amal'].map((h) => (
                   <th key={h} className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">{h}</th>
                 ))}
               </tr>
@@ -262,13 +300,23 @@ async function openSmsModal() {
                   ))}</tr>
                 ))
                 : students.length === 0
-                  ? <tr><td colSpan={9} className="px-4 py-16 text-center text-gray-400">Natija topilmadi</td></tr>
+                  ? <tr><td colSpan={10} className="px-4 py-16 text-center text-gray-400">Natija topilmadi</td></tr>
                   : students.map((s, idx) => (
                     <tr key={s.id} className={cn('transition-colors hover:brightness-95', rowBg(s))}>
                       {/* 1. № */}
                       <td className="px-4 py-3 text-gray-400 text-xs">{(page - 1) * pageSize + idx + 1}</td>
-                      
-                      {/* 2. Ism */}
+
+                      {/* 2. Discount checkbox */}
+                      {canDiscount && (
+                        <td className="px-3 py-3">
+                          <input type="checkbox" checked={selectedIds.has(s.id)}
+                            onChange={() => toggleSelect(s.id)}
+                            className="rounded border-gray-300" />
+                        </td>
+                      )}
+                      {!canDiscount && <td />}
+
+                      {/* 3. Ism */}
                       <td className="px-4 py-3 font-medium text-gray-900">{s.first_name} {s.last_name}</td>
                       
                       {/* 3. Telefon */}
@@ -389,6 +437,13 @@ async function openSmsModal() {
         onClose={() => setShowSmsConfirm(false)}
         recipients={smsRecipients}
         onSend={handleSendSms}
+      />
+
+      <DiscountModal
+        open={discountOpen}
+        onClose={() => { setDiscountOpen(false); setSelectedIds(new Set()); }}
+        students={discountStudents}
+        onSave={() => { fetchStudents(); setSelectedIds(new Set()); }}
       />
     </div>
   );

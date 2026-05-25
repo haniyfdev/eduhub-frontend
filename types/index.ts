@@ -20,7 +20,9 @@ export interface Student {
   second_phone: string | null;
   birth_date: string | null;
   archived_at?: string | null;
+  course?: string | null;
   course_name: string | null;
+  course_price?: number | null;
   current_group: string | null;
   current_group_id: string | null;
   status: 'pending' | 'active' | 'trial' | 'archived' | 'frozen' | 'ignored';

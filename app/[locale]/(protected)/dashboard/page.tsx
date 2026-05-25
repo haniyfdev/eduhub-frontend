@@ -480,7 +480,7 @@ export default function DashboardPage() {
             <p className="text-sm text-gray-400 text-center py-6">Ma&apos;lumot yo&apos;q</p>
           ) : (
             <div className="space-y-1">
-              {(d?.teacherStats ?? []).map((ts, i) => (
+              {(d?.teacherStats ?? []).map((ts) => (
                 <div key={ts.id} className="flex items-center justify-between py-2.5 border-b border-gray-50 last:border-0">
                   <div className="flex items-center gap-2.5 min-w-0">
                     <div className="w-7 h-7 rounded-full bg-violet-100 flex items-center justify-center flex-shrink-0">

@@ -35,10 +35,10 @@ interface PaymentForm {
 }
 
 function rowBg(debtStatus: Debt['status'], studentStatus: string, dueDate: string): string {
-  if (studentStatus === 'frozen') return 'bg-[#F0F9FF]';
-  const isOverdue = debtStatus === 'overdue' || 
+  const isOverdue = debtStatus === 'overdue' ||
     (debtStatus !== 'paid' && dueDate && new Date(dueDate) < new Date());
   if (isOverdue) return 'bg-red-100';
+  if (studentStatus === 'frozen') return 'bg-[#F0F9FF]';
   switch (debtStatus) {
     case 'unpaid':   return 'bg-yellow-100';
     case 'partial':  return 'bg-yellow-50';

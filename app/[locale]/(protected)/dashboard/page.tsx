@@ -1,19 +1,19 @@
 'use client';
 
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState } from 'react';
 import {
-  Users, UsersRound, CreditCard, AlertCircle, MessageSquare, GraduationCap,
-  Users2, UserPlus, TrendingUp, ArrowRight,
+  Users, UserPlus, Users2, CreditCard, AlertCircle, GraduationCap,
+  TrendingUp, MessageSquare, BookOpen, UserMinus,
 } from 'lucide-react';
 import Link from 'next/link';
 import { useLocale, useTranslations } from 'next-intl';
 import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
+  PieChart, Pie, Cell,
 } from 'recharts';
 import toast, { Toaster } from 'react-hot-toast';
 import StatCard from '@/components/stat-card';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import api from '@/lib/axios';
 import { formatCurrency, cn } from '@/lib/utils';
 
@@ -21,8 +21,26 @@ import { formatCurrency, cn } from '@/lib/utils';
 
 interface RevenuePoint { month: string; revenue: number; }
 interface Debtor { id: string; student_name: string; amount: number; due_date: string; }
-interface TeacherStat { id: string; name: string; groups_count: number; students_count: number; }
-
+interface LeaderboardEntry { student_id: string; student_name: string; avg_score: number; group_name?: string; }
+interface TodayLesson {
+  id: string;
+  group?: { name: string } | string;
+  group_name?: string;
+  teacher?: { first_name: string; last_name: string } | string;
+  teacher_name?: string;
+  room?: { name: string } | string;
+  time?: string;
+  start_time?: string;
+  status?: string;
+}
+interface TeacherTop {
+  id: string;
+  first_name: string;
+  last_name: string;
+  groups_count?: number;
+  students_count?: number;
+  attendance_rate?: number;
+}
 interface DashboardData {
   total_students?: number; active_students?: number; students_count?: number;
   active_groups?: number; groups_count?: number;
@@ -30,60 +48,26 @@ interface DashboardData {
   debtors_count?: number; total_debtors?: number;
   teachers_count?: number;
   revenue_chart?: RevenuePoint[];
-  top_debtors?: Debtor[];
-  teacher_stats?: TeacherStat[];
 }
-
 interface StudentNote {
   id: string;
   author_name?: string;
   author?: { first_name: string; last_name: string };
-  student_name?: string;
-  student?: { first_name: string; last_name: string };
   note?: string;
   text?: string;
   created_at: string;
-}
-
-interface LeaderboardEntry {
-  student_id: string;
-  student_name: string;
-  avg_score: number;
-  group_name?: string;
-}
-
-interface ActiveGroup {
-  id: string;
-  name: string;
-  teacher?: { first_name: string; last_name: string };
-  students_count?: number;
-  course?: { name: string };
-  schedule?: string;
-}
-
-interface Course { id: string; name: string; }
-interface Teacher { id: string; first_name: string; last_name: string; }
-interface Student { id: string; first_name: string; last_name: string; phone: string; }
-interface Group { id: string; name: string; }
-
-const DAYS_LIST = ['Du', 'Se', 'Ch', 'Pa', 'Ju', 'Sha', 'Ya'];
-
-function buildSchedule(days: string[], time: string) {
-  return [days.join(','), time].filter(Boolean).join(' ');
 }
 
 // ── Helpers ────────────────────────────────────────────────────────────────
 
 function resolve(data: DashboardData) {
   return {
-    students: data.active_students || data.students_count || data.total_students || (data as any).active_students_count || (data as any).students || 0,
+    students: data.active_students || data.students_count || data.total_students || (data as any).students || 0,
     groups: data.active_groups || data.groups_count || (data as any).groups || 0,
     revenue: data.monthly_revenue || data.total_revenue || (data as any).revenue || 0,
     debtors: data.debtors_count || data.total_debtors || (data as any).debtors || 0,
     teachers: data.teachers_count || (data as any).teachers || 0,
     chart: data.revenue_chart || [],
-    topDebtors: data.top_debtors || [],
-    teacherStats: data.teacher_stats || [],
   };
 }
 
@@ -95,11 +79,29 @@ function timeAgo(dateStr: string, tFn: (key: string, params?: Record<string, num
   return tFn('timeAgoDays', { n: Math.floor(diff / 86400) });
 }
 
-function getInitials(name: string) {
-  return name.split(' ').map((w) => w[0]).join('').slice(0, 2).toUpperCase();
+function getLessonGroup(lesson: TodayLesson): string {
+  if (!lesson.group) return lesson.group_name ?? '—';
+  if (typeof lesson.group === 'string') return lesson.group;
+  return lesson.group.name ?? '—';
 }
 
-const RANK_BADGES = ['🥇', '🥈', '🥉', '4-', '5-'];
+function getLessonTeacher(lesson: TodayLesson): string {
+  if (!lesson.teacher) return lesson.teacher_name ?? '—';
+  if (typeof lesson.teacher === 'string') return lesson.teacher;
+  return `${lesson.teacher.first_name} ${lesson.teacher.last_name}`;
+}
+
+function getLessonRoom(lesson: TodayLesson): string {
+  if (!lesson.room) return '—';
+  if (typeof lesson.room === 'string') return lesson.room;
+  return lesson.room.name ?? '—';
+}
+
+function getLessonTime(lesson: TodayLesson): string {
+  return lesson.time ?? lesson.start_time ?? '—';
+}
+
+const RANK_BADGES = ['🥇', '🥈', '🥉', '4', '5', '6', '7', '8', '9', '10'];
 const DEBTOR_COLORS = [
   'bg-red-100 text-red-700',
   'bg-orange-100 text-orange-700',
@@ -107,54 +109,57 @@ const DEBTOR_COLORS = [
   'bg-pink-100 text-pink-700',
   'bg-amber-100 text-amber-700',
 ];
+const DONUT_COLORS_PAYMENT = ['#10b981', '#f59e0b', '#6b7280', '#ef4444'];
+const DONUT_COLORS_COURSE = ['#3b82f6', '#8b5cf6', '#f59e0b', '#10b981', '#ef4444', '#06b6d4'];
 
 function CardSkeleton() { return <Skeleton className="h-28 w-full rounded-xl" />; }
 
+// ── Funnel Widget ──────────────────────────────────────────────────────────
+
 function FunnelWidget({ locale }: { locale: string }) {
   const td = useTranslations('dashboard');
-  const [counts, setCounts] = useState<{ pending: number; trial: number; active: number } | null>(null);
+  const [counts, setCounts] = useState<{ leads: number; trial: number; active: number } | null>(null);
 
   useEffect(() => {
     async function load() {
       try {
-        const { data } = await import('@/lib/axios').then((m) => m.default.get('/api/v1/leads/?page_size=1'));
-        const pending = data.count ?? 0;
-        const { data: d2 } = await import('@/lib/axios').then((m) => m.default.get('/api/v1/leads/?status=trial&page_size=1'));
-        const trial = d2.count ?? 0;
-        const { data: d3 } = await import('@/lib/axios').then((m) => m.default.get('/api/v1/students/?status=active&page_size=1'));
-        const active = d3.count ?? 0;
-        setCounts({ pending, trial, active });
-      } catch {
-        setCounts(null);
-      }
+        const [r1, r2, r3] = await Promise.all([
+          api.get('/api/v1/leads/', { params: { page_size: 1 } }),
+          api.get('/api/v1/leads/', { params: { status: 'trial', page_size: 1 } }),
+          api.get('/api/v1/students/', { params: { status: 'active', page_size: 1 } }),
+        ]);
+        setCounts({ leads: r1.data.count ?? 0, trial: r2.data.count ?? 0, active: r3.data.count ?? 0 });
+      } catch { setCounts({ leads: 0, trial: 0, active: 0 }); }
     }
     load();
   }, []);
 
-  if (!counts) return <Skeleton className="h-16 w-full rounded-lg" />;
+  if (!counts) return <Skeleton className="h-24 w-full rounded-lg" />;
 
-  const total = counts.pending + counts.trial + counts.active || 1;
+  const conv1 = counts.leads > 0 ? Math.round((counts.trial / counts.leads) * 100) : 0;
+  const conv2 = counts.trial > 0 ? Math.round((counts.active / counts.trial) * 100) : 0;
+
   const steps = [
-    { label: td('funnelLeads'), count: counts.pending + counts.trial, color: 'bg-amber-400', pct: Math.round((counts.pending + counts.trial) / total * 100), href: `/${locale}/leads` },
-    { label: td('funnelTrial'), count: counts.trial, color: 'bg-blue-400', pct: Math.round(counts.trial / total * 100), href: `/${locale}/leads?status=trial` },
-    { label: td('funnelActive'), count: counts.active, color: 'bg-emerald-500', pct: Math.round(counts.active / total * 100), href: `/${locale}/students` },
+    { label: td('funnelLeads'), count: counts.leads, color: 'bg-amber-400', href: `/${locale}/leads`, width: 100 },
+    { label: td('funnelTrial'), count: counts.trial, color: 'bg-blue-400', href: `/${locale}/leads?status=trial`, width: 72 },
+    { label: td('funnelActive'), count: counts.active, color: 'bg-emerald-500', href: `/${locale}/students`, width: 50 },
   ];
 
   return (
-    <div className="flex items-end gap-4">
-      {steps.map((s, i) => (
-        <Link key={s.label} href={s.href} className="flex-1 group">
-          <div className="flex items-center justify-between mb-1.5">
-            <span className="text-xs font-medium text-gray-600">{s.label}</span>
-            <span className="text-sm font-bold text-gray-800">{s.count}</span>
-          </div>
-          <div className="h-2.5 w-full bg-white/60 rounded-full overflow-hidden">
-            <div className={cn('h-full rounded-full transition-all duration-500', s.color)} style={{ width: `${s.pct}%` }} />
-          </div>
+    <div className="flex flex-col items-center gap-1.5 py-1">
+      {steps.map((step, i) => (
+        <div key={step.label} className="w-full flex items-center gap-3">
+          <Link href={step.href} style={{ width: `${step.width}%` }}
+            className="group block rounded-lg overflow-hidden hover:opacity-90 transition-opacity">
+            <div className={cn('py-2.5 px-4 flex items-center justify-between text-white', step.color)}>
+              <span className="text-sm font-medium">{step.label}</span>
+              <span className="font-bold">{step.count.toLocaleString()}</span>
+            </div>
+          </Link>
           {i < steps.length - 1 && (
-            <p className="text-[10px] text-gray-400 mt-1 text-right">{s.pct}%</p>
+            <span className="text-xs text-gray-400 flex-shrink-0">↓ {[conv1, conv2][i]}%</span>
           )}
-        </Link>
+        </div>
       ))}
     </div>
   );
@@ -171,52 +176,58 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
 
+  const [leadsCount, setLeadsCount] = useState(0);
+
+  const [topDebtors, setTopDebtors] = useState<Debtor[]>([]);
+  const [topDebtorsLoading, setTopDebtorsLoading] = useState(true);
+
   const [notes, setNotes] = useState<StudentNote[]>([]);
   const [notesLoading, setNotesLoading] = useState(true);
 
   const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
+  const [worstStudents, setWorstStudents] = useState<LeaderboardEntry[]>([]);
   const [leaderboardLoading, setLeaderboardLoading] = useState(true);
 
-  const [activeGroups, setActiveGroups] = useState<ActiveGroup[]>([]);
-  const [groupsLoading, setGroupsLoading] = useState(true);
+  const [todayLessons, setTodayLessons] = useState<TodayLesson[]>([]);
+  const [todayLessonsLoading, setTodayLessonsLoading] = useState(true);
 
-  const [showStudentAdd, setShowStudentAdd] = useState(false);
-  const [savingStudent, setSavingStudent] = useState(false);
-  const [studentForm, setStudentForm] = useState({ first_name: '', last_name: '', phone: '', course_id: '' });
-  const [courses, setCourses] = useState<Course[]>([]);
+  const [churnTotal, setChurnTotal] = useState(0);
+  const [churnLoading, setChurnLoading] = useState(true);
 
-  const [showPaymentAdd, setShowPaymentAdd] = useState(false);
-  const [savingPayment, setSavingPayment] = useState(false);
-  const [paymentStudentSearch, setPaymentStudentSearch] = useState('');
-  const [paymentStudentResults, setPaymentStudentResults] = useState<Student[]>([]);
-  const [selectedPaymentStudent, setSelectedPaymentStudent] = useState<Student | null>(null);
-  const [studentGroups, setStudentGroups] = useState<Group[]>([]);
-  const [paymentForm, setPaymentForm] = useState({ group_id: '', amount: '', payment_type: 'cash', note: '' });
+  const [paymentStatus, setPaymentStatus] = useState<{ name: string; value: number }[]>([]);
+  const [paymentStatusLoading, setPaymentStatusLoading] = useState(true);
 
-  const [showGroupAdd, setShowGroupAdd] = useState(false);
-  const [savingGroup, setSavingGroup] = useState(false);
-  const [teachers, setTeachers] = useState<Teacher[]>([]);
-  const [groupForm, setGroupForm] = useState({ course_id: '', teacher_id: '', gender_type: '', days: [] as string[], time: '', room: '' });
+  const [courseDistribution, setCourseDistribution] = useState<{ name: string; value: number }[]>([]);
+  const [courseDistributionLoading, setCourseDistributionLoading] = useState(true);
 
-  const [showSms, setShowSms] = useState(false);
-  const [savingSms, setSavingSms] = useState(false);
-  const [smsForm, setSmsForm] = useState({ phone: '', message: '' });
-
-  const paymentDebounce = useRef<ReturnType<typeof setTimeout>>();
+  const [topTeachers, setTopTeachers] = useState<TeacherTop[]>([]);
+  const [topTeachersLoading, setTopTeachersLoading] = useState(true);
 
   // ── Fetch ──────────────────────────────────────────────────────────────
 
   async function fetchData() {
     setLoading(true); setError(false);
     try {
-      const res = await api.get('/api/v1/dashboard/summary/').catch(() => null);
-      setData(res?.data ?? {});
+      const [summaryRes, leadsRes] = await Promise.all([
+        api.get('/api/v1/dashboard/summary/').catch(() => null),
+        api.get('/api/v1/leads/', { params: { page_size: 1 } }).catch(() => null),
+      ]);
+      setData(summaryRes?.data ?? {});
+      setLeadsCount(leadsRes?.data?.count ?? 0);
     } catch {
       setError(true);
       toast.error(t('loadError'));
     } finally {
       setLoading(false);
     }
+  }
+
+  async function fetchTopDebtors() {
+    setTopDebtorsLoading(true);
+    try {
+      const { data: d } = await api.get('/api/v1/debts/', { params: { status: 'unpaid,overdue', page_size: 5, ordering: '-amount' } });
+      setTopDebtors(d.results ?? []);
+    } catch { setTopDebtors([]); } finally { setTopDebtorsLoading(false); }
   }
 
   async function fetchNotes() {
@@ -241,117 +252,118 @@ export default function DashboardPage() {
         map.get(sid)!.scores.push(score);
       });
       const entries: LeaderboardEntry[] = Array.from(map.entries())
-        .map(([id, v]) => ({ student_id: id, student_name: v.name, avg_score: v.scores.reduce((a, b) => a + b, 0) / v.scores.length, group_name: v.group }))
-        .sort((a, b) => b.avg_score - a.avg_score)
-        .slice(0, 5);
-      setLeaderboard(entries);
-    } catch { setLeaderboard([]); } finally { setLeaderboardLoading(false); }
+        .map(([id, v]) => ({
+          student_id: id,
+          student_name: v.name,
+          avg_score: v.scores.length > 0 ? v.scores.reduce((a, b) => a + b, 0) / v.scores.length : 0,
+          group_name: v.group,
+        }))
+        .sort((a, b) => b.avg_score - a.avg_score);
+      setLeaderboard(entries.slice(0, 10));
+      setWorstStudents([...entries].sort((a, b) => a.avg_score - b.avg_score).slice(0, 10));
+    } catch { setLeaderboard([]); setWorstStudents([]); } finally { setLeaderboardLoading(false); }
   }
 
-  async function fetchActiveGroups() {
-    setGroupsLoading(true);
+  async function fetchTodayLessons() {
+    setTodayLessonsLoading(true);
     try {
-      const { data: d } = await api.get('/api/v1/groups/', { params: { status: 'active', page_size: 5 } });
-      setActiveGroups(d.results ?? []);
-    } catch { setActiveGroups([]); } finally { setGroupsLoading(false); }
+      const today = new Date().toISOString().split('T')[0];
+      const { data: d } = await api.get('/api/v1/lessons/', { params: { date: today, page_size: 20 } });
+      setTodayLessons(d.results ?? []);
+    } catch { setTodayLessons([]); } finally { setTodayLessonsLoading(false); }
   }
 
-  async function fetchCourses() {
-    try { const { data: d } = await api.get('/api/v1/courses/?page_size=100'); setCourses(d.results ?? []); } catch {}
+  async function fetchChurn() {
+    setChurnLoading(true);
+    try {
+      const { data: d } = await api.get('/api/v1/students/', { params: { status: 'archived', page_size: 1 } });
+      setChurnTotal(d.count ?? 0);
+    } catch { setChurnTotal(0); } finally { setChurnLoading(false); }
   }
 
-  async function fetchTeachers() {
-    try { const { data: d } = await api.get('/api/v1/teachers/?page_size=100'); setTeachers(d.results ?? []); } catch {}
+  async function fetchPaymentStatus() {
+    setPaymentStatusLoading(true);
+    try {
+      const [r1, r2, r3, r4] = await Promise.all([
+        api.get('/api/v1/debts/', { params: { status: 'paid', page_size: 1 } }),
+        api.get('/api/v1/debts/', { params: { status: 'partial', page_size: 1 } }),
+        api.get('/api/v1/debts/', { params: { status: 'unpaid', page_size: 1 } }),
+        api.get('/api/v1/debts/', { params: { status: 'overdue', page_size: 1 } }),
+      ]);
+      setPaymentStatus([
+        { name: tc('paid'), value: r1.data.count ?? 0 },
+        { name: tc('partial'), value: r2.data.count ?? 0 },
+        { name: tc('unpaid'), value: r3.data.count ?? 0 },
+        { name: tc('overdue'), value: r4.data.count ?? 0 },
+      ]);
+    } catch { setPaymentStatus([]); } finally { setPaymentStatusLoading(false); }
   }
 
-  useEffect(() => { fetchData(); fetchNotes(); fetchLeaderboard(); fetchActiveGroups(); fetchCourses(); fetchTeachers(); }, []);
+  async function fetchCourseDistribution() {
+    setCourseDistributionLoading(true);
+    try {
+      const { data: d } = await api.get('/api/v1/groups/', { params: { status: 'active', page_size: 100 } });
+      const groups: Array<{ course?: { name: string }; students_count?: number }> = d.results ?? [];
+      const map = new Map<string, number>();
+      groups.forEach((g) => {
+        const name = g.course?.name ?? 'Other';
+        map.set(name, (map.get(name) ?? 0) + (g.students_count ?? 0));
+      });
+      setCourseDistribution(
+        Array.from(map.entries())
+          .map(([name, value]) => ({ name, value }))
+          .sort((a, b) => b.value - a.value)
+          .slice(0, 6),
+      );
+    } catch { setCourseDistribution([]); } finally { setCourseDistributionLoading(false); }
+  }
+
+  async function fetchTopTeachers() {
+    setTopTeachersLoading(true);
+    try {
+      const { data: d } = await api.get('/api/v1/teachers/', { params: { page_size: 10 } });
+      const teachers: TeacherTop[] = d.results ?? [];
+      teachers.sort((a, b) => (b.students_count ?? 0) - (a.students_count ?? 0));
+      setTopTeachers(teachers);
+    } catch { setTopTeachers([]); } finally { setTopTeachersLoading(false); }
+  }
 
   useEffect(() => {
-    clearTimeout(paymentDebounce.current);
-    if (!paymentStudentSearch) { setPaymentStudentResults([]); return; }
-    paymentDebounce.current = setTimeout(async () => {
-      try {
-        const { data: d } = await api.get('/api/v1/students/', { params: { search: paymentStudentSearch, page_size: 8 } });
-        setPaymentStudentResults(d.results ?? []);
-      } catch {}
-    }, 300);
-    return () => clearTimeout(paymentDebounce.current);
-  }, [paymentStudentSearch]);
-
-  useEffect(() => {
-    if (!selectedPaymentStudent) { setStudentGroups([]); return; }
-    api.get('/api/v1/groups/', { params: { student: selectedPaymentStudent.id } })
-      .then(({ data: d }) => setStudentGroups(d.results ?? []))
-      .catch(() => setStudentGroups([]));
-  }, [selectedPaymentStudent]);
-
-  // ── Handlers ───────────────────────────────────────────────────────────
-
-  async function handleStudentAdd(e: React.FormEvent) {
-    e.preventDefault(); setSavingStudent(true);
-    try {
-      await api.post('/api/v1/students/', { first_name: studentForm.first_name, last_name: studentForm.last_name, phone: '+998' + studentForm.phone.replace(/\D/g, ''), status: 'pending', course_id: studentForm.course_id || null });
-      toast.success(t('studentAdded'));
-      setShowStudentAdd(false);
-      setStudentForm({ first_name: '', last_name: '', phone: '', course_id: '' });
-    } catch (err: unknown) { const e = err as { response?: { data?: { detail?: string } } }; toast.error(e?.response?.data?.detail || tc('error')); } finally { setSavingStudent(false); }
-  }
-
-  async function handlePaymentAdd(e: React.FormEvent) {
-    e.preventDefault();
-    if (!selectedPaymentStudent) { toast.error(t('selectStudentError')); return; }
-    setSavingPayment(true);
-    try {
-      await api.post('/api/v1/payments/', { student_id: selectedPaymentStudent.id, ...(paymentForm.group_id ? { group_id: paymentForm.group_id } : {}), amount: parseFloat(paymentForm.amount), payment_type: paymentForm.payment_type, ...(paymentForm.note ? { note: paymentForm.note } : {}) });
-      toast.success(t('paymentAdded'));
-      setShowPaymentAdd(false);
-      setSelectedPaymentStudent(null); setPaymentStudentSearch('');
-      setPaymentForm({ group_id: '', amount: '', payment_type: 'cash', note: '' });
-    } catch (err: unknown) { const e = err as { response?: { data?: { detail?: string } } }; toast.error(e?.response?.data?.detail || tc('error')); } finally { setSavingPayment(false); }
-  }
-
-  async function handleGroupAdd(e: React.FormEvent) {
-    e.preventDefault();
-    if (!groupForm.gender_type) { toast.error(t('selectGroupTypeError')); return; }
-    setSavingGroup(true);
-    try {
-      const schedule = buildSchedule(groupForm.days, groupForm.time);
-      await api.post('/api/v1/groups/', { course_id: groupForm.course_id, teacher_id: groupForm.teacher_id, gender_type: groupForm.gender_type, ...(schedule ? { schedule } : {}), ...(groupForm.room ? { room: groupForm.room } : {}) });
-      toast.success(t('groupCreated'));
-      setShowGroupAdd(false);
-      setGroupForm({ course_id: '', teacher_id: '', gender_type: '', days: [], time: '', room: '' });
-      fetchActiveGroups();
-    } catch (err: unknown) { const e = err as { response?: { data?: { detail?: string } } }; toast.error(e?.response?.data?.detail || tc('error')); } finally { setSavingGroup(false); }
-  }
-
-  async function handleSmsSend(e: React.FormEvent) {
-    e.preventDefault(); setSavingSms(true);
-    try {
-      await api.post('/api/v1/notifications/send/', { phone: '+998' + smsForm.phone.replace(/\D/g, ''), message: smsForm.message });
-      toast.success(t('smsSent'));
-      setShowSms(false); setSmsForm({ phone: '', message: '' });
-    } catch {
-      toast.error(t('smsSoon'));
-      setShowSms(false);
-    } finally { setSavingSms(false); }
-  }
-
-  function toggleDay(day: string) {
-    setGroupForm((f) => ({ ...f, days: f.days.includes(day) ? f.days.filter((d) => d !== day) : [...f.days, day] }));
-  }
+    fetchData();
+    fetchTopDebtors();
+    fetchNotes();
+    fetchLeaderboard();
+    fetchTodayLessons();
+    fetchChurn();
+    fetchPaymentStatus();
+    fetchCourseDistribution();
+    fetchTopTeachers();
+  }, []);
 
   const d = data ? resolve(data) : null;
 
   const stats = d ? [
+    { label: t('totalLeads'), value: leadsCount, icon: UserPlus },
     { label: t('totalStudents'), value: d.students, icon: Users },
     { label: t('activeGroups'), value: d.groups, icon: Users2 },
-    { label: t('monthlyRevenue'), value: formatCurrency(d.revenue), icon: CreditCard },
     { label: t('debtors'), value: d.debtors, icon: AlertCircle, variant: 'danger' as const },
     { label: tc('teacher'), value: d.teachers, icon: GraduationCap, variant: 'success' as const },
   ] : [];
 
-  const inputCls = 'w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500';
-  const labelCls = 'block text-sm font-medium text-gray-700 mb-1';
+  function lessonStatusBadge(status?: string) {
+    if (!status) return null;
+    const map: Record<string, { label: string; cls: string }> = {
+      finished: { label: t('lessonStatusFinished'), cls: 'bg-gray-100 text-gray-600' },
+      ongoing: { label: t('lessonStatusOngoing'), cls: 'bg-green-100 text-green-700' },
+      scheduled: { label: t('lessonStatusScheduled'), cls: 'bg-blue-100 text-blue-700' },
+    };
+    const entry = map[status] ?? { label: status, cls: 'bg-gray-100 text-gray-500' };
+    return (
+      <span className={cn('px-2 py-0.5 rounded-full text-xs font-medium whitespace-nowrap', entry.cls)}>
+        {entry.label}
+      </span>
+    );
+  }
 
   // ── Render ─────────────────────────────────────────────────────────────
 
@@ -373,33 +385,53 @@ export default function DashboardPage() {
         </div>
       )}
 
-      {/* Quick Actions */}
-      <div className="grid grid-cols-2 xl:grid-cols-4 gap-3">
-        {[
-          { label: t('addStudent'), icon: UserPlus,     onClick: () => setShowStudentAdd(true),  cls: 'bg-blue-600 hover:bg-blue-700' },
-          { label: t('addPayment'), icon: CreditCard,   onClick: () => setShowPaymentAdd(true),  cls: 'bg-emerald-600 hover:bg-emerald-700' },
-          { label: t('addGroup'),   icon: Users2,        onClick: () => setShowGroupAdd(true),    cls: 'bg-violet-600 hover:bg-violet-700' },
-          { label: t('sendSms'),    icon: MessageSquare, onClick: () => setShowSms(true),         cls: 'bg-amber-500 hover:bg-amber-600' },
-        ].map(({ label, icon: Icon, onClick, cls }) => (
-          <button key={label} onClick={onClick}
-            className={cn('flex items-center justify-center gap-2.5 px-4 py-3.5 rounded-xl text-white text-sm font-semibold transition-colors shadow-sm', cls)}>
-            <Icon className="w-4 h-4 flex-shrink-0" />
-            {label}
-          </button>
-        ))}
+      {/* Conversion Funnel */}
+      <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl border border-blue-100 shadow-sm p-5">
+        <h2 className="text-sm font-semibold text-gray-800 mb-4">{t('conversion')}</h2>
+        <FunnelWidget locale={locale} />
       </div>
 
-      {/* Conversion Funnel */}
-      {!loading && d && (
-        <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl border border-blue-100 shadow-sm p-5">
-          <h2 className="text-sm font-semibold text-gray-800 mb-4">{t('conversion')}</h2>
-          <FunnelWidget locale={locale} />
-        </div>
-      )}
+      {/* Today's Lessons */}
+      <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-5">
+        <h2 className="text-sm font-semibold text-gray-900 mb-4 flex items-center gap-2">
+          <BookOpen className="w-4 h-4 text-blue-500" />
+          {t('todayLessons')}
+        </h2>
+        {todayLessonsLoading ? (
+          <div className="space-y-2">{Array(3).fill(0).map((_, i) => <Skeleton key={i} className="h-10 w-full" />)}</div>
+        ) : todayLessons.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-8">
+            <BookOpen className="w-8 h-8 text-gray-200 mb-2" />
+            <p className="text-sm text-gray-400">{t('noLessons')}</p>
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-gray-100">
+                  {[tc('group'), tc('teacher'), tc('room'), t('lessonTime'), tc('status')].map((h) => (
+                    <th key={h} className="text-left pb-2.5 text-xs font-semibold text-gray-400 uppercase tracking-wide pr-3">{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-50">
+                {todayLessons.map((lesson) => (
+                  <tr key={lesson.id} className="hover:bg-gray-50 transition-colors">
+                    <td className="py-2.5 pr-3 font-medium text-gray-800 whitespace-nowrap">{getLessonGroup(lesson)}</td>
+                    <td className="py-2.5 pr-3 text-gray-600 whitespace-nowrap">{getLessonTeacher(lesson)}</td>
+                    <td className="py-2.5 pr-3 text-gray-500 whitespace-nowrap">{getLessonRoom(lesson)}</td>
+                    <td className="py-2.5 pr-3 text-gray-500 whitespace-nowrap">{getLessonTime(lesson)}</td>
+                    <td className="py-2.5">{lessonStatusBadge(lesson.status)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
 
-      {/* Charts row */}
+      {/* Revenue chart + Top Debtors */}
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-4">
-        {/* Revenue chart */}
         <div className="xl:col-span-2 bg-white rounded-xl border border-gray-100 shadow-sm p-5">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-sm font-semibold text-gray-900 flex items-center gap-2">
@@ -437,25 +469,25 @@ export default function DashboardPage() {
           )}
         </div>
 
-        {/* Top debtors */}
+        {/* Top Debtors */}
         <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-5">
           <h2 className="text-sm font-semibold text-gray-900 mb-4 flex items-center gap-2">
             <AlertCircle className="w-4 h-4 text-red-400" />
             {t('topDebtors')}
           </h2>
-          {loading ? (
+          {topDebtorsLoading ? (
             <div className="space-y-3">{Array(4).fill(0).map((_, i) => <Skeleton key={i} className="h-12 w-full rounded-lg" />)}</div>
-          ) : (d?.topDebtors?.length ?? 0) === 0 ? (
+          ) : topDebtors.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-10">
               <AlertCircle className="w-8 h-8 text-gray-200 mb-2" />
               <p className="text-sm text-gray-400">{tc('noData')}</p>
             </div>
           ) : (
             <div className="space-y-2">
-              {(d?.topDebtors ?? []).map((debt, i) => (
+              {topDebtors.map((debt, i) => (
                 <div key={debt.id} className="flex items-center gap-3 p-2 rounded-lg hover:bg-gray-50 transition-colors">
                   <div className={cn('w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 text-xs font-bold', DEBTOR_COLORS[i % DEBTOR_COLORS.length])}>
-                    {getInitials(debt.student_name)}
+                    {debt.student_name.split(' ').map((w) => w[0]).join('').slice(0, 2).toUpperCase()}
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium text-gray-900 truncate">{debt.student_name}</p>
@@ -469,143 +501,97 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {/* Teacher stats + Active Groups */}
+      {/* Churn + Payment Status + Course Distribution */}
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-4">
-        {/* Teacher stats */}
+        {/* Churn */}
         <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-5">
-          <h2 className="text-sm font-semibold text-gray-900 mb-4 flex items-center gap-2">
-            <GraduationCap className="w-4 h-4 text-violet-500" />
-            {t('teachersTitle')}
+          <h2 className="text-sm font-semibold text-gray-900 mb-1 flex items-center gap-2">
+            <UserMinus className="w-4 h-4 text-rose-400" />
+            {t('churnTitle')}
           </h2>
-          {loading ? (
-            <div className="space-y-2">{Array(3).fill(0).map((_, i) => <Skeleton key={i} className="h-10 w-full" />)}</div>
-          ) : (d?.teacherStats?.length ?? 0) === 0 ? (
-            <p className="text-sm text-gray-400 text-center py-6">{tc('noData')}</p>
+          <p className="text-xs text-gray-400 mb-4">{t('last30days')}</p>
+          {churnLoading ? (
+            <Skeleton className="h-20 w-full rounded-lg" />
           ) : (
-            <div className="space-y-1">
-              {(d?.teacherStats ?? []).map((ts) => (
-                <div key={ts.id} className="flex items-center justify-between py-2.5 border-b border-gray-50 last:border-0">
-                  <div className="flex items-center gap-2.5 min-w-0">
-                    <div className="w-7 h-7 rounded-full bg-violet-100 flex items-center justify-center flex-shrink-0">
-                      <span className="text-[10px] font-bold text-violet-700">{ts.name.charAt(0)}</span>
-                    </div>
-                    <p className="text-sm font-medium text-gray-900 truncate">{ts.name}</p>
-                  </div>
-                  <div className="flex items-center gap-3 flex-shrink-0 ml-2">
-                    <span className="text-xs text-gray-500"><span className="font-semibold text-gray-700">{ts.groups_count}</span> {t('groups2')}</span>
-                    <span className="text-xs text-gray-500"><span className="font-semibold text-gray-700">{ts.students_count}</span> {t('students2')}</span>
-                  </div>
-                </div>
-              ))}
+            <div className="flex flex-col items-center justify-center py-4">
+              <span className="text-5xl font-bold text-rose-500">{churnTotal}</span>
+              <span className="text-xs text-gray-400 mt-2">{tc('archived')}</span>
             </div>
           )}
         </div>
 
-        {/* Active Groups */}
-        <div className="xl:col-span-2 bg-white rounded-xl border border-gray-100 shadow-sm p-5">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-sm font-semibold text-gray-900 flex items-center gap-2">
-              <Users2 className="w-4 h-4 text-blue-500" />
-              {t('activeGroupsTitle')}
-            </h2>
-            <Link href={`/${locale}/groups`}
-              className="flex items-center gap-1 text-xs text-blue-600 hover:underline font-medium">
-              {t('viewAll')} <ArrowRight className="w-3 h-3" />
-            </Link>
-          </div>
-          {groupsLoading ? (
-            <div className="space-y-2">{Array(5).fill(0).map((_, i) => <Skeleton key={i} className="h-10 w-full" />)}</div>
-          ) : activeGroups.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-10">
-              <UsersRound className="w-10 h-10 text-gray-200 mb-2" />
-              <p className="text-sm text-gray-400">{t('noActiveGroups')}</p>
-            </div>
+        {/* Payment Status Donut */}
+        <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-5">
+          <h2 className="text-sm font-semibold text-gray-900 mb-4 flex items-center gap-2">
+            <CreditCard className="w-4 h-4 text-blue-400" />
+            {t('paymentStatus')}
+          </h2>
+          {paymentStatusLoading ? (
+            <Skeleton className="h-44 w-full rounded-lg" />
+          ) : paymentStatus.length === 0 || paymentStatus.every((p) => p.value === 0) ? (
+            <p className="text-sm text-gray-400 text-center py-8">{tc('noData')}</p>
           ) : (
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-gray-100">
-                  {[t('groupHeader'), t('teacherHeader'), t('studentsHeader'), t('courseHeader'), t('scheduleHeader')].map((h) => (
-                    <th key={h} className="text-left pb-2.5 text-xs font-semibold text-gray-400 uppercase tracking-wide">{h}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-50">
-                {activeGroups.map((g) => (
-                  <tr key={g.id} onClick={() => window.location.href = `/${locale}/groups`}
-                    className="hover:bg-blue-50/50 transition-colors cursor-pointer">
-                    <td className="py-3 pr-3">
-                      <span className="inline-flex items-center justify-center w-7 h-7 rounded-lg bg-blue-600 text-white text-xs font-bold">{g.name}</span>
-                    </td>
-                    <td className="py-3 pr-3 text-gray-700 text-xs font-medium">
-                      {g.teacher ? `${g.teacher.first_name} ${g.teacher.last_name}` : '—'}
-                    </td>
-                    <td className="py-3 pr-3">
-                      <span className="inline-flex items-center gap-1 text-xs font-semibold text-gray-700">
-                        <Users className="w-3 h-3 text-gray-400" />
-                        {g.students_count ?? 0}
-                      </span>
-                    </td>
-                    <td className="py-3 pr-3 text-gray-600 text-xs">{g.course?.name ?? '—'}</td>
-                    <td className="py-3 text-gray-400 text-xs">{g.schedule ?? '—'}</td>
-                  </tr>
+            <div className="flex flex-col items-center">
+              <PieChart width={150} height={150}>
+                <Pie data={paymentStatus} cx="50%" cy="50%" innerRadius={45} outerRadius={68} dataKey="value" paddingAngle={2}>
+                  {paymentStatus.map((_, i) => <Cell key={i} fill={DONUT_COLORS_PAYMENT[i % DONUT_COLORS_PAYMENT.length]} />)}
+                </Pie>
+                {/* @ts-expect-error recharts ValueType */}
+                <Tooltip formatter={(v: number) => [v, '']} />
+              </PieChart>
+              <div className="space-y-1.5 w-full mt-2">
+                {paymentStatus.map((p, i) => (
+                  <div key={p.name} className="flex items-center justify-between text-xs">
+                    <div className="flex items-center gap-1.5">
+                      <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: DONUT_COLORS_PAYMENT[i % DONUT_COLORS_PAYMENT.length] }} />
+                      <span className="text-gray-600">{p.name}</span>
+                    </div>
+                    <span className="font-semibold text-gray-800">{p.value}</span>
+                  </div>
                 ))}
-              </tbody>
-            </table>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Course Distribution Donut */}
+        <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-5">
+          <h2 className="text-sm font-semibold text-gray-900 mb-4 flex items-center gap-2">
+            <GraduationCap className="w-4 h-4 text-violet-400" />
+            {t('courseDistribution')}
+          </h2>
+          {courseDistributionLoading ? (
+            <Skeleton className="h-44 w-full rounded-lg" />
+          ) : courseDistribution.length === 0 ? (
+            <p className="text-sm text-gray-400 text-center py-8">{tc('noData')}</p>
+          ) : (
+            <div className="flex flex-col items-center">
+              <PieChart width={150} height={150}>
+                <Pie data={courseDistribution} cx="50%" cy="50%" innerRadius={45} outerRadius={68} dataKey="value" paddingAngle={2}>
+                  {courseDistribution.map((_, i) => <Cell key={i} fill={DONUT_COLORS_COURSE[i % DONUT_COLORS_COURSE.length]} />)}
+                </Pie>
+                {/* @ts-expect-error recharts ValueType */}
+                <Tooltip formatter={(v: number) => [v, '']} />
+              </PieChart>
+              <div className="space-y-1.5 w-full mt-2">
+                {courseDistribution.map((c, i) => (
+                  <div key={c.name} className="flex items-center justify-between text-xs">
+                    <div className="flex items-center gap-1.5">
+                      <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: DONUT_COLORS_COURSE[i % DONUT_COLORS_COURSE.length] }} />
+                      <span className="text-gray-600 truncate">{c.name}</span>
+                    </div>
+                    <span className="font-semibold text-gray-800 ml-2">{c.value}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
           )}
         </div>
       </div>
 
-      {/* Notes + Leaderboard */}
+      {/* Best + Worst Students */}
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
-        {/* Recent Notes */}
-        <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-5">
-          <h2 className="text-sm font-semibold text-gray-900 mb-4 flex items-center gap-2">
-            <MessageSquare className="w-4 h-4 text-gray-400" />
-            {t('recentNotes')}
-          </h2>
-          {notesLoading ? (
-            <div className="space-y-4">
-              {Array(3).fill(0).map((_, i) => (
-                <div key={i} className="flex gap-3">
-                  <Skeleton className="w-8 h-8 rounded-full flex-shrink-0" />
-                  <div className="flex-1 space-y-1.5">
-                    <Skeleton className="h-3 w-1/3" />
-                    <Skeleton className="h-4 w-full" />
-                  </div>
-                </div>
-              ))}
-            </div>
-          ) : notes.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-10">
-              <MessageSquare className="w-8 h-8 text-gray-200 mb-2" />
-              <p className="text-sm text-gray-400">{t('noNotes')}</p>
-            </div>
-          ) : (
-            <div className="space-y-4">
-              {notes.map((n) => {
-                const authorName = n.author_name ?? (n.author ? `${n.author.first_name} ${n.author.last_name}` : tc('noData'));
-                const noteText = n.note ?? n.text ?? '';
-                const initials = authorName.split(' ').map((w) => w[0]).join('').slice(0, 2).toUpperCase();
-                return (
-                  <div key={n.id} className="flex gap-3">
-                    <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center flex-shrink-0">
-                      <span className="text-xs font-bold text-blue-600">{initials}</span>
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <span className="text-xs font-semibold text-gray-700">{authorName}</span>
-                        <span className="text-xs text-gray-400">{timeAgo(n.created_at, (key, params) => t(key as Parameters<typeof t>[0], params as Parameters<typeof t>[1]))}</span>
-                      </div>
-                      <p className="text-sm text-gray-600 mt-0.5 line-clamp-2">{noteText}</p>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </div>
-
-        {/* Leaderboard */}
+        {/* Top 10 Best */}
         <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-5">
           <h2 className="text-sm font-semibold text-gray-900 mb-4">
             🏆 {t('topStudents')}
@@ -620,8 +606,8 @@ export default function DashboardPage() {
           ) : (
             <div className="space-y-1">
               {leaderboard.map((entry, i) => (
-                <div key={entry.student_id} className="flex items-center gap-3 py-2.5 border-b border-gray-50 last:border-0">
-                  <span className="text-lg w-7 flex-shrink-0 text-center">{RANK_BADGES[i]}</span>
+                <div key={entry.student_id} className="flex items-center gap-3 py-2 border-b border-gray-50 last:border-0">
+                  <span className="text-base w-6 flex-shrink-0 text-center">{RANK_BADGES[i] ?? `${i + 1}`}</span>
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium text-gray-900 truncate">{entry.student_name}</p>
                     {entry.group_name && <p className="text-xs text-gray-400">{entry.group_name}</p>}
@@ -632,216 +618,131 @@ export default function DashboardPage() {
             </div>
           )}
         </div>
+
+        {/* Top 10 Worst */}
+        <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-5">
+          <h2 className="text-sm font-semibold text-gray-900 mb-4">
+            📉 {t('worstStudents')}
+          </h2>
+          {leaderboardLoading ? (
+            <div className="space-y-2">{Array(5).fill(0).map((_, i) => <Skeleton key={i} className="h-10 w-full" />)}</div>
+          ) : worstStudents.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-10">
+              <Users className="w-8 h-8 text-gray-200 mb-2" />
+              <p className="text-sm text-gray-400">{t('noGrades')}</p>
+            </div>
+          ) : (
+            <div className="space-y-1">
+              {worstStudents.map((entry, i) => (
+                <div key={entry.student_id} className="flex items-center gap-3 py-2 border-b border-gray-50 last:border-0">
+                  <span className="text-sm w-6 flex-shrink-0 text-center text-gray-400 font-mono">{i + 1}.</span>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-gray-900 truncate">{entry.student_name}</p>
+                    {entry.group_name && <p className="text-xs text-gray-400">{entry.group_name}</p>}
+                  </div>
+                  <span className="text-sm font-bold text-rose-500 flex-shrink-0">{entry.avg_score.toFixed(1)}</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
       </div>
 
-      {/* ─── Quick Action Dialogs ─────────────────────────────────────────── */}
+      {/* Top Teachers */}
+      <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-5">
+        <h2 className="text-sm font-semibold text-gray-900 mb-4 flex items-center gap-2">
+          <GraduationCap className="w-4 h-4 text-violet-500" />
+          {t('topTeachers')}
+        </h2>
+        {topTeachersLoading ? (
+          <div className="space-y-2">{Array(5).fill(0).map((_, i) => <Skeleton key={i} className="h-10 w-full" />)}</div>
+        ) : topTeachers.length === 0 ? (
+          <p className="text-sm text-gray-400 text-center py-6">{tc('noData')}</p>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-gray-100">
+                  {[tc('teacher'), t('activeGroups'), tc('student'), t('attendanceRate')].map((h) => (
+                    <th key={h} className="text-left pb-2.5 text-xs font-semibold text-gray-400 uppercase tracking-wide pr-3">{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-50">
+                {topTeachers.map((teacher) => (
+                  <tr key={teacher.id} className="hover:bg-gray-50 transition-colors">
+                    <td className="py-2.5 pr-3">
+                      <div className="flex items-center gap-2">
+                        <div className="w-7 h-7 rounded-full bg-violet-100 flex items-center justify-center flex-shrink-0">
+                          <span className="text-[10px] font-bold text-violet-700">
+                            {teacher.first_name[0]}{teacher.last_name[0]}
+                          </span>
+                        </div>
+                        <span className="font-medium text-gray-800 whitespace-nowrap">
+                          {teacher.first_name} {teacher.last_name}
+                        </span>
+                      </div>
+                    </td>
+                    <td className="py-2.5 pr-3 text-gray-600">{teacher.groups_count ?? '—'}</td>
+                    <td className="py-2.5 pr-3 text-gray-600">{teacher.students_count ?? '—'}</td>
+                    <td className="py-2.5 text-gray-500">
+                      {teacher.attendance_rate != null ? `${teacher.attendance_rate}%` : '—'}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
 
-      {/* Student Add */}
-      <Dialog open={showStudentAdd} onOpenChange={setShowStudentAdd}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader><DialogTitle>{t('addStudentTitle')}</DialogTitle></DialogHeader>
-          <form onSubmit={handleStudentAdd} className="space-y-4 mt-2">
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className={labelCls}>{t('firstName')} <span className="text-red-500">*</span></label>
-                <input value={studentForm.first_name} onChange={(e) => setStudentForm((f) => ({ ...f, first_name: e.target.value }))} className={inputCls} required />
-              </div>
-              <div>
-                <label className={labelCls}>{t('lastName')} <span className="text-red-500">*</span></label>
-                <input value={studentForm.last_name} onChange={(e) => setStudentForm((f) => ({ ...f, last_name: e.target.value }))} className={inputCls} required />
-              </div>
-            </div>
-            <div>
-              <label className={labelCls}>{t('phone')} <span className="text-red-500">*</span></label>
-              <div className="flex">
-                <span className="inline-flex items-center px-3 border border-r-0 border-gray-300 bg-gray-50 text-gray-500 text-sm rounded-l">+998</span>
-                <input type="tel" value={studentForm.phone}
-                  onChange={(e) => setStudentForm((f) => ({ ...f, phone: e.target.value.replace(/\D/g, '').slice(0, 9) }))}
-                  placeholder="XX XXX XX XX"
-                  className="flex-1 px-3 py-2 border border-gray-300 rounded-r text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  required />
-              </div>
-            </div>
-            <div>
-              <label className={labelCls}>{t('courseOptional')}</label>
-              <select value={studentForm.course_id} onChange={(e) => setStudentForm((f) => ({ ...f, course_id: e.target.value }))} className={inputCls}>
-                <option value="">{t('selectPlaceholder')}</option>
-                {courses.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-              </select>
-            </div>
-            <div className="flex gap-3 pt-2">
-              <button type="button" onClick={() => setShowStudentAdd(false)} className="flex-1 px-4 py-2 border border-gray-300 text-sm font-medium rounded hover:bg-gray-50">{t('cancel')}</button>
-              <button type="submit" disabled={savingStudent} className="flex-1 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded hover:bg-blue-700 disabled:opacity-60">
-                {savingStudent ? t('saving') : t('save')}
-              </button>
-            </div>
-          </form>
-        </DialogContent>
-      </Dialog>
-
-      {/* Payment Add */}
-      <Dialog open={showPaymentAdd} onOpenChange={(v) => { setShowPaymentAdd(v); if (!v) { setSelectedPaymentStudent(null); setPaymentStudentSearch(''); setPaymentForm({ group_id: '', amount: '', payment_type: 'cash', note: '' }); } }}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader><DialogTitle>{t('addPaymentTitle')}</DialogTitle></DialogHeader>
-          <form onSubmit={handlePaymentAdd} className="space-y-4 mt-2">
-            <div>
-              <label className={labelCls}>{t('student')}</label>
-              {selectedPaymentStudent ? (
-                <div className="flex items-center justify-between px-3 py-2 border border-blue-300 bg-blue-50 rounded text-sm">
-                  <span className="font-medium text-blue-800">{selectedPaymentStudent.first_name} {selectedPaymentStudent.last_name}</span>
-                  <button type="button" onClick={() => { setSelectedPaymentStudent(null); setPaymentStudentSearch(''); }} className="text-blue-500 hover:text-blue-700 text-xs">✕</button>
+      {/* Recent Notes */}
+      <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-5">
+        <h2 className="text-sm font-semibold text-gray-900 mb-4 flex items-center gap-2">
+          <MessageSquare className="w-4 h-4 text-gray-400" />
+          {t('recentNotes')}
+        </h2>
+        {notesLoading ? (
+          <div className="space-y-4">
+            {Array(3).fill(0).map((_, i) => (
+              <div key={i} className="flex gap-3">
+                <Skeleton className="w-8 h-8 rounded-full flex-shrink-0" />
+                <div className="flex-1 space-y-1.5">
+                  <Skeleton className="h-3 w-1/3" />
+                  <Skeleton className="h-4 w-full" />
                 </div>
-              ) : (
-                <div className="relative">
-                  <input type="text" value={paymentStudentSearch} onChange={(e) => setPaymentStudentSearch(e.target.value)}
-                    placeholder={t('studentSearchPlaceholder')} className={inputCls} />
-                  {paymentStudentResults.length > 0 && (
-                    <div className="absolute z-10 w-full mt-1 bg-white border border-gray-200 rounded shadow-md max-h-48 overflow-y-auto">
-                      {paymentStudentResults.map((s) => (
-                        <button key={s.id} type="button"
-                          onClick={() => { setSelectedPaymentStudent(s); setPaymentStudentSearch(''); setPaymentStudentResults([]); }}
-                          className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50">
-                          {s.first_name} {s.last_name} — {s.phone}
-                        </button>
-                      ))}
+              </div>
+            ))}
+          </div>
+        ) : notes.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-10">
+            <MessageSquare className="w-8 h-8 text-gray-200 mb-2" />
+            <p className="text-sm text-gray-400">{t('noNotes')}</p>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            {notes.map((n) => {
+              const authorName = n.author_name ?? (n.author ? `${n.author.first_name} ${n.author.last_name}` : tc('noData'));
+              const noteText = n.note ?? n.text ?? '';
+              const initials = authorName.split(' ').map((w) => w[0]).join('').slice(0, 2).toUpperCase();
+              return (
+                <div key={n.id} className="flex gap-3">
+                  <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center flex-shrink-0">
+                    <span className="text-xs font-bold text-blue-600">{initials}</span>
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="text-xs font-semibold text-gray-700">{authorName}</span>
+                      <span className="text-xs text-gray-400">{timeAgo(n.created_at, (key, params) => t(key as Parameters<typeof t>[0], params as Parameters<typeof t>[1]))}</span>
                     </div>
-                  )}
+                    <p className="text-sm text-gray-600 mt-0.5 line-clamp-2">{noteText}</p>
+                  </div>
                 </div>
-              )}
-            </div>
-            {studentGroups.length > 0 && (
-              <div>
-                <label className={labelCls}>{t('groupGroupLabel')}</label>
-                <select value={paymentForm.group_id} onChange={(e) => setPaymentForm((f) => ({ ...f, group_id: e.target.value }))} className={inputCls}>
-                  <option value="">{t('groupSelectOptional')}</option>
-                  {studentGroups.map((g) => <option key={g.id} value={g.id}>{g.name}</option>)}
-                </select>
-              </div>
-            )}
-            <div>
-              <label className={labelCls}>{t('amountLabel')} <span className="text-red-500">*</span></label>
-              <input type="number" value={paymentForm.amount} onChange={(e) => setPaymentForm((f) => ({ ...f, amount: e.target.value }))} className={inputCls} required placeholder="0" />
-            </div>
-            <div>
-              <label className={labelCls}>{t('paymentType')}</label>
-              <select value={paymentForm.payment_type} onChange={(e) => setPaymentForm((f) => ({ ...f, payment_type: e.target.value }))} className={inputCls}>
-                <option value="cash">{t('cash')}</option>
-                <option value="card">{t('card')}</option>
-                <option value="transfer">{t('transfer')}</option>
-              </select>
-            </div>
-            <p className="text-xs text-gray-400">{t('paymentNote')}</p>
-            <div className="flex gap-3 pt-2">
-              <button type="button" onClick={() => setShowPaymentAdd(false)} className="flex-1 px-4 py-2 border border-gray-300 text-sm font-medium rounded hover:bg-gray-50">{t('cancel')}</button>
-              <button type="submit" disabled={savingPayment} className="flex-1 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded hover:bg-blue-700 disabled:opacity-60">
-                {savingPayment ? t('saving') : t('save')}
-              </button>
-            </div>
-          </form>
-        </DialogContent>
-      </Dialog>
-
-      {/* Group Add */}
-      <Dialog open={showGroupAdd} onOpenChange={(v) => { setShowGroupAdd(v); if (!v) setGroupForm({ course_id: '', teacher_id: '', gender_type: '', days: [], time: '', room: '' }); }}>
-        <DialogContent className="sm:max-w-md max-h-[90vh] overflow-y-auto">
-          <DialogHeader><DialogTitle>{t('addGroupTitle')}</DialogTitle></DialogHeader>
-          <form onSubmit={handleGroupAdd} className="space-y-4 mt-2">
-            <div>
-              <label className={labelCls}>{t('course')} <span className="text-red-500">*</span></label>
-              <select value={groupForm.course_id} onChange={(e) => setGroupForm((f) => ({ ...f, course_id: e.target.value }))} className={inputCls} required>
-                <option value="">{t('selectPlaceholder')}</option>
-                {courses.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-              </select>
-            </div>
-            <div>
-              <label className={labelCls}>{t('teacher')} <span className="text-red-500">*</span></label>
-              <select value={groupForm.teacher_id} onChange={(e) => setGroupForm((f) => ({ ...f, teacher_id: e.target.value }))} className={inputCls} required>
-                <option value="">{t('selectPlaceholder')}</option>
-                {teachers.map((tr) => <option key={tr.id} value={tr.id}>{tr.first_name} {tr.last_name}</option>)}
-              </select>
-            </div>
-            <div>
-              <label className={labelCls}>
-                {t('groupType')} <span className="text-red-500">*</span>
-                {!groupForm.gender_type && <span className="ml-2 text-xs text-orange-500 font-normal">{t('groupTypeRequired')}</span>}
-              </label>
-              <div className="flex gap-2">
-                {[
-                  { value: 'a', label: t('genderMale'), cls: 'border-blue-300 bg-blue-50 text-blue-700' },
-                  { value: 'b', label: t('genderFemale'), cls: 'border-pink-300 bg-pink-50 text-pink-700' },
-                  { value: 'c', label: t('genderMixed'), cls: 'border-purple-300 bg-purple-50 text-purple-700' },
-                ].map(({ value, label, cls }) => (
-                  <button key={value} type="button" onClick={() => setGroupForm((f) => ({ ...f, gender_type: value }))}
-                    className={cn('flex-1 py-2 text-xs font-medium border rounded transition-colors', groupForm.gender_type === value ? cls : 'border-gray-300 text-gray-600 hover:bg-gray-50')}>
-                    {label}
-                  </button>
-                ))}
-              </div>
-            </div>
-            <div>
-              <label className={labelCls}>{t('lessonDays')}</label>
-              <div className="flex gap-1.5 flex-wrap">
-                {DAYS_LIST.map((day) => (
-                  <button key={day} type="button" onClick={() => toggleDay(day)}
-                    className={cn('px-3 py-1.5 text-xs font-medium border rounded transition-colors',
-                      groupForm.days.includes(day) ? 'border-blue-500 bg-blue-600 text-white' : 'border-gray-300 text-gray-600 hover:bg-gray-50')}>
-                    {day}
-                  </button>
-                ))}
-              </div>
-            </div>
-            <div>
-              <label className={labelCls}>{t('lessonTime')}</label>
-              <input type="time" value={groupForm.time} onChange={(e) => setGroupForm((f) => ({ ...f, time: e.target.value }))} className={inputCls} />
-            </div>
-            {(groupForm.days.length > 0 || groupForm.time) && (
-              <div className="px-3 py-2 bg-gray-50 rounded text-xs text-gray-600">
-                {t('schedule')}: <span className="font-medium">{buildSchedule(groupForm.days, groupForm.time) || '—'}</span>
-              </div>
-            )}
-            <div className="flex gap-3 pt-2">
-              <button type="button" onClick={() => setShowGroupAdd(false)} className="flex-1 px-4 py-2 border border-gray-300 text-sm font-medium rounded hover:bg-gray-50">{t('cancel')}</button>
-              <button type="submit" disabled={savingGroup} className="flex-1 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded hover:bg-blue-700 disabled:opacity-60">
-                {savingGroup ? t('saving') : t('save')}
-              </button>
-            </div>
-          </form>
-        </DialogContent>
-      </Dialog>
-
-      {/* SMS Send */}
-      <Dialog open={showSms} onOpenChange={setShowSms}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader><DialogTitle>{t('sendSmsTitle')}</DialogTitle></DialogHeader>
-          <form onSubmit={handleSmsSend} className="space-y-4 mt-2">
-            <div>
-              <label className={labelCls}>{t('phone')} <span className="text-red-500">*</span></label>
-              <div className="flex">
-                <span className="inline-flex items-center px-3 border border-r-0 border-gray-300 bg-gray-50 text-gray-500 text-sm rounded-l">+998</span>
-                <input type="tel" value={smsForm.phone}
-                  onChange={(e) => setSmsForm((f) => ({ ...f, phone: e.target.value.replace(/\D/g, '').slice(0, 9) }))}
-                  placeholder="XX XXX XX XX"
-                  className="flex-1 px-3 py-2 border border-gray-300 rounded-r text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  required />
-              </div>
-            </div>
-            <div>
-              <label className={labelCls}>{t('message')} <span className="text-red-500">*</span></label>
-              <textarea value={smsForm.message} onChange={(e) => setSmsForm((f) => ({ ...f, message: e.target.value }))}
-                rows={4} required
-                className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
-                placeholder={t('messagePlaceholder')} />
-              <p className="text-xs text-gray-400 mt-1">{smsForm.message.length} {t('chars')}</p>
-            </div>
-            <div className="flex gap-3 pt-2">
-              <button type="button" onClick={() => setShowSms(false)} className="flex-1 px-4 py-2 border border-gray-300 text-sm font-medium rounded hover:bg-gray-50">{t('cancel')}</button>
-              <button type="submit" disabled={savingSms} className="flex-1 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded hover:bg-blue-700 disabled:opacity-60">
-                {savingSms ? t('sending') : t('send')}
-              </button>
-            </div>
-          </form>
-        </DialogContent>
-      </Dialog>
+              );
+            })}
+          </div>
+        )}
+      </div>
     </div>
   );
 }

@@ -123,7 +123,22 @@
     "timeAgoNow": "just now",
     "timeAgoMinutes": "{n} minutes ago",
     "timeAgoHours": "{n} hours ago",
-    "timeAgoDays": "{n} days ago"
+    "timeAgoDays": "{n} days ago",
+    "totalLeads": "Total leads",
+    "todayLessons": "Today's lessons",
+    "noLessons": "No lessons today",
+    "lessonStatusOngoing": "Ongoing",
+    "lessonStatusFinished": "Finished",
+    "lessonStatusScheduled": "Scheduled",
+    "churnTitle": "Churned students",
+    "last30days": "Last 30 days",
+    "graduated": "Graduated",
+    "droppedOut": "Dropped out",
+    "paymentStatus": "Payment status",
+    "courseDistribution": "By course",
+    "worstStudents": "Worst students",
+    "topTeachers": "Top teachers",
+    "attendanceRate": "Attendance"
   },
   "common": {
     "save": "Save",
@@ -177,7 +192,8 @@
     "salary": "Salary",
     "retry": "Retry",
     "of": "of",
-    "page": "Page"
+    "page": "Page",
+    "overdue": "Overdue"
   },
   "students": {
     "title": "Students",

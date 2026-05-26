@@ -123,7 +123,22 @@
     "timeAgoNow": "только что",
     "timeAgoMinutes": "{n} мин. назад",
     "timeAgoHours": "{n} ч. назад",
-    "timeAgoDays": "{n} дн. назад"
+    "timeAgoDays": "{n} дн. назад",
+    "totalLeads": "Все лиды",
+    "todayLessons": "Сегодняшние уроки",
+    "noLessons": "Сегодня нет уроков",
+    "lessonStatusOngoing": "Идёт",
+    "lessonStatusFinished": "Завершён",
+    "lessonStatusScheduled": "Запланировано",
+    "churnTitle": "Отток студентов",
+    "last30days": "Последние 30 дней",
+    "graduated": "Выпускники",
+    "droppedOut": "Отчислены",
+    "paymentStatus": "Статус оплат",
+    "courseDistribution": "По курсам",
+    "worstStudents": "Слабые ученики",
+    "topTeachers": "Топ учителей",
+    "attendanceRate": "Посещаемость"
   },
   "common": {
     "save": "Сохранить",
@@ -177,7 +192,8 @@
     "salary": "Зарплата",
     "retry": "Повторить",
     "of": "из",
-    "page": "Страница"
+    "page": "Страница",
+    "overdue": "Просрочено"
   },
   "students": {
     "title": "Ученики",

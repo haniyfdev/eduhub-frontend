@@ -123,7 +123,22 @@
     "timeAgoNow": "hozirgina",
     "timeAgoMinutes": "{n} daqiqa oldin",
     "timeAgoHours": "{n} soat oldin",
-    "timeAgoDays": "{n} kun oldin"
+    "timeAgoDays": "{n} kun oldin",
+    "totalLeads": "Jami leadlar",
+    "todayLessons": "Bugungi darslar",
+    "noLessons": "Bugun dars yo'q",
+    "lessonStatusOngoing": "Jarayonda",
+    "lessonStatusFinished": "Tugagan",
+    "lessonStatusScheduled": "Rejalashtirilgan",
+    "churnTitle": "Chiqib ketganlar",
+    "last30days": "So'nggi 30 kun",
+    "graduated": "Bitirganlar",
+    "droppedOut": "Tashlab ketganlar",
+    "paymentStatus": "To'lov holati",
+    "courseDistribution": "Kurslar bo'yicha",
+    "worstStudents": "Eng past natija",
+    "topTeachers": "Top o'qituvchilar",
+    "attendanceRate": "Davomat"
   },
   "common": {
     "save": "Saqlash",
@@ -177,7 +192,8 @@
     "salary": "Maosh",
     "retry": "Qayta urinish",
     "of": "dan",
-    "page": "Sahifa"
+    "page": "Sahifa",
+    "overdue": "Muddati o'tgan"
   },
   "students": {
     "title": "O'quvchilar",

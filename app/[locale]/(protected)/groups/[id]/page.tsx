@@ -59,7 +59,7 @@ interface GroupOption {
   name: string;
 }
 
-const GENDER_LABELS: Record<string, string> = { a: 'Bolalar', b: 'Qizlar', c: 'Aralash' };
+const GENDER_LABELS_KEYS: Record<string, string> = { a: 'genderA', b: 'genderB', c: 'genderC' };
 
 type TabKey = 'students' | 'lessons' | 'info';
 
@@ -127,7 +127,7 @@ export default function GroupDetailPage() {
       setGroup(data);
       setStudents(data.students ?? []);
     } catch {
-      toast.error("Guruh ma'lumotlari yuklanmadi");
+      toast.error(common('error'));
     } finally {
       setLoadingGroup(false);
       setLoadingStudents(false);
@@ -142,7 +142,7 @@ export default function GroupDetailPage() {
       });
       setLessons(Array.isArray(data) ? data : (data.results ?? []));
     } catch {
-      toast.error('Darslar yuklanmadi');
+      toast.error(common('error'));
     } finally {
       setLoadingLessons(false);
     }
@@ -202,7 +202,7 @@ export default function GroupDetailPage() {
         success++;
       } catch { /* skip */ }
     }
-    toast.success(`${success} ta o'quvchi qo'shildi`);
+    toast.success(t('addedBulkSuccess', { count: success }));
     setShowAddStudent(false);
     setSelectedIds(new Set());
     setStudentSearch('');
@@ -214,12 +214,12 @@ export default function GroupDetailPage() {
     if (!archiveTarget || !archiveReason) return;
     try {
       await api.post(`/api/v1/students/${archiveTarget.studentId}/archive/`, { reason: archiveReason });
-      toast.success("O'quvchi arxivlandi");
+      toast.success(common('success'));
       setArchiveTarget(null);
       setArchiveReason('');
       fetchGroup();
     } catch {
-      toast.error('Xatolik yuz berdi');
+      toast.error(common('error'));
     }
   }
 
@@ -231,11 +231,11 @@ export default function GroupDetailPage() {
         student_id: changeGroupTarget.studentId,
         new_group_id: newGroupId,
       });
-      toast.success("Guruh o'zgartirildi");
+      toast.success(common('success'));
       setChangeGroupTarget(null);
       fetchGroup();
     } catch {
-      toast.error('Xatolik yuz berdi');
+      toast.error(common('error'));
     } finally {
       setChangingGroup(false);
     }
@@ -247,15 +247,15 @@ export default function GroupDetailPage() {
     try {
       await api.post('/api/v1/lessons/', {
         group: id,
-        topic: lessonForm.topic || 'Dars',
+        topic: lessonForm.topic || t('newLesson'),
         date: new Date().toISOString().slice(0, 10),
       });
-      toast.success("Dars qo'shildi");
+      toast.success(common('success'));
       setShowAddLesson(false);
       setLessonForm({ topic: '' });
       fetchLessons();
     } catch (err: any) {
-      toast.error(err?.response?.data?.detail ?? 'Xatolik yuz berdi');
+      toast.error(err?.response?.data?.detail ?? common('error'));
     } finally {
       setSavingLesson(false);
     }
@@ -281,9 +281,9 @@ export default function GroupDetailPage() {
   if (!group) {
     return (
       <div className="text-center py-16 text-gray-500">
-        <p className="text-sm">Guruh topilmadi</p>
+        <p className="text-sm">{t('notFound')}</p>
         <button onClick={() => router.push(`/${locale}/groups`)} className="mt-4 text-blue-600 underline text-sm">
-          Guruhlar ro&apos;yxatiga qaytish
+          {common('back')}
         </button>
       </div>
     );
@@ -303,6 +303,7 @@ export default function GroupDetailPage() {
             <ArrowLeft className="w-4 h-4" />
           </button>
           <span className="text-xs text-gray-400 ml-1 hidden sm:inline">Esc</span>
+
           <div>
             <div className="flex items-center gap-3 flex-wrap">
               <h1 className="text-2xl font-bold text-gray-900">{group.name}</h1>
@@ -312,7 +313,7 @@ export default function GroupDetailPage() {
                 : group.status === 'frozen' ? 'bg-sky-100 text-sky-700 border-sky-300'
                 : 'bg-gray-100 text-gray-600 border-gray-200',
               )}>
-                {group.status === 'active' ? 'Faol' : group.status === 'frozen' ? 'Muzlatilgan' : 'Arxivlangan'}
+                {group.status === 'active' ? common('active') : group.status === 'frozen' ? common('frozen') : common('archived')}
               </span>
             </div>
             <p className="text-sm text-gray-500 mt-0.5">
@@ -330,7 +331,7 @@ export default function GroupDetailPage() {
               onClick={() => setShowAddStudent(true)}
               className="flex items-center gap-1.5 px-3 py-2 bg-blue-600 text-white text-sm font-medium rounded hover:bg-blue-700 transition-colors"
             >
-              <Plus className="w-4 h-4" /> Talaba qo&apos;shish
+              <Plus className="w-4 h-4" /> {t('addStudent')}
             </button>
           )}
         </div>
@@ -348,15 +349,15 @@ export default function GroupDetailPage() {
               onClick={async () => {
                 try {
                   await api.post(`/api/v1/groups/${id}/unfreeze/`);
-                  toast.success('Guruh faollashtirildi');
+                  toast.success(common('success'));
                   fetchGroup();
                 } catch {
-                  toast.error('Xatolik yuz berdi');
+                  toast.error(common('error'));
                 }
               }}
               className="flex items-center gap-1.5 px-3 py-1.5 bg-sky-600 text-white text-xs font-medium rounded hover:bg-sky-700 transition-colors flex-shrink-0"
             >
-              <Play className="w-3 h-3" /> Faollashtirish
+              <Play className="w-3 h-3" /> {t('unfreeze')}
             </button>
           )}
         </div>
@@ -413,7 +414,7 @@ export default function GroupDetailPage() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="bg-gray-50 border-b border-gray-200">
-                  {['№', 'Ism', 'Telefon', 'Ota-ona tel', "Tug'ilgan sana", 'Holat', 'Amallar'].map((h) => (
+                  {['№', common('name'), common('phone'), t('parentPhone'), common('birthDate'), common('status'), common('actions')].map((h) => (
                     <th key={h} className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">{h}</th>
                   ))}
                 </tr>
@@ -443,35 +444,35 @@ export default function GroupDetailPage() {
                             {/* Student still in this group */}
                             {!s.left_at && s.status === 'active' && (
                               <span className="px-2 py-0.5 bg-green-100 text-green-700 rounded-full text-xs font-medium">
-                                Faol
+                                {common('active')}
                               </span>
                             )}
                             {!s.left_at && s.status === 'trial' && (
                               <span className="px-2 py-0.5 bg-orange-100 text-orange-700 rounded-full text-xs font-medium">
-                                Sinov
+                                {t('trial')}
                               </span>
                             )}
                             {!s.left_at && s.status === 'frozen' && (
                               <span className="px-2 py-0.5 bg-sky-100 text-sky-700 rounded-full text-xs font-medium">
-                                Muzlatilgan
+                                {common('frozen')}
                               </span>
                             )}
                             {/* Student transferred to another group */}
                             {s.left_at && s.current_group && (
                               <span className="px-2 py-0.5 bg-blue-100 text-blue-700 rounded-full text-xs font-medium">
-                                Faol ({s.current_group})
+                                {common('active')} ({s.current_group})
                               </span>
                             )}
                             {/* Student archived */}
                             {!s.left_at && s.status === 'archived' && (
                               <span className="px-2 py-0.5 bg-gray-100 text-gray-500 rounded-full text-xs font-medium">
-                                Arxivlangan
+                                {common('archived')}
                               </span>
                             )}
                             {/* Student transferred but now archived */}
                             {s.left_at && !s.current_group && (
                               <span className="px-2 py-0.5 bg-gray-100 text-gray-500 rounded-full text-xs font-medium">
-                                Arxivlangan
+                                {common('archived')}
                               </span>
                             )}
                           </td>
@@ -483,14 +484,14 @@ export default function GroupDetailPage() {
                                 <button
                                   onClick={() => { setArchiveReason(''); setArchiveTarget({ studentId: s.id, name: `${s.first_name} ${s.last_name}`, status: s.status }); }}
                                   className="p-1 rounded text-red-400 hover:bg-red-50 hover:text-red-600 transition-colors"
-                                  title="Arxivlash"
+                                  title={common('archive')}
                                 >
                                   <Minus className="w-4 h-4" />
                                 </button>
                                 <button
                                   onClick={() => { setNewGroupId(''); setChangeGroupTarget({ studentId: s.id, name: `${s.first_name} ${s.last_name}` }); }}
                                   className="p-1 rounded text-blue-400 hover:bg-blue-50 hover:text-blue-600 transition-colors"
-                                  title="Guruh o'zgartirish"
+                                  title={t('transferStudent')}
                                 >
                                   <ArrowLeftRight className="w-4 h-4" />
                                 </button>
@@ -516,7 +517,7 @@ export default function GroupDetailPage() {
                 onClick={() => setShowAddLesson(true)}
                 className="flex items-center gap-1.5 px-3 py-2 bg-blue-600 text-white text-sm font-medium rounded hover:bg-blue-700 transition-colors"
               >
-                <Plus className="w-4 h-4" /> Yangi dars
+                <Plus className="w-4 h-4" /> {t('newLesson')}
               </button>
             </div>
           )}
@@ -524,7 +525,7 @@ export default function GroupDetailPage() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="bg-gray-50 border-b border-gray-200">
-                  {['№', 'Sana', 'Hafta kuni', 'Mavzu', 'Dars vaqti'].map((h) => (
+                  {['№', common('date'), t('weekDay'), t('topic'), t('lessonTime')].map((h) => (
                     <th key={h} className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">{h}</th>
                   ))}
                 </tr>
@@ -574,16 +575,16 @@ export default function GroupDetailPage() {
         <div className="bg-white rounded border border-gray-200 shadow-sm p-6 max-w-2xl">
           <dl className="divide-y divide-gray-100">
             {[
-              { label: 'Kurs', value: group.course?.name },
-              { label: "O'qituvchi", value: group.teacher ? `${group.teacher.first_name} ${group.teacher.last_name}` : null },
-              { label: 'Guruh turi', value: GENDER_LABELS[group.gender_type] },
-              { label: 'Dars jadvali', value: group.schedule },
-              { label: 'Xona', value: group.room_name || null },
-              { label: 'Dars boshlanish', value: group.start_time || null },
-              { label: 'Dars tugash', value: group.end_time || null },
-              { label: "O'quvchilar soni", value: String(students.length) },
-              { label: 'Holat', value: group.status === 'active' ? 'Faol' : 'Arxivlangan' },
-              { label: 'Yaratilgan sana', value: formatDMY(group.created_at) },
+              { label: common('course'), value: group.course?.name },
+              { label: common('teacher'), value: group.teacher ? `${group.teacher.first_name} ${group.teacher.last_name}` : null },
+              { label: t('groupType'), value: t(GENDER_LABELS_KEYS[group.gender_type] as Parameters<typeof t>[0]) },
+              { label: t('schedule'), value: group.schedule },
+              { label: common('room'), value: group.room_name || null },
+              { label: t('startTime'), value: group.start_time || null },
+              { label: t('endTime'), value: group.end_time || null },
+              { label: t('studentsCount'), value: String(students.length) },
+              { label: common('status'), value: group.status === 'active' ? common('active') : common('archived') },
+              { label: t('createdAt'), value: formatDMY(group.created_at) },
             ].map(({ label, value }) => (
               <div key={label} className="flex py-3">
                 <dt className="w-44 text-sm text-gray-500 flex-shrink-0">{label}</dt>
@@ -604,7 +605,7 @@ export default function GroupDetailPage() {
       >
         <DialogContent className="sm:max-w-3xl max-h-[90vh] flex flex-col">
           <DialogHeader>
-            <DialogTitle>Talaba qo&apos;shish</DialogTitle>
+            <DialogTitle>{t('addStudent')}</DialogTitle>
           </DialogHeader>
           <div className="flex gap-2 mt-2">
             <div className="relative flex-1">
@@ -624,7 +625,7 @@ export default function GroupDetailPage() {
               onChange={(e) => setCourseFilter(e.target.value)}
               className="px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-700"
             >
-              <option value="">Barcha kurslar</option>
+              <option value="">{t('allCourses')}</option>
               {courses.map((c) => (
                 <option key={c.id} value={c.id}>{c.name}</option>
               ))}
@@ -643,10 +644,10 @@ export default function GroupDetailPage() {
               <thead className="sticky top-0 bg-gray-50 border-b border-gray-200">
                 <tr>
                   <th className="w-10 px-4 py-2"></th>
-                  <th className="text-left px-4 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wide">Ism</th>
-                  <th className="text-left px-4 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wide">Telefon</th>
-                  <th className="text-left px-4 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wide">Tug&apos;ilgan sana</th>
-                  <th className="text-left px-4 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wide">Kurs</th>
+                  <th className="text-left px-4 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wide">{common('name')}</th>
+                  <th className="text-left px-4 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wide">{common('phone')}</th>
+                  <th className="text-left px-4 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wide">{common('birthDate')}</th>
+                  <th className="text-left px-4 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wide">{common('course')}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
@@ -704,7 +705,7 @@ export default function GroupDetailPage() {
       <Dialog open={!!archiveTarget} onOpenChange={(open) => { if (!open) { setArchiveTarget(null); setArchiveReason(''); } }}>
         <DialogContent className="sm:max-w-sm">
           <DialogHeader>
-            <DialogTitle>{archiveTarget?.name}ni arxivlash</DialogTitle>
+            <DialogTitle>{archiveTarget?.name} — {common('archive')}</DialogTitle>
           </DialogHeader>
           <div className="mt-4 space-y-3">
             {archiveTarget?.status !== 'trial' && (
@@ -717,8 +718,8 @@ export default function GroupDetailPage() {
               >
                 <span className="text-2xl leading-none">🎓</span>
                 <div>
-                  <p className="font-medium text-sm text-gray-900">Kursni bitirdi</p>
-                  <p className="text-xs text-gray-500 mt-0.5">O&apos;quv rejasi to&apos;liq tugadi</p>
+                  <p className="font-medium text-sm text-gray-900">{t('graduated')}</p>
+                  <p className="text-xs text-gray-500 mt-0.5">{t('graduatedDesc')}</p>
                 </div>
               </button>
             )}
@@ -731,8 +732,8 @@ export default function GroupDetailPage() {
             >
               <span className="text-2xl leading-none">🚪</span>
               <div>
-                <p className="font-medium text-sm text-gray-900">Tashlab ketdi</p>
-                <p className="text-xs text-gray-500 mt-0.5">Kurs tugamasdan chiqib ketdi</p>
+                <p className="font-medium text-sm text-gray-900">{t('droppedOut')}</p>
+                <p className="text-xs text-gray-500 mt-0.5">{t('droppedOutDesc')}</p>
               </div>
             </button>
           </div>
@@ -746,17 +747,17 @@ export default function GroupDetailPage() {
       {/* Change group */}
       <Dialog open={!!changeGroupTarget} onOpenChange={(open) => { if (!open) setChangeGroupTarget(null); }}>
         <DialogContent className="sm:max-w-sm">
-          <DialogHeader><DialogTitle>Guruh o&apos;zgartirish</DialogTitle></DialogHeader>
-          <p className="text-sm text-gray-600"><span className="font-medium">{changeGroupTarget?.name}</span> uchun yangi guruh:</p>
+          <DialogHeader><DialogTitle>{t('transferStudent')}</DialogTitle></DialogHeader>
+          <p className="text-sm text-gray-600"><span className="font-medium">{changeGroupTarget?.name}</span></p>
           <select value={newGroupId} onChange={(e) => setNewGroupId(e.target.value)} className="w-full mt-3 px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
-            <option value="">Guruh tanlang</option>
+            <option value="">{t('selectPlaceholder')}</option>
             {groupOptions.map((g) => <option key={g.id} value={g.id}>{g.name}</option>)}
           </select>
           {groupOptions.length === 0 && <p className="text-xs text-gray-400 mt-1">Boshqa faol guruhlar topilmadi</p>}
           <div className="flex gap-3 mt-4">
-            <button onClick={() => setChangeGroupTarget(null)} className="flex-1 px-4 py-2 border border-gray-300 text-sm font-medium rounded hover:bg-gray-50">Bekor</button>
+            <button onClick={() => setChangeGroupTarget(null)} className="flex-1 px-4 py-2 border border-gray-300 text-sm font-medium rounded hover:bg-gray-50">{common('cancel')}</button>
             <button onClick={handleChangeGroup} disabled={!newGroupId || changingGroup} className="flex-1 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded hover:bg-blue-700 disabled:opacity-60">
-              {changingGroup ? "O'zgartirilmoqda..." : "O'zgartirish"}
+              {changingGroup ? common('loading') : common('confirm')}
             </button>
           </div>
         </DialogContent>
@@ -765,10 +766,10 @@ export default function GroupDetailPage() {
       {/* Add lesson */}
       <Dialog open={showAddLesson} onOpenChange={setShowAddLesson}>
         <DialogContent className="sm:max-w-sm">
-          <DialogHeader><DialogTitle>Yangi dars</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle>{t('newLesson')}</DialogTitle></DialogHeader>
           <form onSubmit={handleAddLesson} className="space-y-4 mt-2">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Mavzu</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">{t('topic')}</label>
               <input
                 type="text"
                 value={lessonForm.topic}
@@ -780,7 +781,7 @@ export default function GroupDetailPage() {
             <div className="flex gap-3 pt-1">
               <button type="button" onClick={() => setShowAddLesson(false)} className="flex-1 px-4 py-2 border border-gray-300 text-sm font-medium rounded hover:bg-gray-50">{common('cancel')}</button>
               <button type="submit" disabled={savingLesson} className="flex-1 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded hover:bg-blue-700 disabled:opacity-60">
-                {savingLesson ? 'Saqlanmoqda...' : common('save')}
+                {savingLesson ? common('loading') : common('save')}
               </button>
             </div>
           </form>

@@ -87,12 +87,12 @@ function resolve(data: DashboardData) {
   };
 }
 
-function timeAgo(dateStr: string) {
+function timeAgo(dateStr: string, tFn: (key: string, params?: Record<string, number>) => string) {
   const diff = Math.floor((Date.now() - new Date(dateStr).getTime()) / 1000);
-  if (diff < 60) return 'hozirgina';
-  if (diff < 3600) return `${Math.floor(diff / 60)} daqiqa oldin`;
-  if (diff < 86400) return `${Math.floor(diff / 3600)} soat oldin`;
-  return `${Math.floor(diff / 86400)} kun oldin`;
+  if (diff < 60) return tFn('timeAgoNow');
+  if (diff < 3600) return tFn('timeAgoMinutes', { n: Math.floor(diff / 60) });
+  if (diff < 86400) return tFn('timeAgoHours', { n: Math.floor(diff / 3600) });
+  return tFn('timeAgoDays', { n: Math.floor(diff / 86400) });
 }
 
 function getInitials(name: string) {
@@ -111,6 +111,7 @@ const DEBTOR_COLORS = [
 function CardSkeleton() { return <Skeleton className="h-28 w-full rounded-xl" />; }
 
 function FunnelWidget({ locale }: { locale: string }) {
+  const td = useTranslations('dashboard');
   const [counts, setCounts] = useState<{ pending: number; trial: number; active: number } | null>(null);
 
   useEffect(() => {
@@ -134,9 +135,9 @@ function FunnelWidget({ locale }: { locale: string }) {
 
   const total = counts.pending + counts.trial + counts.active || 1;
   const steps = [
-    { label: 'Leadlar', count: counts.pending + counts.trial, color: 'bg-amber-400', pct: Math.round((counts.pending + counts.trial) / total * 100), href: `/${locale}/leads` },
-    { label: 'Sinov', count: counts.trial, color: 'bg-blue-400', pct: Math.round(counts.trial / total * 100), href: `/${locale}/leads?status=trial` },
-    { label: 'Faol talaba', count: counts.active, color: 'bg-emerald-500', pct: Math.round(counts.active / total * 100), href: `/${locale}/students` },
+    { label: td('funnelLeads'), count: counts.pending + counts.trial, color: 'bg-amber-400', pct: Math.round((counts.pending + counts.trial) / total * 100), href: `/${locale}/leads` },
+    { label: td('funnelTrial'), count: counts.trial, color: 'bg-blue-400', pct: Math.round(counts.trial / total * 100), href: `/${locale}/leads?status=trial` },
+    { label: td('funnelActive'), count: counts.active, color: 'bg-emerald-500', pct: Math.round(counts.active / total * 100), href: `/${locale}/students` },
   ];
 
   return (
@@ -212,7 +213,7 @@ export default function DashboardPage() {
       setData(res?.data ?? {});
     } catch {
       setError(true);
-      toast.error('Dashboard ma\'lumotlarini yuklashda xatolik');
+      toast.error(t('loadError'));
     } finally {
       setLoading(false);
     }
@@ -290,47 +291,47 @@ export default function DashboardPage() {
     e.preventDefault(); setSavingStudent(true);
     try {
       await api.post('/api/v1/students/', { first_name: studentForm.first_name, last_name: studentForm.last_name, phone: '+998' + studentForm.phone.replace(/\D/g, ''), status: 'pending', course_id: studentForm.course_id || null });
-      toast.success('O\'quvchi qo\'shildi');
+      toast.success(t('studentAdded'));
       setShowStudentAdd(false);
       setStudentForm({ first_name: '', last_name: '', phone: '', course_id: '' });
-    } catch (err: any) { toast.error(err?.response?.data?.detail || 'Xatolik yuz berdi'); } finally { setSavingStudent(false); }
+    } catch (err: unknown) { const e = err as { response?: { data?: { detail?: string } } }; toast.error(e?.response?.data?.detail || tc('error')); } finally { setSavingStudent(false); }
   }
 
   async function handlePaymentAdd(e: React.FormEvent) {
     e.preventDefault();
-    if (!selectedPaymentStudent) { toast.error('O\'quvchini tanlang'); return; }
+    if (!selectedPaymentStudent) { toast.error(t('selectStudentError')); return; }
     setSavingPayment(true);
     try {
       await api.post('/api/v1/payments/', { student_id: selectedPaymentStudent.id, ...(paymentForm.group_id ? { group_id: paymentForm.group_id } : {}), amount: parseFloat(paymentForm.amount), payment_type: paymentForm.payment_type, ...(paymentForm.note ? { note: paymentForm.note } : {}) });
-      toast.success('To\'lov kiritildi');
+      toast.success(t('paymentAdded'));
       setShowPaymentAdd(false);
       setSelectedPaymentStudent(null); setPaymentStudentSearch('');
       setPaymentForm({ group_id: '', amount: '', payment_type: 'cash', note: '' });
-    } catch (err: any) { toast.error(err?.response?.data?.detail || 'Xatolik yuz berdi'); } finally { setSavingPayment(false); }
+    } catch (err: unknown) { const e = err as { response?: { data?: { detail?: string } } }; toast.error(e?.response?.data?.detail || tc('error')); } finally { setSavingPayment(false); }
   }
 
   async function handleGroupAdd(e: React.FormEvent) {
     e.preventDefault();
-    if (!groupForm.gender_type) { toast.error('Guruh turini tanlang'); return; }
+    if (!groupForm.gender_type) { toast.error(t('selectGroupTypeError')); return; }
     setSavingGroup(true);
     try {
       const schedule = buildSchedule(groupForm.days, groupForm.time);
       await api.post('/api/v1/groups/', { course_id: groupForm.course_id, teacher_id: groupForm.teacher_id, gender_type: groupForm.gender_type, ...(schedule ? { schedule } : {}), ...(groupForm.room ? { room: groupForm.room } : {}) });
-      toast.success('Guruh yaratildi');
+      toast.success(t('groupCreated'));
       setShowGroupAdd(false);
       setGroupForm({ course_id: '', teacher_id: '', gender_type: '', days: [], time: '', room: '' });
       fetchActiveGroups();
-    } catch (err: any) { toast.error(err?.response?.data?.detail || 'Xatolik yuz berdi'); } finally { setSavingGroup(false); }
+    } catch (err: unknown) { const e = err as { response?: { data?: { detail?: string } } }; toast.error(e?.response?.data?.detail || tc('error')); } finally { setSavingGroup(false); }
   }
 
   async function handleSmsSend(e: React.FormEvent) {
     e.preventDefault(); setSavingSms(true);
     try {
       await api.post('/api/v1/notifications/send/', { phone: '+998' + smsForm.phone.replace(/\D/g, ''), message: smsForm.message });
-      toast.success('SMS yuborildi');
+      toast.success(t('smsSent'));
       setShowSms(false); setSmsForm({ phone: '', message: '' });
     } catch {
-      toast.error("Bu funksiya tez orada qo'shiladi");
+      toast.error(t('smsSoon'));
       setShowSms(false);
     } finally { setSavingSms(false); }
   }
@@ -407,7 +408,7 @@ export default function DashboardPage() {
             </h2>
             {d?.revenue ? (
               <div className="text-right">
-                <p className="text-[10px] text-gray-400 uppercase tracking-wide">Bu oy</p>
+                <p className="text-[10px] text-gray-400 uppercase tracking-wide">{t('thisMonth')}</p>
                 <p className="text-sm font-bold text-blue-600">{formatCurrency(d.revenue)}</p>
               </div>
             ) : null}
@@ -427,7 +428,7 @@ export default function DashboardPage() {
                 <Tooltip
                   contentStyle={{ border: '1px solid #E5E7EB', borderRadius: 8, fontSize: 12, boxShadow: '0 4px 6px -1px rgba(0,0,0,0.07)' }}
                   // @ts-expect-error recharts ValueType
-                  formatter={(v: number) => [formatCurrency(v), 'Daromad']}
+                  formatter={(v: number) => [formatCurrency(v), t('revenueChart')]}
                 />
                 <Area type="monotone" dataKey="revenue" stroke="#2563EB" strokeWidth={2.5}
                   fill="url(#revenueGrad)" dot={{ fill: '#2563EB', r: 3, strokeWidth: 0 }} activeDot={{ r: 5, strokeWidth: 0 }} />
@@ -474,12 +475,12 @@ export default function DashboardPage() {
         <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-5">
           <h2 className="text-sm font-semibold text-gray-900 mb-4 flex items-center gap-2">
             <GraduationCap className="w-4 h-4 text-violet-500" />
-            O&apos;qituvchilar
+            {t('teachersTitle')}
           </h2>
           {loading ? (
             <div className="space-y-2">{Array(3).fill(0).map((_, i) => <Skeleton key={i} className="h-10 w-full" />)}</div>
           ) : (d?.teacherStats?.length ?? 0) === 0 ? (
-            <p className="text-sm text-gray-400 text-center py-6">Ma&apos;lumot yo&apos;q</p>
+            <p className="text-sm text-gray-400 text-center py-6">{tc('noData')}</p>
           ) : (
             <div className="space-y-1">
               {(d?.teacherStats ?? []).map((ts) => (
@@ -491,8 +492,8 @@ export default function DashboardPage() {
                     <p className="text-sm font-medium text-gray-900 truncate">{ts.name}</p>
                   </div>
                   <div className="flex items-center gap-3 flex-shrink-0 ml-2">
-                    <span className="text-xs text-gray-500"><span className="font-semibold text-gray-700">{ts.groups_count}</span> guruh</span>
-                    <span className="text-xs text-gray-500"><span className="font-semibold text-gray-700">{ts.students_count}</span> o&apos;q</span>
+                    <span className="text-xs text-gray-500"><span className="font-semibold text-gray-700">{ts.groups_count}</span> {t('groups2')}</span>
+                    <span className="text-xs text-gray-500"><span className="font-semibold text-gray-700">{ts.students_count}</span> {t('students2')}</span>
                   </div>
                 </div>
               ))}
@@ -505,11 +506,11 @@ export default function DashboardPage() {
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-sm font-semibold text-gray-900 flex items-center gap-2">
               <Users2 className="w-4 h-4 text-blue-500" />
-              Faol guruhlar
+              {t('activeGroupsTitle')}
             </h2>
             <Link href={`/${locale}/groups`}
               className="flex items-center gap-1 text-xs text-blue-600 hover:underline font-medium">
-              Barchasini ko&apos;rish <ArrowRight className="w-3 h-3" />
+              {t('viewAll')} <ArrowRight className="w-3 h-3" />
             </Link>
           </div>
           {groupsLoading ? (
@@ -517,13 +518,13 @@ export default function DashboardPage() {
           ) : activeGroups.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-10">
               <UsersRound className="w-10 h-10 text-gray-200 mb-2" />
-              <p className="text-sm text-gray-400">Hali faol guruhlar yo&apos;q</p>
+              <p className="text-sm text-gray-400">{t('noActiveGroups')}</p>
             </div>
           ) : (
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-gray-100">
-                  {['Guruh', 'O\'qituvchi', 'O\'quvchilar', 'Kurs', 'Jadval'].map((h) => (
+                  {[t('groupHeader'), t('teacherHeader'), t('studentsHeader'), t('courseHeader'), t('scheduleHeader')].map((h) => (
                     <th key={h} className="text-left pb-2.5 text-xs font-semibold text-gray-400 uppercase tracking-wide">{h}</th>
                   ))}
                 </tr>
@@ -560,7 +561,7 @@ export default function DashboardPage() {
         <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-5">
           <h2 className="text-sm font-semibold text-gray-900 mb-4 flex items-center gap-2">
             <MessageSquare className="w-4 h-4 text-gray-400" />
-            So&apos;nggi izohlar
+            {t('recentNotes')}
           </h2>
           {notesLoading ? (
             <div className="space-y-4">
@@ -577,12 +578,12 @@ export default function DashboardPage() {
           ) : notes.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-10">
               <MessageSquare className="w-8 h-8 text-gray-200 mb-2" />
-              <p className="text-sm text-gray-400">Hozircha izohlar yo&apos;q</p>
+              <p className="text-sm text-gray-400">{t('noNotes')}</p>
             </div>
           ) : (
             <div className="space-y-4">
               {notes.map((n) => {
-                const authorName = n.author_name ?? (n.author ? `${n.author.first_name} ${n.author.last_name}` : 'Noma\'lum');
+                const authorName = n.author_name ?? (n.author ? `${n.author.first_name} ${n.author.last_name}` : tc('noData'));
                 const noteText = n.note ?? n.text ?? '';
                 const initials = authorName.split(' ').map((w) => w[0]).join('').slice(0, 2).toUpperCase();
                 return (
@@ -593,7 +594,7 @@ export default function DashboardPage() {
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 flex-wrap">
                         <span className="text-xs font-semibold text-gray-700">{authorName}</span>
-                        <span className="text-xs text-gray-400">{timeAgo(n.created_at)}</span>
+                        <span className="text-xs text-gray-400">{timeAgo(n.created_at, (key, params) => t(key as Parameters<typeof t>[0], params as Parameters<typeof t>[1]))}</span>
                       </div>
                       <p className="text-sm text-gray-600 mt-0.5 line-clamp-2">{noteText}</p>
                     </div>
@@ -607,14 +608,14 @@ export default function DashboardPage() {
         {/* Leaderboard */}
         <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-5">
           <h2 className="text-sm font-semibold text-gray-900 mb-4">
-            🏆 Top o&apos;quvchilar
+            🏆 {t('topStudents')}
           </h2>
           {leaderboardLoading ? (
             <div className="space-y-2">{Array(5).fill(0).map((_, i) => <Skeleton key={i} className="h-10 w-full" />)}</div>
           ) : leaderboard.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-10">
               <Users className="w-8 h-8 text-gray-200 mb-2" />
-              <p className="text-sm text-gray-400">Hali baholar kiritilmagan</p>
+              <p className="text-sm text-gray-400">{t('noGrades')}</p>
             </div>
           ) : (
             <div className="space-y-1">
@@ -638,20 +639,20 @@ export default function DashboardPage() {
       {/* Student Add */}
       <Dialog open={showStudentAdd} onOpenChange={setShowStudentAdd}>
         <DialogContent className="sm:max-w-md">
-          <DialogHeader><DialogTitle>Yangi o&apos;quvchi qo&apos;shish</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle>{t('addStudentTitle')}</DialogTitle></DialogHeader>
           <form onSubmit={handleStudentAdd} className="space-y-4 mt-2">
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className={labelCls}>Ism <span className="text-red-500">*</span></label>
+                <label className={labelCls}>{t('firstName')} <span className="text-red-500">*</span></label>
                 <input value={studentForm.first_name} onChange={(e) => setStudentForm((f) => ({ ...f, first_name: e.target.value }))} className={inputCls} required />
               </div>
               <div>
-                <label className={labelCls}>Familiya <span className="text-red-500">*</span></label>
+                <label className={labelCls}>{t('lastName')} <span className="text-red-500">*</span></label>
                 <input value={studentForm.last_name} onChange={(e) => setStudentForm((f) => ({ ...f, last_name: e.target.value }))} className={inputCls} required />
               </div>
             </div>
             <div>
-              <label className={labelCls}>Telefon <span className="text-red-500">*</span></label>
+              <label className={labelCls}>{t('phone')} <span className="text-red-500">*</span></label>
               <div className="flex">
                 <span className="inline-flex items-center px-3 border border-r-0 border-gray-300 bg-gray-50 text-gray-500 text-sm rounded-l">+998</span>
                 <input type="tel" value={studentForm.phone}
@@ -662,16 +663,16 @@ export default function DashboardPage() {
               </div>
             </div>
             <div>
-              <label className={labelCls}>Kurs (ixtiyoriy)</label>
+              <label className={labelCls}>{t('courseOptional')}</label>
               <select value={studentForm.course_id} onChange={(e) => setStudentForm((f) => ({ ...f, course_id: e.target.value }))} className={inputCls}>
-                <option value="">Tanlang</option>
+                <option value="">{t('selectPlaceholder')}</option>
                 {courses.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
               </select>
             </div>
             <div className="flex gap-3 pt-2">
-              <button type="button" onClick={() => setShowStudentAdd(false)} className="flex-1 px-4 py-2 border border-gray-300 text-sm font-medium rounded hover:bg-gray-50">Bekor qilish</button>
+              <button type="button" onClick={() => setShowStudentAdd(false)} className="flex-1 px-4 py-2 border border-gray-300 text-sm font-medium rounded hover:bg-gray-50">{t('cancel')}</button>
               <button type="submit" disabled={savingStudent} className="flex-1 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded hover:bg-blue-700 disabled:opacity-60">
-                {savingStudent ? 'Saqlanmoqda...' : 'Saqlash'}
+                {savingStudent ? t('saving') : t('save')}
               </button>
             </div>
           </form>
@@ -681,10 +682,10 @@ export default function DashboardPage() {
       {/* Payment Add */}
       <Dialog open={showPaymentAdd} onOpenChange={(v) => { setShowPaymentAdd(v); if (!v) { setSelectedPaymentStudent(null); setPaymentStudentSearch(''); setPaymentForm({ group_id: '', amount: '', payment_type: 'cash', note: '' }); } }}>
         <DialogContent className="sm:max-w-md">
-          <DialogHeader><DialogTitle>Yangi to&apos;lov kiritish</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle>{t('addPaymentTitle')}</DialogTitle></DialogHeader>
           <form onSubmit={handlePaymentAdd} className="space-y-4 mt-2">
             <div>
-              <label className={labelCls}>O&apos;quvchi</label>
+              <label className={labelCls}>{t('student')}</label>
               {selectedPaymentStudent ? (
                 <div className="flex items-center justify-between px-3 py-2 border border-blue-300 bg-blue-50 rounded text-sm">
                   <span className="font-medium text-blue-800">{selectedPaymentStudent.first_name} {selectedPaymentStudent.last_name}</span>
@@ -693,7 +694,7 @@ export default function DashboardPage() {
               ) : (
                 <div className="relative">
                   <input type="text" value={paymentStudentSearch} onChange={(e) => setPaymentStudentSearch(e.target.value)}
-                    placeholder="Ism yoki telefon bo'yicha qidirish..." className={inputCls} />
+                    placeholder={t('studentSearchPlaceholder')} className={inputCls} />
                   {paymentStudentResults.length > 0 && (
                     <div className="absolute z-10 w-full mt-1 bg-white border border-gray-200 rounded shadow-md max-h-48 overflow-y-auto">
                       {paymentStudentResults.map((s) => (
@@ -710,30 +711,30 @@ export default function DashboardPage() {
             </div>
             {studentGroups.length > 0 && (
               <div>
-                <label className={labelCls}>Guruh</label>
+                <label className={labelCls}>{t('groupGroupLabel')}</label>
                 <select value={paymentForm.group_id} onChange={(e) => setPaymentForm((f) => ({ ...f, group_id: e.target.value }))} className={inputCls}>
-                  <option value="">Tanlang (ixtiyoriy)</option>
+                  <option value="">{t('groupSelectOptional')}</option>
                   {studentGroups.map((g) => <option key={g.id} value={g.id}>{g.name}</option>)}
                 </select>
               </div>
             )}
             <div>
-              <label className={labelCls}>Summa (so&apos;m) <span className="text-red-500">*</span></label>
+              <label className={labelCls}>{t('amountLabel')} <span className="text-red-500">*</span></label>
               <input type="number" value={paymentForm.amount} onChange={(e) => setPaymentForm((f) => ({ ...f, amount: e.target.value }))} className={inputCls} required placeholder="0" />
             </div>
             <div>
-              <label className={labelCls}>To&apos;lov turi</label>
+              <label className={labelCls}>{t('paymentType')}</label>
               <select value={paymentForm.payment_type} onChange={(e) => setPaymentForm((f) => ({ ...f, payment_type: e.target.value }))} className={inputCls}>
-                <option value="cash">Naqd</option>
-                <option value="card">Karta</option>
-                <option value="transfer">O&apos;tkazma</option>
+                <option value="cash">{t('cash')}</option>
+                <option value="card">{t('card')}</option>
+                <option value="transfer">{t('transfer')}</option>
               </select>
             </div>
-            <p className="text-xs text-gray-400">* To&apos;lovlar o&apos;chirilmaydi va tahrirlanmaydi</p>
+            <p className="text-xs text-gray-400">{t('paymentNote')}</p>
             <div className="flex gap-3 pt-2">
-              <button type="button" onClick={() => setShowPaymentAdd(false)} className="flex-1 px-4 py-2 border border-gray-300 text-sm font-medium rounded hover:bg-gray-50">Bekor qilish</button>
+              <button type="button" onClick={() => setShowPaymentAdd(false)} className="flex-1 px-4 py-2 border border-gray-300 text-sm font-medium rounded hover:bg-gray-50">{t('cancel')}</button>
               <button type="submit" disabled={savingPayment} className="flex-1 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded hover:bg-blue-700 disabled:opacity-60">
-                {savingPayment ? 'Saqlanmoqda...' : 'Saqlash'}
+                {savingPayment ? t('saving') : t('save')}
               </button>
             </div>
           </form>
@@ -743,32 +744,32 @@ export default function DashboardPage() {
       {/* Group Add */}
       <Dialog open={showGroupAdd} onOpenChange={(v) => { setShowGroupAdd(v); if (!v) setGroupForm({ course_id: '', teacher_id: '', gender_type: '', days: [], time: '', room: '' }); }}>
         <DialogContent className="sm:max-w-md max-h-[90vh] overflow-y-auto">
-          <DialogHeader><DialogTitle>Yangi guruh yaratish</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle>{t('addGroupTitle')}</DialogTitle></DialogHeader>
           <form onSubmit={handleGroupAdd} className="space-y-4 mt-2">
             <div>
-              <label className={labelCls}>Kurs <span className="text-red-500">*</span></label>
+              <label className={labelCls}>{t('course')} <span className="text-red-500">*</span></label>
               <select value={groupForm.course_id} onChange={(e) => setGroupForm((f) => ({ ...f, course_id: e.target.value }))} className={inputCls} required>
-                <option value="">Tanlang</option>
+                <option value="">{t('selectPlaceholder')}</option>
                 {courses.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
               </select>
             </div>
             <div>
-              <label className={labelCls}>O&apos;qituvchi <span className="text-red-500">*</span></label>
+              <label className={labelCls}>{t('teacher')} <span className="text-red-500">*</span></label>
               <select value={groupForm.teacher_id} onChange={(e) => setGroupForm((f) => ({ ...f, teacher_id: e.target.value }))} className={inputCls} required>
-                <option value="">Tanlang</option>
-                {teachers.map((t) => <option key={t.id} value={t.id}>{t.first_name} {t.last_name}</option>)}
+                <option value="">{t('selectPlaceholder')}</option>
+                {teachers.map((tr) => <option key={tr.id} value={tr.id}>{tr.first_name} {tr.last_name}</option>)}
               </select>
             </div>
             <div>
               <label className={labelCls}>
-                Guruh turi <span className="text-red-500">*</span>
-                {!groupForm.gender_type && <span className="ml-2 text-xs text-orange-500 font-normal">— tanlash majburiy</span>}
+                {t('groupType')} <span className="text-red-500">*</span>
+                {!groupForm.gender_type && <span className="ml-2 text-xs text-orange-500 font-normal">{t('groupTypeRequired')}</span>}
               </label>
               <div className="flex gap-2">
                 {[
-                  { value: 'a', label: 'Erkaklar', cls: 'border-blue-300 bg-blue-50 text-blue-700' },
-                  { value: 'b', label: 'Ayollar', cls: 'border-pink-300 bg-pink-50 text-pink-700' },
-                  { value: 'c', label: 'Aralash', cls: 'border-purple-300 bg-purple-50 text-purple-700' },
+                  { value: 'a', label: t('genderMale'), cls: 'border-blue-300 bg-blue-50 text-blue-700' },
+                  { value: 'b', label: t('genderFemale'), cls: 'border-pink-300 bg-pink-50 text-pink-700' },
+                  { value: 'c', label: t('genderMixed'), cls: 'border-purple-300 bg-purple-50 text-purple-700' },
                 ].map(({ value, label, cls }) => (
                   <button key={value} type="button" onClick={() => setGroupForm((f) => ({ ...f, gender_type: value }))}
                     className={cn('flex-1 py-2 text-xs font-medium border rounded transition-colors', groupForm.gender_type === value ? cls : 'border-gray-300 text-gray-600 hover:bg-gray-50')}>
@@ -778,7 +779,7 @@ export default function DashboardPage() {
               </div>
             </div>
             <div>
-              <label className={labelCls}>Dars kunlari</label>
+              <label className={labelCls}>{t('lessonDays')}</label>
               <div className="flex gap-1.5 flex-wrap">
                 {DAYS_LIST.map((day) => (
                   <button key={day} type="button" onClick={() => toggleDay(day)}
@@ -790,18 +791,18 @@ export default function DashboardPage() {
               </div>
             </div>
             <div>
-              <label className={labelCls}>Dars vaqti</label>
+              <label className={labelCls}>{t('lessonTime')}</label>
               <input type="time" value={groupForm.time} onChange={(e) => setGroupForm((f) => ({ ...f, time: e.target.value }))} className={inputCls} />
             </div>
             {(groupForm.days.length > 0 || groupForm.time) && (
               <div className="px-3 py-2 bg-gray-50 rounded text-xs text-gray-600">
-                Jadval: <span className="font-medium">{buildSchedule(groupForm.days, groupForm.time) || '—'}</span>
+                {t('schedule')}: <span className="font-medium">{buildSchedule(groupForm.days, groupForm.time) || '—'}</span>
               </div>
             )}
             <div className="flex gap-3 pt-2">
-              <button type="button" onClick={() => setShowGroupAdd(false)} className="flex-1 px-4 py-2 border border-gray-300 text-sm font-medium rounded hover:bg-gray-50">Bekor qilish</button>
+              <button type="button" onClick={() => setShowGroupAdd(false)} className="flex-1 px-4 py-2 border border-gray-300 text-sm font-medium rounded hover:bg-gray-50">{t('cancel')}</button>
               <button type="submit" disabled={savingGroup} className="flex-1 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded hover:bg-blue-700 disabled:opacity-60">
-                {savingGroup ? 'Saqlanmoqda...' : 'Saqlash'}
+                {savingGroup ? t('saving') : t('save')}
               </button>
             </div>
           </form>
@@ -811,10 +812,10 @@ export default function DashboardPage() {
       {/* SMS Send */}
       <Dialog open={showSms} onOpenChange={setShowSms}>
         <DialogContent className="sm:max-w-md">
-          <DialogHeader><DialogTitle>SMS yuborish</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle>{t('sendSmsTitle')}</DialogTitle></DialogHeader>
           <form onSubmit={handleSmsSend} className="space-y-4 mt-2">
             <div>
-              <label className={labelCls}>Telefon <span className="text-red-500">*</span></label>
+              <label className={labelCls}>{t('phone')} <span className="text-red-500">*</span></label>
               <div className="flex">
                 <span className="inline-flex items-center px-3 border border-r-0 border-gray-300 bg-gray-50 text-gray-500 text-sm rounded-l">+998</span>
                 <input type="tel" value={smsForm.phone}
@@ -825,17 +826,17 @@ export default function DashboardPage() {
               </div>
             </div>
             <div>
-              <label className={labelCls}>Xabar <span className="text-red-500">*</span></label>
+              <label className={labelCls}>{t('message')} <span className="text-red-500">*</span></label>
               <textarea value={smsForm.message} onChange={(e) => setSmsForm((f) => ({ ...f, message: e.target.value }))}
                 rows={4} required
                 className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
-                placeholder="SMS matni..." />
-              <p className="text-xs text-gray-400 mt-1">{smsForm.message.length} belgi</p>
+                placeholder={t('messagePlaceholder')} />
+              <p className="text-xs text-gray-400 mt-1">{smsForm.message.length} {t('chars')}</p>
             </div>
             <div className="flex gap-3 pt-2">
-              <button type="button" onClick={() => setShowSms(false)} className="flex-1 px-4 py-2 border border-gray-300 text-sm font-medium rounded hover:bg-gray-50">Bekor qilish</button>
+              <button type="button" onClick={() => setShowSms(false)} className="flex-1 px-4 py-2 border border-gray-300 text-sm font-medium rounded hover:bg-gray-50">{t('cancel')}</button>
               <button type="submit" disabled={savingSms} className="flex-1 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded hover:bg-blue-700 disabled:opacity-60">
-                {savingSms ? 'Yuborilmoqda...' : 'Yuborish'}
+                {savingSms ? t('sending') : t('send')}
               </button>
             </div>
           </form>

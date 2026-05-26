@@ -47,12 +47,6 @@ function rowBg(debtStatus: Debt['status'], studentStatus: string, dueDate: strin
   }
 }
 
-const STATUS_LABELS: Record<string, string> = {
-  unpaid: "To'lanmagan",
-  partial: 'Qisman',
-  overdue: "Muddati o'tgan",
-  paid: "To'langan",
-};
 
 const STATUS_BADGE: Record<string, string> = {
   unpaid:  'bg-yellow-100 text-yellow-800 border-yellow-300',
@@ -61,8 +55,8 @@ const STATUS_BADGE: Record<string, string> = {
   paid:    'bg-green-50 text-green-700 border-green-200',
 };
 
-const PAYMENT_TYPE_LABELS: Record<string, string> = {
-  cash: 'Naqd', card: 'Karta', transfer: "O'tkazma",
+const PAYMENT_TYPE_KEYS: Record<string, string> = {
+  cash: 'cash', card: 'card', transfer: 'transfer',
 };
 
 const formatAmount = (val: string) =>
@@ -167,9 +161,9 @@ export default function DebtsPage() {
           due_date: r.due_date || '',
         })),
       });
-      toast.success(`${recipients.length} ta SMS yuborildi`);
+      toast.success(common('success'));
     } catch {
-      toast.error('SMS yuborishda xatolik');
+      toast.error(common('error'));
     }
   }
 
@@ -210,8 +204,8 @@ export default function DebtsPage() {
     if (!paymentTarget) return;
     const amt = parseAmount(paymentForm.amount);
     const remaining = Math.abs(Number(paymentTarget.amount));
-    if (amt < 1000) { toast.error("Minimal to'lov 1,000 so'm"); return; }
-    if (amt > remaining) { toast.error(`Maksimal: ${formatAmount(String(Math.round(remaining)))} so'm`); return; }
+    if (amt < 1000) { toast.error(t('minAmount')); return; }
+    if (amt > remaining) { toast.error(t('maxAmount')); return; }
     setPaymentSaving(true);
     try {
       await api.post('/api/v1/payments/', {
@@ -222,14 +216,14 @@ export default function DebtsPage() {
         payment_type:     paymentForm.payment_type,
         note:             paymentForm.note || '',
       });
-      toast.success("To'lov muvaffaqiyatli saqlandi");
+      toast.success(common('success'));
       setPaymentTarget(null);
       fetchDebts();
     } catch (err: unknown) {
       const detail = (err as { response?: { data?: unknown } })?.response?.data;
       const msg = (detail as Record<string, unknown>)?.amount
         || (detail as Record<string, unknown>)?.detail
-        || (typeof detail === 'string' ? detail : 'Xatolik yuz berdi');
+        || (typeof detail === 'string' ? detail : common('error'));
       toast.error(String(msg));
     } finally {
       setPaymentSaving(false);
@@ -249,7 +243,7 @@ export default function DebtsPage() {
             className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded hover:bg-blue-700 transition-colors"
           >
             <Send className="w-4 h-4" />
-            SMS yuborish ({selectedCount})
+            {common('send')} ({selectedCount})
           </button>
         )}
       </div>
@@ -259,8 +253,8 @@ export default function DebtsPage() {
         <div className="flex items-center gap-3 px-4 py-3 bg-red-50 border border-red-200 rounded">
           <AlertCircle className="w-5 h-5 text-red-500 flex-shrink-0" />
           <div>
-            <p className="text-sm font-semibold text-red-700">Jami qarz: {formatCurrency(totalAmount)}</p>
-            <p className="text-xs text-red-500">{count} ta qarzdor</p>
+            <p className="text-sm font-semibold text-red-700">{t('totalDebt')}: {formatCurrency(totalAmount)}</p>
+            <p className="text-xs text-red-500">{t('debtorCount', { count })}</p>
           </div>
         </div>
       )}
@@ -282,10 +276,10 @@ export default function DebtsPage() {
           onChange={(e) => setStatusFilter(e.target.value)}
           className="px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-700"
         >
-          <option value="unpaid,overdue,partial">Barchasi</option>
-          <option value="unpaid">To&apos;lanmagan</option>
-          <option value="overdue">Muddati o&apos;tgan</option>
-          <option value="partial">Qisman</option>
+          <option value="unpaid,overdue,partial">{common('all')}</option>
+          <option value="unpaid">{common('unpaid')}</option>
+          <option value="overdue">{t('overdue')}</option>
+          <option value="partial">{common('partial')}</option>
         </select>
       </div>
 
@@ -293,14 +287,14 @@ export default function DebtsPage() {
       <div className="bg-white rounded border border-gray-200 shadow-sm overflow-hidden">
         {error ? (
           <div className="flex flex-col items-center justify-center py-16 text-gray-500">
-            <p className="mb-3 text-sm">Xatolik yuz berdi</p>
-            <button onClick={fetchDebts} className="text-sm text-blue-600 underline">Qayta urinish</button>
+            <p className="mb-3 text-sm">{common('error')}</p>
+            <button onClick={fetchDebts} className="text-sm text-blue-600 underline">{common('retry')}</button>
           </div>
         ) : (
           <table className="w-full text-sm">
             <thead>
               <tr className="bg-gray-50 border-b border-gray-200">
-                {['№', "O'quvchi", 'Guruh', 'Telefon', 'Ota-ona tel', 'Balans', 'Muddati', 'Holat', 'Amal'].map((h) => (
+                {['№', common('student'), common('group'), common('phone'), t('parentPhone'), t('balance'), t('dueDate'), common('status'), common('actions')].map((h) => (
                   <th key={h} className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">{h}</th>
                 ))}
               </tr>
@@ -325,7 +319,7 @@ export default function DebtsPage() {
                             {d.student_name}
                             {d.student_status === 'frozen' && (
                               <span className="inline-flex items-center gap-1 px-1.5 py-0.5 bg-cyan-100 text-cyan-700 border border-cyan-300 rounded text-xs font-medium">
-                                <Snowflake className="w-3 h-3" /> Muzlatilgan
+                                <Snowflake className="w-3 h-3" /> {common('frozen')}
                               </span>
                             )}
                           </span>
@@ -370,7 +364,7 @@ export default function DebtsPage() {
                         </td>
                         <td className="px-4 py-3">
                           <span className={cn('inline-flex items-center px-2 py-0.5 text-xs font-medium border rounded', STATUS_BADGE[d.status])}>
-                            {STATUS_LABELS[d.status]}
+                            {d.status === 'overdue' ? t('overdue') : common(d.status as Parameters<typeof common>[0])}
                           </span>
                         </td>
                         <td className="px-4 py-3">
@@ -378,7 +372,7 @@ export default function DebtsPage() {
                             <button
                               onClick={() => openPayment(d)}
                               className="p-1 rounded text-blue-500 hover:bg-blue-50 hover:text-blue-700 transition-colors"
-                              title="To'lov qo'shish"
+                              title={t('payDebt')}
                             >
                               <Banknote className="w-4 h-4" />
                             </button>
@@ -413,7 +407,7 @@ export default function DebtsPage() {
       {/* ══ Payment Modal ══ */}
       <Dialog open={!!paymentTarget} onOpenChange={(open) => { if (!open) setPaymentTarget(null); }}>
         <DialogContent className="sm:max-w-sm">
-          <DialogHeader><DialogTitle>To&apos;lov qo&apos;shish</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle>{t('payDebt')}</DialogTitle></DialogHeader>
 
           {paymentTarget && (
             <div className="flex flex-wrap gap-1.5 mb-1 mt-2">
@@ -436,7 +430,7 @@ export default function DebtsPage() {
           <form onSubmit={handlePayment} className="space-y-4 mt-1">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                Summa (so&apos;m)
+                {common('amount')}
                 {paymentTarget && (
                   <span className="ml-2 text-xs text-gray-400 font-normal">
                     Maksimal: {formatCurrency(Math.abs(Number(paymentTarget.amount)))}
@@ -468,8 +462,8 @@ export default function DebtsPage() {
                     rem <= 0 ? 'text-emerald-600' : 'text-orange-500'
                   )}>
                     {rem <= 0
-                      ? "✓ To'liq to'lanadi"
-                      : `◑ Qisman — ${formatAmount(String(Math.round(rem)))} so'm qoladi`
+                      ? `✓ ${t('fullPaid')}`
+                      : `◑ ${t('partialRemaining', { rem: formatCurrency(Math.round(rem)) })}`
                     }
                   </p>
                 );
@@ -477,23 +471,23 @@ export default function DebtsPage() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">To&apos;lov turi</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">{t('paymentType')}</label>
               <div className="flex gap-2">
-                {(['cash', 'card', 'transfer'] as const).map((t) => (
-                  <button key={t} type="button"
-                    onClick={() => setPaymentForm((f) => ({ ...f, payment_type: t }))}
+                {(['cash', 'card', 'transfer'] as const).map((pt) => (
+                  <button key={pt} type="button"
+                    onClick={() => setPaymentForm((f) => ({ ...f, payment_type: pt }))}
                     className={cn('flex-1 py-2 text-sm font-medium rounded border transition-colors',
-                      paymentForm.payment_type === t
+                      paymentForm.payment_type === pt
                         ? 'bg-blue-600 text-white border-blue-600'
                         : 'border-gray-300 text-gray-600 hover:bg-gray-50')}>
-                    {PAYMENT_TYPE_LABELS[t]}
+                    {t(PAYMENT_TYPE_KEYS[pt] as Parameters<typeof t>[0])}
                   </button>
                 ))}
               </div>
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Izoh (ixtiyoriy)</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">{common('note')}</label>
               <input type="text" value={paymentForm.note}
                 onChange={(e) => setPaymentForm((f) => ({ ...f, note: e.target.value }))}
                 className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -501,7 +495,7 @@ export default function DebtsPage() {
               />
             </div>
 
-            <p className="text-xs text-gray-400">* To&apos;lovlar o&apos;chirilmaydi va tahrirlanmaydi</p>
+            <p className="text-xs text-gray-400">* {t('paymentNote')}</p>
 
             <div className="flex gap-3 pt-1">
               <button type="button" onClick={() => setPaymentTarget(null)}
@@ -510,7 +504,7 @@ export default function DebtsPage() {
               </button>
               <button type="submit" disabled={paymentSaving}
                 className="flex-1 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded hover:bg-blue-700 disabled:opacity-60">
-                {paymentSaving ? 'Saqlanmoqda...' : t('pay')}
+                {paymentSaving ? common('loading') : t('pay')}
               </button>
             </div>
           </form>

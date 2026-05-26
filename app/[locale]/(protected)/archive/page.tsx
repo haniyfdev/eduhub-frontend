@@ -69,21 +69,14 @@ interface ArchivedCourse {
   closed_at?: string | null;
 }
 
-const REASON_OPTIONS = [
-  { value: '', label: 'Barchasi' },
-  { value: 'graduated', label: 'Bitirdi' },
-  { value: 'dropped_out', label: 'Tark etdi' },
-  { value: 'ignored', label: 'Rad etdi' },
-];
+// REASON_OPTIONS is built dynamically inside the component using translations
 
 const SALARY_STYLES: Record<string, string> = {
   fixed:       'bg-gray-100 text-gray-700 border-gray-200',
   percent:     'bg-blue-50 text-blue-700 border-blue-200',
   per_student: 'bg-green-50 text-green-700 border-green-200',
 };
-const SALARY_LABELS: Record<string, string> = {
-  fixed: 'Belgilangan', percent: 'Foizli', per_student: "O'quvchi boshiga",
-};
+// SALARY_LABELS built using translations inside the component
 
 const thCls = 'text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap';
 const tdCls = 'px-4 py-3';
@@ -117,6 +110,19 @@ interface ConfirmState {
 export default function ArchivePage() {
   const t = useTranslations('archive');
   const common = useTranslations('common');
+  const tc = useTranslations('teachers');
+  const tc2 = useTranslations('courses');
+
+  const REASON_OPTIONS = [
+    { value: '', label: t('reasonAll') },
+    { value: 'graduated', label: t('reasonGraduated') },
+    { value: 'dropped_out', label: t('reasonDropped') },
+    { value: 'ignored', label: t('reasonDeclined') },
+  ];
+
+  const SALARY_LABELS: Record<string, string> = {
+    fixed: tc('fixed'), percent: tc('percent'), per_student: tc('perStudent'),
+  };
 
   const TABS: { key: Tab; label: string }[] = [
     { key: 'students', label: t('tabs.students') },
@@ -255,7 +261,7 @@ export default function ArchivePage() {
         onClick={() => setConfirm({ id, source, name })}
         disabled={restoring === id}
         className="p-1.5 rounded-md text-green-600 hover:bg-green-50 disabled:opacity-40 transition-colors"
-        title="Tiklash"
+        title={t('restore')}
       >
         <ArrowUpFromLine className="w-4 h-4" />
       </button>
@@ -265,22 +271,22 @@ export default function ArchivePage() {
   function getDialogTitle() {
     if (!confirm) return '';
     const { source, name } = confirm;
-    if (source === 'student') return `${name}ni arxivdan tiklash`;
-    if (source === 'lead') return `${name}ni ro'yxatga qaytarish`;
-    if (source === 'teacher') return `${name}ni faollashtirish`;
-    if (source === 'group') return `${name} guruhini faollashtirish`;
-    if (source === 'course') return `${name} kursini faollashtirish`;
-    return 'Tiklashni tasdiqlang';
+    if (source === 'student') return t('restoreStudentTitle', { name });
+    if (source === 'lead') return t('restoreLeadTitle', { name });
+    if (source === 'teacher') return t('restoreTeacherTitle', { name });
+    if (source === 'group') return t('restoreGroupTitle', { name });
+    if (source === 'course') return t('restoreCourseTitle', { name });
+    return t('restoreDefaultTitle');
   }
 
   function getDialogBody() {
     if (!confirm) return '';
     const { source } = confirm;
-    if (source === 'student') return "Bu o'quvchi arxivdan faol holatga qaytariladi.";
-    if (source === 'lead') return "Bu lead yana kutilmoqda statusiga qaytariladi.";
-    if (source === 'teacher') return "O'qituvchi faol holatga qaytariladi.";
-    if (source === 'group') return "Guruh faol holatga qaytadi. O'quvchilarga ta'sir qilmaydi.";
-    if (source === 'course') return "Kurs faol holatga qaytariladi.";
+    if (source === 'student') return t('restoreStudentBody');
+    if (source === 'lead') return t('restoreLeadBody');
+    if (source === 'teacher') return t('restoreTeacherBody');
+    if (source === 'group') return t('restoreGroupBody');
+    if (source === 'course') return t('restoreCourseBody');
     return '';
   }
 
@@ -327,7 +333,7 @@ export default function ArchivePage() {
             type="text"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Qidirish..."
+            placeholder={t('searchPlaceholder')}
             className="pl-9 pr-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 w-56"
           />
         </div>
@@ -347,19 +353,19 @@ export default function ArchivePage() {
       {/* Tables */}
       <div className="bg-white rounded border border-gray-200 shadow-sm overflow-x-auto">
 
-        {/* === O'QUVCHILAR === */}
+        {/* === STUDENTS === */}
         {tab === 'students' && (
           <table className="w-full text-sm">
             <thead>
               <tr className="bg-gray-50 border-b border-gray-200">
-                {['№', 'Ism', 'Telefon', 'Ota-ona tel', 'Guruh', 'Kurs', "Tug'ilgan", 'Holat', 'Arxiv.Sana', 'Amal'].map((h, i) => (
+                {[t('tableHeaders.num'), t('tableHeaders.name'), t('tableHeaders.phone'), t('tableHeaders.parentPhone'), t('tableHeaders.group'), t('tableHeaders.course'), t('tableHeaders.birthDate'), t('tableHeaders.status'), t('tableHeaders.archiveDate'), t('tableHeaders.actions')].map((h, i) => (
                   <th key={i} className={thCls}>{h}</th>
                 ))}
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
               {loading ? <SkeletonRows cols={10} /> : archiveStudents.length === 0
-                ? <tr><td colSpan={10} className="px-4 py-16 text-center text-gray-400">Arxivlangan o&apos;quvchilar topilmadi</td></tr>
+                ? <tr><td colSpan={10} className="px-4 py-16 text-center text-gray-400">{t('noStudents')}</td></tr>
                 : archiveStudents.map((s, i) => (
                   <tr key={`${s.source}-${s.id}`} className={rowCls}>
                     <td className={cn(tdCls, 'text-gray-400 text-xs')}>{(page - 1) * pageSize + i + 1}</td>
@@ -392,52 +398,52 @@ export default function ArchivePage() {
           </table>
         )}
 
-        {/* === O'QITUVCHILAR === */}
+        {/* === TEACHERS === */}
         {tab === 'teachers' && (
           <table className="w-full text-sm">
             <thead>
               <tr className="bg-gray-50 border-b border-gray-200">
-                {['№', 'Ism', 'Telefon', 'Fan', 'Maosh turi', "Tug'ilgan", 'Ish boshlagan', 'Arxiv.Sana', 'Amal'].map((h, i) => (
+                {[t('tableHeaders.num'), t('tableHeaders.name'), t('tableHeaders.phone'), t('tableHeaders.subject'), t('tableHeaders.salaryType'), t('tableHeaders.birthDate'), t('tableHeaders.hiredAt'), t('tableHeaders.archiveDate'), t('tableHeaders.actions')].map((h, i) => (
                   <th key={i} className={thCls}>{h}</th>
                 ))}
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
               {loading ? <SkeletonRows cols={9} /> : teachers.length === 0
-                ? <tr><td colSpan={9} className="px-4 py-16 text-center text-gray-400">Arxivlangan o&apos;qituvchilar topilmadi</td></tr>
-                : teachers.map((t, i) => (
-                  <tr key={t.id} className={rowCls}>
+                ? <tr><td colSpan={9} className="px-4 py-16 text-center text-gray-400">{t('noTeachers')}</td></tr>
+                : teachers.map((teacher, i) => (
+                  <tr key={teacher.id} className={rowCls}>
                     <td className={cn(tdCls, 'text-gray-400 text-xs')}>{(page - 1) * pageSize + i + 1}</td>
-                    <td className={cn(tdCls, 'font-medium text-gray-900 whitespace-nowrap')}>{t.first_name} {t.last_name}</td>
-                    <td className={cn(tdCls, 'text-gray-500 whitespace-nowrap')}>{formatPhone(t.phone)}</td>
-                    <td className={cn(tdCls, 'text-gray-600')}>{t.subject || '—'}</td>
+                    <td className={cn(tdCls, 'font-medium text-gray-900 whitespace-nowrap')}>{teacher.first_name} {teacher.last_name}</td>
+                    <td className={cn(tdCls, 'text-gray-500 whitespace-nowrap')}>{formatPhone(teacher.phone)}</td>
+                    <td className={cn(tdCls, 'text-gray-600')}>{teacher.subject || '—'}</td>
                     <td className={tdCls}>
-                      {t.salary_type ? (
+                      {teacher.salary_type ? (
                         <Popover>
-                          <PopoverTrigger className={cn('inline-flex items-center gap-1 px-2 py-0.5 text-xs font-medium border rounded cursor-pointer hover:scale-105 transition-transform', SALARY_STYLES[t.salary_type])}>
-                            {t.salary_type === 'fixed'       && <Banknote className="w-3 h-3" />}
-                            {t.salary_type === 'percent'     && <Percent   className="w-3 h-3" />}
-                            {t.salary_type === 'per_student' && <Users     className="w-3 h-3" />}
-                            {SALARY_LABELS[t.salary_type] || t.salary_type}
+                          <PopoverTrigger className={cn('inline-flex items-center gap-1 px-2 py-0.5 text-xs font-medium border rounded cursor-pointer hover:scale-105 transition-transform', SALARY_STYLES[teacher.salary_type])}>
+                            {teacher.salary_type === 'fixed'       && <Banknote className="w-3 h-3" />}
+                            {teacher.salary_type === 'percent'     && <Percent   className="w-3 h-3" />}
+                            {teacher.salary_type === 'per_student' && <Users     className="w-3 h-3" />}
+                            {SALARY_LABELS[teacher.salary_type] || teacher.salary_type}
                           </PopoverTrigger>
                           <PopoverContent className="w-56 p-3 bg-blue-600 text-white shadow-xl" side="right" align="start">
-                            <p className="text-xs font-semibold text-white/70 uppercase tracking-wide mb-2">Maosh tafsiloti</p>
+                            <p className="text-xs font-semibold text-white/70 uppercase tracking-wide mb-2">{t('salaryDetail')}</p>
                             <div className="text-center">
                               <span className="text-xl font-bold text-white">
-                                {t.salary_type === 'fixed'       && formatCurrency(t.fixed_amount ?? 0)}
-                                {t.salary_type === 'percent'     && `${t.salary_percent ?? 0}%`}
-                                {t.salary_type === 'per_student' && formatCurrency(t.per_student_amt ?? 0)}
+                                {teacher.salary_type === 'fixed'       && formatCurrency(teacher.fixed_amount ?? 0)}
+                                {teacher.salary_type === 'percent'     && `${teacher.salary_percent ?? 0}%`}
+                                {teacher.salary_type === 'per_student' && formatCurrency(teacher.per_student_amt ?? 0)}
                               </span>
                             </div>
                           </PopoverContent>
                         </Popover>
                       ) : '—'}
                     </td>
-                    <td className={cn(tdCls, 'text-gray-500 text-xs whitespace-nowrap')}>{t.birth_date ? formatDMY(t.birth_date) : '—'}</td>
-                    <td className={cn(tdCls, 'text-gray-500 text-xs whitespace-nowrap')}>{t.hired_at ? formatDMY(t.hired_at) : '—'}</td>
-                    <td className={cn(tdCls, 'text-gray-500 text-xs whitespace-nowrap')}>{t.archived_at ? formatDMY(t.archived_at) : '—'}</td>
+                    <td className={cn(tdCls, 'text-gray-500 text-xs whitespace-nowrap')}>{teacher.birth_date ? formatDMY(teacher.birth_date) : '—'}</td>
+                    <td className={cn(tdCls, 'text-gray-500 text-xs whitespace-nowrap')}>{teacher.hired_at ? formatDMY(teacher.hired_at) : '—'}</td>
+                    <td className={cn(tdCls, 'text-gray-500 text-xs whitespace-nowrap')}>{teacher.archived_at ? formatDMY(teacher.archived_at) : '—'}</td>
                     <td className={tdCls}>
-                      <RestoreButton id={t.id} source="teacher" name={`${t.first_name} ${t.last_name}`} />
+                      <RestoreButton id={teacher.id} source="teacher" name={`${teacher.first_name} ${teacher.last_name}`} />
                     </td>
                   </tr>
                 ))
@@ -446,19 +452,19 @@ export default function ArchivePage() {
           </table>
         )}
 
-        {/* === GURUHLAR === */}
+        {/* === GROUPS === */}
         {tab === 'groups' && (
           <table className="w-full text-sm">
             <thead>
               <tr className="bg-gray-50 border-b border-gray-200">
-                {['№', 'Guruh', 'Kurs', "O'qituvchi", 'Kunlar', 'Soatlar', 'Xona', 'Arxiv.Sana', 'Amal'].map((h, i) => (
+                {[t('tableHeaders.num'), t('tableHeaders.group'), t('tableHeaders.course'), t('tableHeaders.teachers'), t('tableHeaders.days'), t('tableHeaders.hours'), t('tableHeaders.room'), t('tableHeaders.archiveDate'), t('tableHeaders.actions')].map((h, i) => (
                   <th key={i} className={thCls}>{h}</th>
                 ))}
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
               {loading ? <SkeletonRows cols={9} /> : groups.length === 0
-                ? <tr><td colSpan={9} className="px-4 py-16 text-center text-gray-400">Arxivlangan guruhlar topilmadi</td></tr>
+                ? <tr><td colSpan={9} className="px-4 py-16 text-center text-gray-400">{t('noGroups')}</td></tr>
                 : groups.map((g, i) => (
                   <tr key={g.id} className={rowCls}>
                     <td className={cn(tdCls, 'text-gray-400 text-xs')}>{(page - 1) * pageSize + i + 1}</td>
@@ -483,30 +489,30 @@ export default function ArchivePage() {
           </table>
         )}
 
-        {/* === KURSLAR === */}
+        {/* === COURSES === */}
         {tab === 'courses' && (
           <table className="w-full text-sm">
             <thead>
               <tr className="bg-gray-50 border-b border-gray-200">
-                {['№', 'Kurs nomi', 'Narxi', 'Davomiyligi', "O'qituvchilar", 'Arxiv.Sana', 'Amal'].map((h, i) => (
+                {[t('tableHeaders.num'), t('tableHeaders.courseName'), t('tableHeaders.price'), t('tableHeaders.duration'), t('tableHeaders.teachers'), t('tableHeaders.archiveDate'), t('tableHeaders.actions')].map((h, i) => (
                   <th key={i} className={thCls}>{h}</th>
                 ))}
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
               {loading ? <SkeletonRows cols={7} /> : courses.length === 0
-                ? <tr><td colSpan={7} className="px-4 py-16 text-center text-gray-400">Arxivlangan kurslar topilmadi</td></tr>
+                ? <tr><td colSpan={7} className="px-4 py-16 text-center text-gray-400">{t('noCourses')}</td></tr>
                 : courses.map((c, i) => (
                   <tr key={c.id} className={rowCls}>
                     <td className={cn(tdCls, 'text-gray-400 text-xs')}>{(page - 1) * pageSize + i + 1}</td>
                     <td className={cn(tdCls, 'font-medium text-gray-900')}>{c.name}</td>
                     <td className={cn(tdCls, 'text-gray-700 whitespace-nowrap')}>
-                      {c.price ? Number(c.price).toLocaleString() + " so'm" : '—'}
+                      {c.price ? formatCurrency(c.price) : '—'}
                     </td>
                     <td className={cn(tdCls, 'text-gray-600 text-xs whitespace-nowrap')}>
                       {[
-                        c.duration_months ? `${c.duration_months} oy` : null,
-                        c.duration_hours ? `${c.duration_hours} soat` : null,
+                        c.duration_months ? `${c.duration_months} ${tc2('months')}` : null,
+                        c.duration_hours ? `${c.duration_hours} ${tc2('hours')}` : null,
                       ].filter(Boolean).join(' / ') || '—'}
                     </td>
                     <td className={cn(tdCls, 'text-gray-600 text-xs')}>

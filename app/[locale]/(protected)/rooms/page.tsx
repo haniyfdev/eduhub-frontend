@@ -10,15 +10,7 @@ import { cn } from '@/lib/utils';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
-const DAYS = [
-  { key: 'Du', label: 'Dushanba' },
-  { key: 'Se', label: 'Seshanba' },
-  { key: 'Ch', label: 'Chorshanba' },
-  { key: 'Pa', label: 'Payshanba' },
-  { key: 'Ju', label: 'Juma' },
-  { key: 'Sh', label: 'Shanba' },
-  { key: 'Ya', label: 'Yakshanba' },
-];
+const DAY_KEYS = ['Du', 'Se', 'Ch', 'Pa', 'Ju', 'Sh', 'Ya'] as const;
 
 const DAY_ALIASES: Record<string, string> = {
   Du: 'Du', Dushanba: 'Du',
@@ -107,6 +99,7 @@ type ViewMode = 'weekly' | 'list';
 export default function RoomsPage() {
   const t = useTranslations('rooms');
   const common = useTranslations('common');
+  const tg = useTranslations('groups');
   const [roomList,    setRoomList]    = useState<Room[]>([]);
   const [rooms,       setRooms]       = useState<RoomData[]>([]);
   const [loading,     setLoading]     = useState(true);
@@ -141,7 +134,7 @@ export default function RoomsPage() {
 
       const byRoom: Record<string, GroupEntry[]> = {};
       for (const g of activeGroups) {
-        const key = g.room_name ?? 'Xona belgilanmagan';
+        const key = g.room_name ?? t('unassigned');
         if (!byRoom[key]) byRoom[key] = [];
         byRoom[key].push({
           id: g.id,
@@ -208,11 +201,11 @@ export default function RoomsPage() {
         capacity: roomForm.capacity ? Number(roomForm.capacity) : null,
         gender_type: roomForm.gender_type || null,
       });
-      toast.success(`${nextNumber}-xona qo'shildi`);
+      toast.success(t('addedSuccess', { number: nextNumber }));
       setShowConfirm(false);
       load();
     } catch {
-      toast.error("Xona qo'shishda xatolik");
+      toast.error(t('addError'));
     } finally {
       setAdding(false);
     }
@@ -232,8 +225,8 @@ export default function RoomsPage() {
   if (error) return (
     <div className="p-6 text-center py-24 text-gray-500">
       <DoorOpen className="w-10 h-10 mx-auto mb-3 opacity-30" />
-      <p className="mb-3">Ma&apos;lumotlarni yuklashda xatolik</p>
-      <button onClick={load} className="text-blue-600 underline text-sm">Qayta urinish</button>
+      <p className="mb-3">{common('error')}</p>
+      <button onClick={load} className="text-blue-600 underline text-sm">{common('retry')}</button>
     </div>
   );
 
@@ -244,13 +237,13 @@ export default function RoomsPage() {
       {showConfirm && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
           <div className="bg-white rounded-xl p-6 shadow-xl w-full max-w-sm mx-4 space-y-4">
-            <h3 className="text-lg font-bold text-gray-900">{nextNumber}-xona qo&apos;shiladi</h3>
+            <h3 className="text-lg font-bold text-gray-900">{t('addRoomTitle', { number: nextNumber })}</h3>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Qavat</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">{t('floorLabel')}</label>
               <input
                 type="number"
-                placeholder="Qavat raqami"
+                placeholder={t('floorPlaceholder')}
                 value={roomForm.floor}
                 onChange={e => setRoomForm(f => ({ ...f, floor: e.target.value }))}
                 onKeyDown={e => { if (e.key === 'Enter') capacityRef.current?.focus(); }}
@@ -259,11 +252,11 @@ export default function RoomsPage() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Sig&apos;im</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">{t('capacity')}</label>
               <input
                 ref={capacityRef}
                 type="number"
-                placeholder="O'rindiqlar soni"
+                placeholder={t('capacityPlaceholder')}
                 value={roomForm.capacity}
                 onChange={e => setRoomForm(f => ({ ...f, capacity: e.target.value }))}
                 onKeyDown={e => { if (e.key === 'Enter') genderRef.current?.focus(); }}
@@ -272,7 +265,7 @@ export default function RoomsPage() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Tur</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">{t('typeLabel')}</label>
               <select
                 ref={genderRef}
                 value={roomForm.gender_type}
@@ -280,10 +273,10 @@ export default function RoomsPage() {
                 onKeyDown={e => { if (e.key === 'Enter') handleConfirm(); }}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
-                <option value="">Tanlang (ixtiyoriy)</option>
-                <option value="a">Bolalar (A)</option>
-                <option value="b">Qizlar (B)</option>
-                <option value="c">Aralash (C)</option>
+                <option value="">{tg('selectOptional')}</option>
+                <option value="a">{tg('genderA')}</option>
+                <option value="b">{tg('genderB')}</option>
+                <option value="c">{tg('genderC')}</option>
               </select>
             </div>
 
@@ -300,7 +293,7 @@ export default function RoomsPage() {
                 disabled={adding}
                 className="flex-1 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 disabled:opacity-60"
               >
-                {adding ? "Saqlanmoqda..." : common('save')}
+                {adding ? common('loading') : common('save')}
               </button>
             </div>
           </div>
@@ -333,7 +326,7 @@ export default function RoomsPage() {
                 view === 'weekly' ? 'bg-blue-600 text-white' : 'bg-white text-gray-600 hover:bg-gray-50'
               )}
             >
-              <Calendar className="w-3.5 h-3.5" /> Haftalik
+              <Calendar className="w-3.5 h-3.5" /> {t('weekly')}
             </button>
             <button
               onClick={() => setView('list')}
@@ -342,7 +335,7 @@ export default function RoomsPage() {
                 view === 'list' ? 'bg-blue-600 text-white' : 'bg-white text-gray-600 hover:bg-gray-50'
               )}
             >
-              <List className="w-3.5 h-3.5" /> Ro&apos;yxat
+              <List className="w-3.5 h-3.5" /> {t('list')}
             </button>
           </div>
         </div>
@@ -352,8 +345,8 @@ export default function RoomsPage() {
       {rooms.length === 0 && (
         <div className="text-center py-24 text-gray-400">
           <DoorOpen className="w-12 h-12 mx-auto mb-3 opacity-30" />
-          <p className="font-medium">Faol guruhlar topilmadi</p>
-          <p className="text-sm mt-1">Hozircha birorta xona mavjud emas</p>
+          <p className="font-medium">{t('noGroups')}</p>
+          <p className="text-sm mt-1">{t('noRoomsYet')}</p>
         </div>
       )}
 
@@ -365,13 +358,13 @@ export default function RoomsPage() {
               <thead>
                 <tr className="bg-gray-50 border-b border-gray-200">
                   <th className="text-left px-4 py-3 font-semibold text-gray-700 w-36 border-r border-gray-200 whitespace-nowrap sticky left-0 bg-gray-50 z-10">
-                    Xona
+                    {t('roomHeader')}
                   </th>
-                  {DAYS.map(d => (
-                    <th key={d.key} className="text-center px-2 py-3 font-semibold text-gray-600 text-xs min-w-[120px]">
-                      <span className="font-bold text-gray-700">{d.key}</span>
+                  {DAY_KEYS.map(dk => (
+                    <th key={dk} className="text-center px-2 py-3 font-semibold text-gray-600 text-xs min-w-[120px]">
+                      <span className="font-bold text-gray-700">{dk}</span>
                       <br />
-                      <span className="text-gray-400 font-normal text-[10px]">{d.label}</span>
+                      <span className="text-gray-400 font-normal text-[10px]">{t(`days.${dk}` as Parameters<typeof t>[0])}</span>
                     </th>
                   ))}
                 </tr>
@@ -386,10 +379,10 @@ export default function RoomsPage() {
                         {room.room}
                       </div>
                     </td>
-                    {DAYS.map(d => {
-                      const groups = groupsForDay(room, d.key);
+                    {DAY_KEYS.map(dk => {
+                      const groups = groupsForDay(room, dk);
                       return (
-                        <td key={d.key} className="px-1.5 py-1.5 align-top">
+                        <td key={dk} className="px-1.5 py-1.5 align-top">
                           {groups.length === 0 ? (
                             <div className="h-12 rounded-lg bg-gray-100/50" />
                           ) : (
@@ -440,7 +433,7 @@ export default function RoomsPage() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="bg-gray-50 border-b border-gray-200">
-                  {['№', 'Xona', 'Guruh', 'Kurs', "O'qituvchi", 'Kunlar', 'Soatlar', "O'quvchilar", 'Holat'].map((h, i) => (
+                  {['№', t('roomHeader'), common('group'), common('course'), common('teacher'), tg('days'), tg('hours'), common('student'), common('status')].map((h, i) => (
                     <th key={i} className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap">{h}</th>
                   ))}
                 </tr>
@@ -479,10 +472,10 @@ export default function RoomsPage() {
                       <td className="px-4 py-3">
                         {g.status === 'frozen'
                           ? <span className="inline-flex items-center gap-1 px-2 py-0.5 text-xs font-medium bg-slate-100 text-slate-600 rounded-full border border-slate-200">
-                              <Snowflake className="w-3 h-3" /> Muzlatilgan
+                              <Snowflake className="w-3 h-3" /> {common('frozen')}
                             </span>
                           : <span className="inline-flex items-center px-2 py-0.5 text-xs font-medium bg-emerald-50 text-emerald-700 rounded-full border border-emerald-200">
-                              Faol
+                              {common('active')}
                             </span>}
                       </td>
                     </tr>

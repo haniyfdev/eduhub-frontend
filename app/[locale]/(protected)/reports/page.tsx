@@ -79,10 +79,8 @@ const EXPENSE_PIE_COLORS: Record<string, string> = {
   discount: '#EC4899',
   other:    '#6B7280',
 };
-const EXPENSE_LABELS: Record<string, string> = {
-  rent: 'Ijara', utility: 'Kommunal', tax: 'Soliq', fine: 'Jarima',
-  discount: 'Chegirma', maoshlar: 'Maoshlar', other: 'Boshqa',
-};
+const EXPENSE_LABEL_KEYS = ['rent', 'utility', 'tax', 'fine', 'discount', 'maoshlar', 'other'] as const;
+type ExpenseLabelKey = typeof EXPENSE_LABEL_KEYS[number];
 const MANUAL_CATS = ['rent', 'utility', 'tax', 'fine', 'discount', 'other'];
 const MONTH_LABELS = ['Yan','Fev','Mar','Apr','May','Iyn','Iyl','Avg','Sen','Okt','Noy','Dek'];
 
@@ -212,7 +210,7 @@ export default function ReportsPage() {
   }
   async function handleSaveExp(ev: React.FormEvent) {
     ev.preventDefault();
-    if (!expForm.amount || parseFloat(expForm.amount) <= 0) { toast.error('Summani kiriting'); return; }
+    if (!expForm.amount || parseFloat(expForm.amount) <= 0) { toast.error(common('error')); return; }
     setSavingExp(true);
     try {
       const body = {
@@ -221,16 +219,16 @@ export default function ReportsPage() {
       };
       if (editingExp?.id) {
         await api.patch(`/api/v1/expenses/${editingExp.id}/`, body);
-        toast.success('Yangilandi');
+        toast.success(common('success'));
       } else {
         await api.post('/api/v1/expenses/', body);
-        toast.success("Qo'shildi");
+        toast.success(common('success'));
       }
       setShowExpModal(false);
       loadData();
     } catch (err: unknown) {
       const e = err as { response?: { data?: { detail?: string } } };
-      toast.error(e?.response?.data?.detail || 'Xatolik');
+      toast.error(e?.response?.data?.detail || common('error'));
     } finally { setSavingExp(false); }
   }
 
@@ -246,13 +244,13 @@ export default function ReportsPage() {
     if (!pnl?.expenses) return [];
     const { maoshlar, rent, utility, tax, fine, discount, other } = pnl.expenses;
     return [
-      { key: 'maoshlar', name: 'Maoshlar', value: Number(maoshlar) },
-      { key: 'rent',     name: 'Ijara',    value: Number(rent) },
-      { key: 'utility',  name: 'Kommunal', value: Number(utility) },
-      { key: 'tax',      name: 'Soliq',    value: Number(tax) },
-      { key: 'fine',     name: 'Jarima',   value: Number(fine) },
-      { key: 'discount', name: 'Chegirma', value: Number(discount) },
-      { key: 'other',    name: 'Boshqa',   value: Number(other) },
+      { key: 'maoshlar', value: Number(maoshlar) },
+      { key: 'rent',     value: Number(rent) },
+      { key: 'utility',  value: Number(utility) },
+      { key: 'tax',      value: Number(tax) },
+      { key: 'fine',     value: Number(fine) },
+      { key: 'discount', value: Number(discount) },
+      { key: 'other',    value: Number(other) },
     ].filter(d => d.value > 0).sort((a, b) => b.value - a.value);
   }, [pnl]);
 
@@ -265,11 +263,11 @@ export default function ReportsPage() {
   }));
 
   const funnelRows = conversion ? [
-    { label: 'Jami (leads+students)', value: conversion.grand_total, percent: 100,                       color: '#9CA3AF' },
-    { label: "Faol o'quvchilar",      value: conversion.active.count,  percent: conversion.active.percent,  color: '#22C55E' },
-    { label: 'Kutilmoqda',            value: conversion.pending.count, percent: conversion.pending.percent, color: '#EAB308' },
-    { label: 'Muzlatilgan',           value: conversion.frozen.count,  percent: conversion.frozen.percent,  color: '#06B6D4' },
-    { label: 'Rad etdi',              value: conversion.ignored.count, percent: conversion.ignored.percent, color: '#EF4444' },
+    { label: t('funnelLabels.total'),   value: conversion.grand_total,   percent: 100,                        color: '#9CA3AF' },
+    { label: t('funnelLabels.active'),  value: conversion.active.count,  percent: conversion.active.percent,  color: '#22C55E' },
+    { label: t('funnelLabels.pending'), value: conversion.pending.count, percent: conversion.pending.percent, color: '#EAB308' },
+    { label: t('funnelLabels.frozen'),  value: conversion.frozen.count,  percent: conversion.frozen.percent,  color: '#06B6D4' },
+    { label: t('funnelLabels.ignored'), value: conversion.ignored.count, percent: conversion.ignored.percent, color: '#EF4444' },
   ] : [];
 
   const debtPct = (income + debtAmt) > 0 ? (debtAmt / (income + debtAmt)) * 100 : 0;
@@ -321,26 +319,26 @@ export default function ReportsPage() {
       <div className="grid grid-cols-2 xl:grid-cols-4 gap-4">
         {([
           {
-            label: 'Daromad', value: income, icon: TrendingUp,
-            sub: `${Number(pnl?.net_profit_percent ?? 0).toFixed(1)}% sof foyda`,
+            label: t('kpiLabels.income'), value: income, icon: TrendingUp,
+            sub: t('kpiSubs.income', { pct: Number(pnl?.net_profit_percent ?? 0).toFixed(1) }),
             subColor: 'text-gray-400',
             color: 'text-emerald-600', bg: 'bg-emerald-50', border: 'border-emerald-200',
           },
           {
-            label: 'Harajat', value: expTotal, icon: TrendingDown,
-            sub: `${Number(pnl?.expense_percent ?? 0).toFixed(1)}% umumiy daromaddan`,
+            label: t('kpiLabels.expense'), value: expTotal, icon: TrendingDown,
+            sub: t('kpiSubs.expense', { pct: Number(pnl?.expense_percent ?? 0).toFixed(1) }),
             subColor: 'text-gray-400',
             color: 'text-red-600', bg: 'bg-red-50', border: 'border-red-200',
           },
           {
-            label: 'Sof foyda', value: profit, icon: DollarSign, sub: '', subColor: 'text-gray-400',
+            label: t('kpiLabels.profit'), value: profit, icon: DollarSign, sub: '', subColor: 'text-gray-400',
             color: profit >= 0 ? 'text-blue-600' : 'text-red-600',
             bg: profit >= 0 ? 'bg-blue-50' : 'bg-red-50',
             border: profit >= 0 ? 'border-blue-200' : 'border-red-200',
           },
           {
-            label: "O'quvchilar qarzi", value: debtAmt, icon: AlertTriangle,
-            sub: `${debtPct.toFixed(1)}% umumiy daromaddan`,
+            label: t('kpiLabels.debt'), value: debtAmt, icon: AlertTriangle,
+            sub: t('kpiSubs.debt', { pct: debtPct.toFixed(1) }),
             subColor: debtPctColor,
             color: 'text-amber-600', bg: 'bg-amber-50', border: 'border-amber-200',
           },
@@ -365,23 +363,23 @@ export default function ReportsPage() {
       {/* ── Section 2: 5 Stat Cards ── */}
       <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-5 gap-3">
         {([
-          { label: 'Leadlar',          value: stats?.total_leads,     icon: Lightbulb,     color: 'text-yellow-600 bg-yellow-50 border-yellow-200' },
-          { label: "Faol o'quvchilar", value: stats?.active_students, icon: Users,         color: 'text-emerald-600 bg-emerald-50 border-emerald-200' },
-          { label: "Faol O'qituvchilar",    value: stats?.active_teachers, icon: GraduationCap, color: 'text-blue-600 bg-blue-50 border-blue-200' },
-          { label: 'Faol guruhlar',    value: stats?.active_groups,   icon: Users2,        color: 'text-purple-600 bg-purple-50 border-purple-200' },
-          { label: 'Qarzdorlar',       value: stats?.total_debtors,   icon: AlertCircle,   color: 'text-red-600 bg-red-50 border-red-200' },
+          { label: t('statLabels.leads'),          value: stats?.total_leads,     icon: Lightbulb,     color: 'text-yellow-600 bg-yellow-50 border-yellow-200' },
+          { label: t('statLabels.activeStudents'),  value: stats?.active_students, icon: Users,         color: 'text-emerald-600 bg-emerald-50 border-emerald-200' },
+          { label: t('statLabels.activeTeachers'),  value: stats?.active_teachers, icon: GraduationCap, color: 'text-blue-600 bg-blue-50 border-blue-200' },
+          { label: t('statLabels.activeGroups'),    value: stats?.active_groups,   icon: Users2,        color: 'text-purple-600 bg-purple-50 border-purple-200' },
+          { label: t('statLabels.debtors'),         value: stats?.total_debtors,   icon: AlertCircle,   color: 'text-red-600 bg-red-50 border-red-200' },
         ] as const).map(({ label, value, icon: Icon, color }) => {
-          const [tc, bgc, bc] = color.split(' ');
+          const [clr, bgc, bc] = color.split(' ');
           return (
             <div key={label} className={cn('rounded-xl border p-4 flex items-center gap-3', bgc, bc)}>
-              <div className={cn('p-2 rounded-lg bg-white shadow-sm shrink-0', tc)}>
+              <div className={cn('p-2 rounded-lg bg-white shadow-sm shrink-0', clr)}>
                 <Icon className="w-4 h-4" />
               </div>
               <div className="min-w-0">
                 <p className="text-[11px] text-gray-500 font-medium truncate">{label}</p>
                 {loading
                   ? <Skel className="h-6 w-12 mt-0.5" />
-                  : <p className={cn('text-lg font-bold', tc)}>{value ?? 0}</p>}
+                  : <p className={cn('text-lg font-bold', clr)}>{value ?? 0}</p>}
               </div>
             </div>
           );
@@ -391,11 +389,11 @@ export default function ReportsPage() {
       {/* ── Section 3: Conversion Funnel + Course Pie ── */}
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
       <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-5 flex flex-col">
-        <h2 className="text-sm font-semibold text-gray-900 mb-4">Lidlar konversiyasi</h2>
+        <h2 className="text-sm font-semibold text-gray-900 mb-4">{t('leadsConversion')}</h2>
         {loading ? (
           <div className="space-y-3">{Array(5).fill(0).map((_, i) => <Skel key={i} className="h-7 w-full" />)}</div>
         ) : !conversion ? (
-          <div className="flex-1 flex items-center justify-center text-sm text-gray-400">Ma&apos;lumot yo&apos;q</div>
+          <div className="flex-1 flex items-center justify-center text-sm text-gray-400">{t('noData')}</div>
         ) : (
           <div className="flex-1 flex flex-col justify-center space-y-2.5">
               {funnelRows.map(({ label, value, percent, color }) => (
@@ -414,10 +412,10 @@ export default function ReportsPage() {
         </div>
 
         <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6">
-          <h2 className="text-sm font-semibold text-gray-900 mb-4">Kurslar bo&apos;yicha daromad</h2>
+          <h2 className="text-sm font-semibold text-gray-900 mb-4">{t('courseRevenue')}</h2>
           {loading ? <Skel className="h-64 w-full" /> : courseIncome.length === 0 ? (
             <div className="h-64 flex items-center justify-center text-sm text-gray-400">
-              Bu davrda to&apos;lov mavjud emas
+              {t('noPayments')}
             </div>
           ) : (
             <div className="flex items-center gap-8 min-h-[260px]">
@@ -462,9 +460,9 @@ export default function ReportsPage() {
 
       {/* ── Section 4: Progress Trend (full-width) ── */}
       <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-5">
-        <h2 className="text-sm font-semibold text-gray-900 mb-4">Progress trendi</h2>
+        <h2 className="text-sm font-semibold text-gray-900 mb-4">{t('progressTrend')}</h2>
         {loading ? <Skel className="h-52 w-full" /> : trendData.length === 0 ? (
-          <div className="h-52 flex items-center justify-center text-sm text-gray-400">Ma&apos;lumot yo&apos;q</div>
+          <div className="h-52 flex items-center justify-center text-sm text-gray-400">{t('noData')}</div>
         ) : (
           <>
             <ResponsiveContainer width="100%" height={220}>
@@ -485,16 +483,16 @@ export default function ReportsPage() {
                   tickFormatter={v => v >= 1_000_000 ? `${(v/1_000_000).toFixed(1)}M` : v >= 1000 ? `${(v/1000).toFixed(0)}K` : String(v)} />
                 <Tooltip contentStyle={{ border: '1px solid #E5E7EB', borderRadius: 8, fontSize: 12 }}
                   formatter={(v: unknown) => formatCurrency(Number(v))} />
-                <Area type="monotone" dataKey="income"   stroke="#10b981" strokeWidth={2} fill="url(#gInc)" name="Daromad" />
-                <Area type="monotone" dataKey="expenses" stroke="#ef4444" strokeWidth={2} fill="url(#gExp)" name="Harajat" />
+                <Area type="monotone" dataKey="income"   stroke="#10b981" strokeWidth={2} fill="url(#gInc)" name={t('kpiLabels.income')} />
+                <Area type="monotone" dataKey="expenses" stroke="#ef4444" strokeWidth={2} fill="url(#gExp)" name={t('kpiLabels.expense')} />
               </AreaChart>
             </ResponsiveContainer>
             <div className="flex items-center gap-5 mt-2 justify-center">
               <span className="flex items-center gap-1.5 text-xs text-gray-500">
-                <span className="w-3 h-3 rounded-full bg-emerald-500 inline-block" /> Daromad
+                <span className="w-3 h-3 rounded-full bg-emerald-500 inline-block" /> {t('kpiLabels.income')}
               </span>
               <span className="flex items-center gap-1.5 text-xs text-gray-500">
-                <span className="w-3 h-3 rounded-full bg-red-500 inline-block" /> Harajat
+                <span className="w-3 h-3 rounded-full bg-red-500 inline-block" /> {t('kpiLabels.expense')}
               </span>
             </div>
           </>
@@ -506,9 +504,9 @@ export default function ReportsPage() {
 
         {/* LEFT: Qayerdan kelishdi? */}
         <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-5">
-          <h2 className="text-sm font-semibold text-gray-900 mb-4">Qayerdan kelishdi?</h2>
+          <h2 className="text-sm font-semibold text-gray-900 mb-4">{t('referralSources')}</h2>
           {loading ? <Skel className="h-60 w-full" /> : !referral || referral.data.length === 0 ? (
-            <div className="h-60 flex items-center justify-center text-sm text-gray-400">Ma&apos;lumot yo&apos;q</div>
+            <div className="h-60 flex items-center justify-center text-sm text-gray-400">{t('noData')}</div>
           ) : (
             <div className="flex items-center gap-8 min-h-[240px]">
               <div className="shrink-0" style={{ width: 240, height: 240 }}>
@@ -553,15 +551,15 @@ export default function ReportsPage() {
 
         {/* RIGHT: Harajatlar taqsimoti */}
         <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-5">
-          <h2 className="text-sm font-semibold text-gray-900 mb-4">Harajatlar taqsimoti</h2>
+          <h2 className="text-sm font-semibold text-gray-900 mb-4">{t('expenseBreakdown')}</h2>
           {loading ? <Skel className="h-60 w-full" /> : expBreakdown.length === 0 ? (
-            <div className="h-60 flex items-center justify-center text-sm text-gray-400">Bu davrda harajat yo&apos;q</div>
+            <div className="h-60 flex items-center justify-center text-sm text-gray-400">{t('noExpenses')}</div>
           ) : (
             <div className="flex items-center gap-8 min-h-[240px]">
               <div className="shrink-0" style={{ width: 240, height: 240 }}>
                 <ResponsiveContainer width="100%" height="100%">
                   <PieChart>
-                    <AnimatedPie data={expBreakdown} dataKey="value" nameKey="name"
+                    <AnimatedPie data={expBreakdown} dataKey="value" nameKey="key"
                       cx="50%" cy="50%" outerRadius={110} innerRadius={50}
                       activeIndex={activePie3}
                       activeShape={(props: { cx: number; cy: number; innerRadius: number; outerRadius: number; startAngle: number; endAngle: number; fill: string }) => {
@@ -576,9 +574,9 @@ export default function ReportsPage() {
                     </AnimatedPie>
                     <Tooltip
                       contentStyle={{ border: '1px solid #E5E7EB', borderRadius: 8, fontSize: 12 }}
-                      formatter={(v: unknown, _n: unknown, props: { payload?: { key: string; name: string; value: number } }) => [
+                      formatter={(v: unknown, _n: unknown, props: { payload?: { key: string; value: number } }) => [
                         `${formatCurrency(Number(v))}`,
-                        props.payload?.name ?? '',
+                        props.payload?.key ? t(`expenseLabels.${props.payload.key}` as Parameters<typeof t>[0]) : '',
                       ]}
                     />
                   </PieChart>
@@ -591,7 +589,9 @@ export default function ReportsPage() {
                     <div key={item.key} className="flex items-center gap-2">
                       <span className="w-2.5 h-2.5 rounded-full shrink-0"
                         style={{ background: EXPENSE_PIE_COLORS[item.key] ?? '#6B7280' }} />
-                      <span className="text-xs text-gray-700 flex-1 truncate">{item.name}</span>
+                      <span className="text-xs text-gray-700 flex-1 truncate">
+                        {t(`expenseLabels.${item.key}` as Parameters<typeof t>[0])}
+                      </span>
                       <span className="text-xs font-semibold text-gray-500 shrink-0">{pct}%</span>
                     </div>
                   );
@@ -605,22 +605,22 @@ export default function ReportsPage() {
       {/* ── Section 6: Expenses Table (full-width) ── */}
       <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
         <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
-          <h2 className="text-sm font-semibold text-gray-900">Harajatlar</h2>
+          <h2 className="text-sm font-semibold text-gray-900">{t('expensesSection')}</h2>
           <button onClick={openAddExp}
             className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 text-white text-xs font-medium rounded-lg hover:bg-blue-700 transition-colors">
-            <Plus className="w-3.5 h-3.5" /> Qo&apos;shish
+            <Plus className="w-3.5 h-3.5" /> {t('addExpense')}
           </button>
         </div>
         {loading ? (
           <div className="p-4 space-y-2">{Array(4).fill(0).map((_, i) => <Skel key={i} className="h-10 w-full" />)}</div>
         ) : displayExpenses.length === 0 ? (
-          <p className="px-5 py-8 text-sm text-gray-400 text-center">Bu davrda harajat yo&apos;q</p>
+          <p className="px-5 py-8 text-sm text-gray-400 text-center">{t('noExpenses')}</p>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
                 <tr className="bg-gray-50 border-b border-gray-200">
-                  {['№', 'Kategoriya', 'Miqdor', 'Sana', 'Izoh', ''].map((h, i) => (
+                  {['№', t('categoryLabel'), common('amount'), common('date'), common('note'), ''].map((h, i) => (
                     <th key={i} className={cn(
                       'text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide',
                       i === 4 && 'w-1/3',
@@ -638,7 +638,9 @@ export default function ReportsPage() {
                         e.source === 'auto' ? 'bg-blue-50 text-blue-700' : 'bg-gray-100 text-gray-700'
                       )}>
                         {e.source === 'auto' && e.category === 'maoshlar' && <GraduationCap className="w-3 h-3" />}
-                        {EXPENSE_LABELS[e.category] ?? e.category}
+                        {EXPENSE_LABEL_KEYS.includes(e.category as ExpenseLabelKey)
+                          ? t(`expenseLabels.${e.category}` as Parameters<typeof t>[0])
+                          : e.category}
                       </span>
                     </td>
                     <td className="px-4 py-3 font-semibold text-red-600 align-top whitespace-nowrap">−{formatCurrency(e.amount)}</td>
@@ -669,8 +671,8 @@ export default function ReportsPage() {
           <div className="flex items-center gap-2">
             <UserMinus className="w-4 h-4 text-red-500 shrink-0" />
             <div className="text-left">
-              <h2 className="text-sm font-semibold text-gray-900">Tashlab ketgan o&apos;quvchilar (Churn)</h2>
-              <p className="text-xs text-gray-400">Kursni tugatmasdan chiqib ketganlar</p>
+              <h2 className="text-sm font-semibold text-gray-900">{t('churnTitle')}</h2>
+              <p className="text-xs text-gray-400">{t('churnDesc')}</p>
             </div>
             {!loading && churn.length > 0 && (
               <span className="ml-2 text-xs font-medium text-gray-500 bg-gray-100 px-2 py-0.5 rounded-full shrink-0">
@@ -687,13 +689,13 @@ export default function ReportsPage() {
             {loading ? (
               <div className="p-4 space-y-2 border-t border-gray-100">{Array(3).fill(0).map((_, i) => <Skel key={i} className="h-8 w-full" />)}</div>
             ) : churn.length === 0 ? (
-              <p className="px-5 py-8 text-sm text-gray-400 text-center border-t border-gray-100">Bu davrda tashlab ketgan o&apos;quvchi yo&apos;q</p>
+              <p className="px-5 py-8 text-sm text-gray-400 text-center border-t border-gray-100">{t('noChurn')}</p>
             ) : (
               <div className="overflow-x-auto border-t border-gray-100">
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="bg-gray-50 border-b border-gray-200">
-                      {['№', "O'quvchi", 'Telefon', 'Ota-ona tel', 'Guruh', 'Kurs', 'Arxivlangan sana'].map((h, i) => (
+                      {['№', common('student'), common('phone'), t('parentPhone'), common('group'), common('course'), t('archiveDate')].map((h, i) => (
                         <th key={i} className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">{h}</th>
                       ))}
                     </tr>
@@ -724,30 +726,30 @@ export default function ReportsPage() {
       <Dialog open={showExpModal} onOpenChange={setShowExpModal}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>{editingExp ? 'Harajatni tahrirlash' : "Yangi harajat qo'shish"}</DialogTitle>
+            <DialogTitle>{editingExp ? t('editExpenseTitle') : t('addExpenseTitle')}</DialogTitle>
           </DialogHeader>
           <form onSubmit={handleSaveExp} className="space-y-4 mt-2">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Kategoriya</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">{t('categoryLabel')}</label>
               <select value={expForm.category} onChange={e => setExpForm({ ...expForm, category: e.target.value })}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none">
-                {MANUAL_CATS.map(key => <option key={key} value={key}>{EXPENSE_LABELS[key]}</option>)}
+                {MANUAL_CATS.map(key => <option key={key} value={key}>{t(`expenseLabels.${key}` as Parameters<typeof t>[0])}</option>)}
               </select>
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Summa</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">{t('amountLabel')}</label>
               <input type="number" value={expForm.amount} onChange={e => setExpForm({ ...expForm, amount: e.target.value })}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none"
                 placeholder="0" required />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Izoh</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">{t('noteLabel')}</label>
               <textarea rows={3} value={expForm.description} onChange={e => setExpForm({ ...expForm, description: e.target.value })}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none resize-none"
-                placeholder="Harajat haqida..." />
+                placeholder={t('notePlaceholder')} />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Sana</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">{common('date')}</label>
               <input type="date" value={expForm.expense_date} onChange={e => setExpForm({ ...expForm, expense_date: e.target.value })}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none"
                 required />
@@ -759,7 +761,7 @@ export default function ReportsPage() {
               </button>
               <button type="submit" disabled={savingExp}
                 className="flex-1 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 disabled:opacity-60">
-                {savingExp ? 'Saqlanmoqda...' : common('save')}
+                {savingExp ? common('loading') : common('save')}
               </button>
             </div>
           </form>

@@ -82,7 +82,7 @@ export default function DiscountsPage() {
         <table className="w-full text-sm">
           <thead>
             <tr className="bg-gray-50 border-b border-gray-200">
-              {['№', tc('student'), tc('course'), 'Kurs narxi', t('percent'), t('months'), tc('status'), tc('actions')].map((h, i) => (
+              {['№', tc('student'), tc('course'), tc('amount'), t('percent'), t('months'), tc('status'), tc('actions')].map((h, i) => (
                 <th key={i} className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">{h}</th>
               ))}
             </tr>
@@ -117,7 +117,7 @@ export default function DiscountsPage() {
                               ? 'bg-green-50 text-green-700 border-green-200'
                               : 'bg-gray-100 text-gray-500 border-gray-200'
                           )}>
-                            {active ? tc('active') : 'Tugagan'}
+                            {active ? tc('active') : tc('archived')}
                           </span>
                         </td>
                         <td className="px-4 py-3">

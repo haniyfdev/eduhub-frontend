@@ -63,17 +63,12 @@ const SALARY_STYLES: Record<string, string> = {
   per_student: 'bg-green-50 text-green-700 border-green-200',
 };
 const SALARY_LABELS: Record<string, string> = {
-  fixed: 'Belgilangan', percent: 'Foizli', per_student: "O'quvchi bo'yicha",
-};
-const SALARY_AMOUNT_LABELS: Record<string, string> = {
-  fixed:       "Oylik maosh (so'm)",
-  percent:     'Foiz (%)',
-  per_student: "O'quvchi boshiga (so'm)",
+  fixed: 'fixed', percent: 'percent', per_student: 'perStudent',
 };
 
 const ROLE_LABELS: Record<string, string> = {
-  admin: 'Admin', manager: 'Menejer', accountant: 'Buxgalter',
-  security: 'Qorovul', cleaner: 'Farrosh', supply: 'Zavxoz', other: 'Boshqa',
+  admin: 'Admin', manager: 'Manager', accountant: 'Accountant',
+  security: 'Security', cleaner: 'Cleaner', supply: 'Supply', other: 'Other',
 };
 
 
@@ -224,7 +219,7 @@ export default function TeachersPage() {
       const { data } = await api.get('/api/v1/staff/', { params });
       setStaffList(data.results ?? data);
     } catch {
-      toast.error("Xodimlar yuklanmadi");
+      toast.error(common('error'));
     } finally {
       setStaffLoading(false);
     }
@@ -253,7 +248,7 @@ export default function TeachersPage() {
         ...(form.salary_type === 'percent'     ? { salary_percent:  parseFloat(form.salary_amount) } : {}),
         ...(form.salary_type === 'per_student' ? { per_student_amt: parseFloat(form.salary_amount) } : {}),
       });
-      toast.success("O'qituvchi muvaffaqiyatli qo'shildi");
+      toast.success(common('success'));
       closeModal();
       fetchTeachers();
     } catch (err: unknown) {
@@ -262,7 +257,7 @@ export default function TeachersPage() {
       const msg = typeof detail === 'string' ? detail
         : (detail as Record<string, unknown>)?.detail
         || Object.values(detail as Record<string, unknown> ?? {})[0]
-        || 'Xatolik';
+        || common('error');
       toast.error(String(msg));
     } finally {
       setSaving(false);
@@ -273,11 +268,11 @@ export default function TeachersPage() {
     if (!archiveTarget) return;
     try {
       await api.post(`/api/v1/teachers/${archiveTarget.id}/archive/`);
-      toast.success("O'qituvchi arxivlandi");
+      toast.success(common('success'));
       setArchiveTarget(null);
       fetchTeachers();
     } catch {
-      toast.error('Xatolik yuz berdi');
+      toast.error(common('error'));
     }
   }
 
@@ -285,8 +280,8 @@ export default function TeachersPage() {
   async function handleAddStaff(e: React.FormEvent) {
     e.preventDefault();
     const salaryNum = parseAmount(staffForm.salary_amount);
-    if (salaryNum < 100000) { toast.error("Oylik kamida 100,000 so'm bo'lishi kerak"); return; }
-    if (staffForm.phone.replace(/\D/g, '').length !== 9) { toast.error("To'liq 9 raqam kiriting"); return; }
+    if (salaryNum < 100000) { toast.error(t('minSalary')); return; }
+    if (staffForm.phone.replace(/\D/g, '').length !== 9) { toast.error(t('phoneRequired')); return; }
     setSavingStaff(true);
     try {
       await api.post('/api/v1/staff/', {
@@ -297,14 +292,14 @@ export default function TeachersPage() {
         salary_amount: salaryNum,
         notes:         staffForm.notes || null,
       });
-      toast.success("Xodim qo'shildi");
+      toast.success(common('success'));
       setShowAddStaff(false);
       setStaffForm(blankStaffForm());
       fetchStaff();
     } catch (err: unknown) {
       const e = err as { response?: { data?: unknown } };
       const detail = e?.response?.data;
-      toast.error(typeof detail === 'object' ? JSON.stringify(detail) : 'Xatolik');
+      toast.error(typeof detail === 'object' ? JSON.stringify(detail) : common('error'));
     } finally {
       setSavingStaff(false);
     }
@@ -315,11 +310,11 @@ export default function TeachersPage() {
     setStaffArchiving(true);
     try {
       await api.patch(`/api/v1/staff/${staffArchiveTarget.id}/archive/`);
-      toast.success(`${staffArchiveTarget.full_name} arxivlandi`);
+      toast.success(common('success'));
       setStaffArchiveTarget(null);
       fetchStaff();
     } catch {
-      toast.error('Xatolik');
+      toast.error(common('error'));
     } finally {
       setStaffArchiving(false);
     }
@@ -332,7 +327,7 @@ export default function TeachersPage() {
 
       <div className="flex items-center justify-between">
         <h1 className="text-xl font-bold text-gray-900">
-          {activeTab === 'teachers' ? t('title') : 'Xodimlar'}
+          {activeTab === 'teachers' ? t('title') : t('tabs.staff')}
         </h1>
         {activeTab === 'teachers' ? (
           <button
@@ -346,7 +341,7 @@ export default function TeachersPage() {
             onClick={() => setShowAddStaff(true)}
             className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded hover:bg-blue-700 transition-colors"
           >
-            <Plus className="w-4 h-4" /> Xodim qo&apos;shish
+            <Plus className="w-4 h-4" /> {t('addStaff')}
           </button>
         )}
       </div>
@@ -377,34 +372,34 @@ export default function TeachersPage() {
                 type="text"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                placeholder="Ism yoki familiya..."
+                placeholder={t('searchPlaceholder')}
                 className="w-full pl-9 pr-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
             </div>
             <select value={subjectFilter} onChange={(e) => setSubjectFilter(e.target.value)}
               className="px-3 py-2 border border-gray-300 rounded text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-700">
-              <option value="">Barcha fanlar</option>
+              <option value="">{t('allSubjects')}</option>
               {subjects.map((s) => <option key={s} value={s}>{s}</option>)}
             </select>
             <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}
               className="px-3 py-2 border border-gray-300 rounded text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-700">
-              <option value="">Barcha holat</option>
-              <option value="active">Faol</option>
-              <option value="archived">Arxivlangan</option>
+              <option value="">{common('all')}</option>
+              <option value="active">{common('active')}</option>
+              <option value="archived">{common('archived')}</option>
             </select>
           </div>
 
           <div className="bg-white rounded border border-gray-200 shadow-sm overflow-hidden">
             {error ? (
               <div className="flex flex-col items-center justify-center py-16 text-gray-500">
-                <p className="mb-3 text-sm">Xatolik yuz berdi</p>
-                <button onClick={fetchTeachers} className="text-sm text-blue-600 underline">Qayta urinish</button>
+                <p className="mb-3 text-sm">{common('error')}</p>
+                <button onClick={fetchTeachers} className="text-sm text-blue-600 underline">{common('retry')}</button>
               </div>
             ) : (
               <table className="w-full text-sm">
                 <thead>
                   <tr className="bg-gray-50 border-b border-gray-200">
-                    {['№', 'Ism', 'Telefon', 'Fan', 'Maosh turi', "Tug'ilgan sana", 'Ish boshlagan', 'Holat', 'Amallar'].map((h) => (
+                    {['№', common('name'), common('phone'), t('subject'), t('salaryType'), common('birthDate'), t('hiredAt'), common('status'), common('actions')].map((h) => (
                       <th key={h} className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">{h}</th>
                     ))}
                   </tr>
@@ -430,7 +425,7 @@ export default function TeachersPage() {
                                 {t.salary_type === 'fixed'       && <Banknote className="w-3 h-3" />}
                                 {t.salary_type === 'percent'     && <Percent   className="w-3 h-3" />}
                                 {t.salary_type === 'per_student' && <Users     className="w-3 h-3" />}
-                                {SALARY_LABELS[t.salary_type]}
+                                {t(SALARY_LABELS[t.salary_type] as Parameters<typeof t>[0])}
                               </PopoverTrigger>
                               <PopoverContent className="w-56 p-3 bg-blue-600 text-white shadow-xl" side="right" align="start">
                                 <p className="text-xs font-semibold text-white/70 uppercase tracking-wide mb-2">Maosh tafsiloti</p>
@@ -449,14 +444,14 @@ export default function TeachersPage() {
                           <td className="px-4 py-3">
                             <span className={cn('inline-flex items-center px-2 py-0.5 text-xs font-medium border rounded',
                               t.status === 'active' ? 'bg-green-50 text-green-700 border-green-200' : 'bg-gray-100 text-gray-600 border-gray-200')}>
-                              {t.status === 'active' ? 'Faol' : 'Arxivlangan'}
+                              {t.status === 'active' ? common('active') : common('archived')}
                             </span>
                           </td>
                           <td className="px-4 py-3">
                             {t.status === 'active' && (
                               <button onClick={() => setArchiveTarget({ id: t.id, name: `${t.first_name} ${t.last_name}` })}
                                 className="p-1 rounded text-red-400 hover:bg-red-50 hover:text-red-600 transition-colors"
-                                title="Arxivlash">
+                                title={common('archive')}>
                                 <Minus className="w-4 h-4" />
                               </button>
                             )}
@@ -486,15 +481,15 @@ export default function TeachersPage() {
                 type="text"
                 value={staffSearch}
                 onChange={(e) => setStaffSearch(e.target.value)}
-                placeholder="Ism yoki familiya..."
+                placeholder={t('searchPlaceholder')}
                 className="w-full pl-9 pr-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
             </div>
             <select value={staffStatusFilter} onChange={(e) => setStaffStatusFilter(e.target.value)}
               className="px-3 py-2 border border-gray-300 rounded text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-700">
-              <option value="">Barchasi</option>
-              <option value="active">Faol</option>
-              <option value="archived">Arxivlangan</option>
+              <option value="">{common('all')}</option>
+              <option value="active">{common('active')}</option>
+              <option value="archived">{common('archived')}</option>
             </select>
           </div>
 
@@ -515,7 +510,7 @@ export default function TeachersPage() {
               <table className="w-full text-sm">
                 <thead>
                   <tr className="bg-gray-50 border-b border-gray-200">
-                    {['№', 'Ism', 'Telefon', 'Ishga kirgan', 'Oylik', 'Holat', 'Amal'].map((h) => (
+                    {['№', common('name'), common('phone'), t('hiredAt'), common('salary'), common('status'), common('actions')].map((h) => (
                       <th key={h} className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap">{h}</th>
                     ))}
                   </tr>
@@ -536,21 +531,21 @@ export default function TeachersPage() {
                         <td className="px-4 py-3">
                           <span className={cn('inline-flex items-center px-2 py-0.5 text-xs font-medium border rounded',
                             s.status === 'active' ? 'bg-green-50 text-green-700 border-green-200' : 'bg-gray-100 text-gray-600 border-gray-200')}>
-                            {s.status === 'active' ? 'Faol' : 'Arxivlangan'}
+                            {s.status === 'active' ? common('active') : common('archived')}
                           </span>
                         </td>
                         <td className="px-4 py-3">
                           {s.status === 'active' ? (
                             <button onClick={() => setStaffArchiveTarget(s)}
                               className="p-1 rounded text-red-400 hover:bg-red-50 hover:text-red-600 transition-colors"
-                              title="Arxivlash">
+                              title={common('archive')}>
                               <Minus className="w-4 h-4" />
                             </button>
                           ) : (
                             <span className="text-gray-400 text-sm">
                               {(s.archived_at || s.updated_at)
                                 ? formatDMY(s.archived_at || s.updated_at)
-                                : 'Arxivlangan'}
+                                : common('archived')}
                             </span>
                           )}
                         </td>
@@ -567,12 +562,12 @@ export default function TeachersPage() {
       {/* ══ Add Teacher Dialog ══ */}
       <Dialog open={showAdd} onOpenChange={(open) => { if (!open) closeModal(); setShowAdd(open); }}>
         <DialogContent className="sm:max-w-md max-h-[90vh] overflow-y-auto">
-          <DialogHeader><DialogTitle>Yangi o&apos;qituvchi</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle>{t('addTeacher')}</DialogTitle></DialogHeader>
           <form onSubmit={handleAdd} className="space-y-4 mt-2">
 
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Ism <span className="text-red-500">*</span></label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">{common('name')} <span className="text-red-500">*</span></label>
                 <input
                   ref={firstNameRef}
                   value={form.first_name}
@@ -584,7 +579,7 @@ export default function TeachersPage() {
                 {showErr('first_name') && <p className="text-xs text-red-500 mt-0.5">{showErr('first_name')}</p>}
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Familiya <span className="text-red-500">*</span></label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">{common('lastName')} <span className="text-red-500">*</span></label>
                 <input
                   ref={lastNameRef}
                   value={form.last_name}
@@ -598,7 +593,7 @@ export default function TeachersPage() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Telefon <span className="text-red-500">*</span></label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">{common('phone')} <span className="text-red-500">*</span></label>
               <div className="flex">
                 <span className="inline-flex items-center px-3 border border-r-0 border-gray-300 bg-gray-50 text-gray-500 text-sm rounded-l">+998</span>
                 <input
@@ -616,7 +611,7 @@ export default function TeachersPage() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Parol <span className="text-red-500">*</span></label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">{t('password')} <span className="text-red-500">*</span></label>
               <div className="relative">
                 <input
                   ref={passwordRef}
@@ -640,7 +635,7 @@ export default function TeachersPage() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Fan <span className="text-red-500">*</span></label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">{t('subject')} <span className="text-red-500">*</span></label>
               <input
                 ref={subjectRef}
                 value={form.subject}
@@ -654,7 +649,7 @@ export default function TeachersPage() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Tug&apos;ilgan sana <span className="text-red-500">*</span></label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">{common('birthDate')} <span className="text-red-500">*</span></label>
               <input
                 ref={birthDateRef}
                 type="text"
@@ -677,7 +672,7 @@ export default function TeachersPage() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Maosh turi <span className="text-red-500">*</span></label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">{t('salaryType')} <span className="text-red-500">*</span></label>
               <div className="flex gap-2">
                 {(['fixed', 'percent', 'per_student'] as const).map((type) => (
                   <button
@@ -687,7 +682,7 @@ export default function TeachersPage() {
                     className={cn('flex-1 py-2 text-xs font-medium border rounded transition-colors',
                       form.salary_type === type ? 'border-blue-500 bg-blue-50 text-blue-700' : 'border-gray-300 text-gray-600 hover:bg-gray-50')}
                   >
-                    {SALARY_LABELS[type]}
+                    {t(SALARY_LABELS[type] as Parameters<typeof t>[0])}
                   </button>
                 ))}
               </div>
@@ -695,7 +690,7 @@ export default function TeachersPage() {
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                {SALARY_AMOUNT_LABELS[form.salary_type]} <span className="text-red-500">*</span>
+                {t('monthlySalary')} <span className="text-red-500">*</span>
               </label>
               <input
                 ref={salaryAmtRef}
@@ -721,7 +716,7 @@ export default function TeachersPage() {
                 disabled={saving || hasFormErrors}
                 className="flex-1 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded hover:bg-blue-700 disabled:opacity-60"
               >
-                {saving ? 'Saqlanmoqda...' : common('save')}
+                {saving ? common('loading') : common('save')}
               </button>
             </div>
           </form>
@@ -731,9 +726,9 @@ export default function TeachersPage() {
       {/* ══ Archive Teacher Dialog ══ */}
       <Dialog open={!!archiveTarget} onOpenChange={(open) => { if (!open) setArchiveTarget(null); }}>
         <DialogContent className="sm:max-w-sm">
-          <DialogHeader><DialogTitle>Arxivlash</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle>{common('archive')}</DialogTitle></DialogHeader>
           <p className="text-sm text-gray-600 mt-1">
-            <span className="font-medium">{archiveTarget?.name}</span>ni arxivlashni istaysizmi?
+            <span className="font-medium">{archiveTarget?.name}</span>
           </p>
           <div className="flex gap-3 mt-4">
             <button onClick={() => setArchiveTarget(null)}
@@ -742,7 +737,7 @@ export default function TeachersPage() {
             </button>
             <button onClick={confirmArchive}
               className="flex-1 px-4 py-2 bg-red-600 text-white text-sm font-medium rounded hover:bg-red-700">
-              Ha, arxivlash
+              {common('archive')}
             </button>
           </div>
         </DialogContent>
@@ -751,26 +746,26 @@ export default function TeachersPage() {
       {/* ══ Add Staff Dialog ══ */}
       <Dialog open={showAddStaff} onOpenChange={(open) => { if (!open) { setShowAddStaff(false); setStaffForm(blankStaffForm()); } }}>
         <DialogContent className="sm:max-w-md">
-          <DialogHeader><DialogTitle>Yangi xodim qo&apos;shish</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle>{t('addStaff')}</DialogTitle></DialogHeader>
           <form onSubmit={handleAddStaff} className="space-y-3 mt-2">
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Ism *</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">{common('name')} *</label>
                 <input type="text" value={staffForm.first_name} required
                   onChange={e => setStaffForm(f => ({ ...f, first_name: e.target.value }))}
                   className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  placeholder="Ism" />
+                  placeholder={common('name')} />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Familiya *</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">{common('lastName')} *</label>
                 <input type="text" value={staffForm.last_name} required
                   onChange={e => setStaffForm(f => ({ ...f, last_name: e.target.value }))}
                   className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  placeholder="Familiya" />
+                  placeholder={common('lastName')} />
               </div>
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Telefon *</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">{common('phone')} *</label>
               <div className="flex">
                 <span className="inline-flex items-center px-3 border border-r-0 border-gray-300 bg-gray-50 text-gray-500 text-sm rounded-l">+998</span>
                 <input type="tel" value={staffForm.phone} required
@@ -780,14 +775,14 @@ export default function TeachersPage() {
               </div>
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Lavozim *</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">{t('role')} *</label>
               <select value={staffForm.role} onChange={e => setStaffForm(f => ({ ...f, role: e.target.value }))}
                 className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
                 {Object.entries(ROLE_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
               </select>
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Oylik miqdor (so&apos;m) *</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">{t('monthlySalary')} *</label>
               <input type="text" inputMode="numeric" value={staffForm.salary_amount}
                 onChange={e => setStaffForm(f => ({ ...f, salary_amount: formatAmount(e.target.value) }))}
                 className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -795,7 +790,7 @@ export default function TeachersPage() {
               <p className="text-xs text-gray-400 mt-0.5">Minimal: 100,000 so&apos;m</p>
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Izoh</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">{common('note')}</label>
               <textarea value={staffForm.notes} rows={2}
                 onChange={e => setStaffForm(f => ({ ...f, notes: e.target.value }))}
                 className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
@@ -808,7 +803,7 @@ export default function TeachersPage() {
               </button>
               <button type="submit" disabled={savingStaff}
                 className="flex-1 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded hover:bg-blue-700 disabled:opacity-60">
-                {savingStaff ? 'Saqlanmoqda...' : common('save')}
+                {savingStaff ? common('loading') : common('save')}
               </button>
             </div>
           </form>
@@ -818,9 +813,9 @@ export default function TeachersPage() {
       {/* ══ Archive Staff Dialog ══ */}
       <Dialog open={!!staffArchiveTarget} onOpenChange={(open) => { if (!open) setStaffArchiveTarget(null); }}>
         <DialogContent className="sm:max-w-sm">
-          <DialogHeader><DialogTitle>Arxivlash</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle>{common('archive')}</DialogTitle></DialogHeader>
           <p className="text-sm text-gray-600 mt-1">
-            <span className="font-medium">{staffArchiveTarget?.full_name}</span>ni arxivlashni istaysizmi?
+            <span className="font-medium">{staffArchiveTarget?.full_name}</span>
           </p>
           <div className="flex gap-3 mt-4">
             <button onClick={() => setStaffArchiveTarget(null)}
@@ -829,7 +824,7 @@ export default function TeachersPage() {
             </button>
             <button onClick={handleArchiveStaff} disabled={staffArchiving}
               className="flex-1 px-4 py-2 bg-red-600 text-white text-sm font-medium rounded hover:bg-red-700 disabled:opacity-60">
-              {staffArchiving ? '...' : 'Ha, arxivlash'}
+              {staffArchiving ? common('loading') : common('archive')}
             </button>
           </div>
         </DialogContent>

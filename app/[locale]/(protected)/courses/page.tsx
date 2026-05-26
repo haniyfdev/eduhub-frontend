@@ -79,10 +79,10 @@ export default function CoursesPage() {
   const hoursVal  = parseFloat(form.duration_hours);
 
   const fieldErrors = {
-    name:             !form.name ? 'Nomi majburiy' : form.name.length < 2 ? 'Kamida 2 harf' : '',
-    price:            isNaN(priceVal)  || priceVal  < 1000 ? "Kamida 1 000 so'm" : '',
-    duration_months:  isNaN(monthsVal) || monthsVal < 1    ? 'Kamida 1 oy'       : monthsVal > 18 ? "Ko'pi bilan 18 oy" : '',
-    duration_hours:   isNaN(hoursVal)  || hoursVal  < 1    ? 'Kamida 1 soat'     : hoursVal  > 500 ? "Ko'pi bilan 500 soat" : '',
+    name:             !form.name ? t('nameRequired') : form.name.length < 2 ? t('nameMin') : '',
+    price:            isNaN(priceVal)  || priceVal  < 1000 ? t('priceMin') : '',
+    duration_months:  isNaN(monthsVal) || monthsVal < 1    ? t('monthsMin') : monthsVal > 18 ? t('monthsMax') : '',
+    duration_hours:   isNaN(hoursVal)  || hoursVal  < 1    ? t('hoursMin') : hoursVal  > 500 ? t('hoursMax') : '',
   };
   const hasFormErrors = Object.values(fieldErrors).some(Boolean);
 
@@ -178,15 +178,15 @@ export default function CoursesPage() {
 
       if (editTarget) {
         await api.patch(`/api/v1/courses/${editTarget.id}/`, body);
-        toast.success('Kurs yangilandi');
+        toast.success(t('updatedSuccess'));
       } else {
         await api.post('/api/v1/courses/', body);
-        toast.success("Kurs qo'shildi");
+        toast.success(t('addedSuccess'));
       }
       closeModal();
       fetchCourses();
-    } catch (err: any) {
-      toast.error(err?.response?.data?.detail || 'Xatolik yuz berdi');
+    } catch (err: unknown) {
+      toast.error((err as { response?: { data?: { detail?: string } } })?.response?.data?.detail || common('error'));
     } finally {
       setSaving(false);
     }
@@ -196,11 +196,11 @@ export default function CoursesPage() {
     if (!archiveTarget) return;
     try {
       await api.post(`/api/v1/courses/${archiveTarget.id}/archive/`);
-      toast.success('Kurs arxivlandi');
+      toast.success(t('archivedSuccess'));
       setArchiveTarget(null);
       fetchCourses();
     } catch {
-      toast.error('Xatolik yuz berdi');
+      toast.error(common('error'));
     }
   }
 
@@ -228,22 +228,22 @@ export default function CoursesPage() {
         <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}
           className="px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-700">
           <option value="">{common('all')}</option>
-          <option value="active">Faol</option>
-          <option value="archived">Arxivlangan</option>
+          <option value="active">{common('active')}</option>
+          <option value="archived">{common('archived')}</option>
         </select>
       </div>
 
       <div className="bg-white rounded border border-gray-200 shadow-sm overflow-hidden">
         {error ? (
           <div className="flex flex-col items-center justify-center py-16 text-gray-500">
-            <p className="mb-3 text-sm">Xatolik yuz berdi</p>
-            <button onClick={fetchCourses} className="text-sm text-blue-600 underline">Qayta urinish</button>
+            <p className="mb-3 text-sm">{common('error')}</p>
+            <button onClick={fetchCourses} className="text-sm text-blue-600 underline">{common('retry')}</button>
           </div>
         ) : (
           <table className="w-full text-sm">
             <thead>
               <tr className="bg-gray-50 border-b border-gray-200">
-                {['№', 'Nomi', 'Narxi', 'Muddati', "O'qituvchilar", 'Sana', 'Holat', 'Amallar'].map((h, i) => (
+                {['№', t('nameLabel'), t('price'), t('duration'), common('teacher'), common('date'), common('status'), common('actions')].map((h, i) => (
                   <th key={i} className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">{h}</th>
                 ))}
               </tr>
@@ -262,7 +262,7 @@ export default function CoursesPage() {
                       <td className="px-4 py-3 text-gray-400 text-xs">{(page - 1) * pageSize + idx + 1}</td>
                       <td className="px-4 py-3 font-medium text-gray-900">{c.name}</td>
                       <td className="px-4 py-3 text-gray-700 whitespace-nowrap">{formatCurrency(c.price)}</td>
-                      <td className="px-4 py-3 text-gray-600 whitespace-nowrap">{c.duration_months} oy / {c.duration_hours} soat</td>
+                      <td className="px-4 py-3 text-gray-600 whitespace-nowrap">{c.duration_months} {t('months')} / {c.duration_hours} {t('hours')}</td>
                       <td className="px-4 py-3 text-gray-600">
                         {c.teacher_names && c.teacher_names.length > 0 ? (
                           <div className="flex flex-wrap gap-1">
@@ -278,7 +278,7 @@ export default function CoursesPage() {
                       <td className="px-4 py-3">
                         <span className={cn('inline-flex items-center px-2 py-0.5 text-xs font-medium border rounded',
                           c.status === 'active' ? 'bg-green-50 text-green-700 border-green-200' : 'bg-gray-100 text-gray-600 border-gray-200')}>
-                          {c.status === 'active' ? 'Faol' : 'Arxivlangan'}
+                          {c.status === 'active' ? common('active') : common('archived')}
                         </span>
                       </td>
                       <td className="px-4 py-3">
@@ -286,12 +286,12 @@ export default function CoursesPage() {
                           <div className="flex items-center gap-1">
                             <button onClick={() => openEdit(c)}
                               className="p-1 rounded hover:bg-gray-200 text-gray-400 hover:text-gray-700 transition-colors"
-                              title="Tahrirlash">
+                              title={common('edit')}>
                               <Pencil className="w-3.5 h-3.5" />
                             </button>
                             <button onClick={() => setArchiveTarget({ id: c.id, name: c.name })}
                               className="p-1 rounded text-red-400 hover:bg-red-50 hover:text-red-600 transition-colors"
-                              title="Arxivlash">
+                              title={common('archive')}>
                               <Minus className="w-4 h-4" />
                             </button>
                           </div>
@@ -314,13 +314,13 @@ export default function CoursesPage() {
       <Dialog open={showModal} onOpenChange={(open) => { if (!open) closeModal(); }}>
         <DialogContent className="sm:max-w-md max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>{editTarget ? 'Kursni tahrirlash' : 'Yangi kurs'}</DialogTitle>
+            <DialogTitle>{editTarget ? t('editTitle') : t('addTitle')}</DialogTitle>
           </DialogHeader>
           <form onSubmit={handleSave} className="space-y-4 mt-2">
 
             {/* Nomi */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Nomi <span className="text-red-500">*</span></label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">{t('nameLabel')} <span className="text-red-500">*</span></label>
               <input
                 ref={nameRef}
                 value={form.name}
@@ -334,7 +334,7 @@ export default function CoursesPage() {
 
             {/* Tavsif */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Tavsif</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">{t('descLabel')}</label>
               <input
                 ref={descRef}
                 value={form.description}
@@ -346,7 +346,7 @@ export default function CoursesPage() {
 
             {/* Narx */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Narxi (so&apos;m) <span className="text-red-500">*</span></label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">{t('priceLabel')} <span className="text-red-500">*</span></label>
               <input
                 ref={priceRef}
                 type="number"
@@ -362,7 +362,7 @@ export default function CoursesPage() {
 
             {/* Davomiyligi oy */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Davomiyligi (oy) <span className="text-red-500">*</span></label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">{t('durationMonths')} <span className="text-red-500">*</span></label>
               <input
                 ref={monthsRef}
                 type="number"
@@ -378,7 +378,7 @@ export default function CoursesPage() {
 
             {/* Dars soat */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Dars davomiyligi (soat) <span className="text-red-500">*</span></label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">{t('durationHours')} <span className="text-red-500">*</span></label>
               <input
                 ref={hoursRef}
                 type="number"
@@ -395,7 +395,7 @@ export default function CoursesPage() {
             {/* Status — faqat edit da */}
             {editTarget && (
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Holat</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">{common('status')}</label>
                 <div className="flex gap-2">
                   {(['active', 'archived'] as const).map((s) => (
                     <button
@@ -409,7 +409,7 @@ export default function CoursesPage() {
                           : 'border-gray-300 text-gray-600 hover:bg-gray-50'
                       )}
                     >
-                      {s === 'active' ? 'Faol' : 'Arxivlangan'}
+                      {s === 'active' ? common('active') : common('archived')}
                     </button>
                   ))}
                 </div>
@@ -418,14 +418,14 @@ export default function CoursesPage() {
 
             {/* O'qituvchilar */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">O&apos;qituvchilar</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">{t('teachersLabel')}</label>
               {form.teacher_ids.length > 0 && (
                 <div className="flex flex-wrap gap-1 mb-2">
                   {form.teacher_ids.map((tid) => {
-                    const t = teachers.find((t) => t.id === tid);
-                    return t ? (
+                    const tc = teachers.find((tc) => tc.id === tid);
+                    return tc ? (
                       <span key={tid} className="inline-flex items-center gap-1 px-2 py-0.5 text-xs bg-blue-100 text-blue-700 rounded">
-                        {t.first_name} {t.last_name}
+                        {tc.first_name} {tc.last_name}
                         <button type="button" onClick={() => toggleTeacher(tid)}><X className="w-3 h-3" /></button>
                       </span>
                     ) : null;
@@ -434,11 +434,11 @@ export default function CoursesPage() {
               )}
               <div className="max-h-32 overflow-y-auto border border-gray-300 rounded p-2 space-y-1">
                 {teachers.length === 0
-                  ? <p className="text-xs text-gray-400 text-center py-2">O&apos;qituvchilar topilmadi</p>
-                  : teachers.map((t) => (
-                    <label key={t.id} className="flex items-center gap-2 text-sm cursor-pointer hover:bg-gray-50 px-1 py-0.5 rounded">
-                      <input type="checkbox" checked={form.teacher_ids.includes(t.id)} onChange={() => toggleTeacher(t.id)} className="rounded" />
-                      {t.first_name} {t.last_name}
+                  ? <p className="text-xs text-gray-400 text-center py-2">{t('noTeachers')}</p>
+                  : teachers.map((tc) => (
+                    <label key={tc.id} className="flex items-center gap-2 text-sm cursor-pointer hover:bg-gray-50 px-1 py-0.5 rounded">
+                      <input type="checkbox" checked={form.teacher_ids.includes(tc.id)} onChange={() => toggleTeacher(tc.id)} className="rounded" />
+                      {tc.first_name} {tc.last_name}
                     </label>
                   ))
                 }
@@ -456,7 +456,7 @@ export default function CoursesPage() {
                 disabled={saving || hasFormErrors}
                 className="flex-1 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded hover:bg-blue-700 disabled:opacity-60"
               >
-                {saving ? 'Saqlanmoqda...' : editTarget ? common('save') : t('addCourse')}
+                {saving ? common('loading') : editTarget ? common('save') : t('addCourse')}
               </button>
             </div>
           </form>
@@ -466,15 +466,15 @@ export default function CoursesPage() {
       {/* ══ Archive Dialog ══ */}
       <Dialog open={!!archiveTarget} onOpenChange={(open) => { if (!open) setArchiveTarget(null); }}>
         <DialogContent className="sm:max-w-sm">
-          <DialogHeader><DialogTitle>Arxivlash</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle>{common('archive')}</DialogTitle></DialogHeader>
           <p className="text-sm text-gray-600 mt-1">
-            <span className="font-medium">{archiveTarget?.name}</span>ni arxivlashni istaysizmi?
+            <span className="font-medium">{archiveTarget?.name}</span> {t('archiveConfirm')}
           </p>
           <div className="flex gap-3 mt-4">
             <button onClick={() => setArchiveTarget(null)}
               className="flex-1 px-4 py-2 border border-gray-300 text-sm font-medium rounded hover:bg-gray-50">{common('cancel')}</button>
             <button onClick={confirmArchive}
-              className="flex-1 px-4 py-2 bg-red-600 text-white text-sm font-medium rounded hover:bg-red-700">Ha, arxivlash</button>
+              className="flex-1 px-4 py-2 bg-red-600 text-white text-sm font-medium rounded hover:bg-red-700">{t('confirmArchive')}</button>
           </div>
         </DialogContent>
       </Dialog>

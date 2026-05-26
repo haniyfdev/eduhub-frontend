@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { Send } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { useTranslations } from 'next-intl';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import api from '@/lib/axios';
 import { cn } from '@/lib/utils';
@@ -80,6 +81,7 @@ function shortName(name: string): string {
 }
 
 export function SmsModal({ open, onClose, recipients, onSend }: SmsModalProps) {
+  const t = useTranslations('smsModal');
   const [tab, setTab] = useState<'template' | 'custom'>('template');
   const [templates, setTemplates] = useState<SmsTemplate[]>([]);
   const [selected, setSelected] = useState<SmsTemplate | null>(null);
@@ -104,15 +106,15 @@ export function SmsModal({ open, onClose, recipients, onSend }: SmsModalProps) {
   const first = recipients[0];
   const allLeads = recipients.length > 0 && recipients.every(r => r.type === 'lead');
   const visibleTemplates = allLeads
-    ? templates.filter(t => !FINANCIAL_TRIGGERS.includes(t.trigger))
+    ? templates.filter(tmpl => !FINANCIAL_TRIGGERS.includes(tmpl.trigger))
     : templates;
 
   function recipientLabel(): string {
-    if (recipients.length === 0) return 'Qabul qiluvchilar tanlanmagan';
-    if (recipients.length === 1) return `Yuboriladi: ${first.name} (${first.phone})`;
-    if (recipients.length <= 3) return `Yuboriladi: ${recipients.map(r => shortName(r.name)).join(', ')}`;
+    if (recipients.length === 0) return t('noRecipients');
+    if (recipients.length === 1) return t('sendingTo', { name: first.name, phone: first.phone });
+    if (recipients.length <= 3) return t('sendingToMulti', { names: recipients.map(r => shortName(r.name)).join(', ') });
     const shown = recipients.slice(0, 2).map(r => shortName(r.name)).join(', ');
-    return `Yuboriladi: ${shown} va yana ${recipients.length - 2} ta`;
+    return t('sendingToMore', { names: shown, count: recipients.length - 2 });
   }
 
   function handleSend() {
@@ -120,7 +122,7 @@ export function SmsModal({ open, onClose, recipients, onSend }: SmsModalProps) {
     if (tab === 'template') {
       if (!selected) return;
       if (allLeads && FINANCIAL_TRIGGERS.includes(selected.trigger)) {
-        toast.error("Bu shablon leads uchun mos emas");
+        toast.error(t('templateError'));
         return;
       }
       onSend(selected.id, null, recipients);
@@ -142,7 +144,7 @@ export function SmsModal({ open, onClose, recipients, onSend }: SmsModalProps) {
     <Dialog open={open} onOpenChange={(o) => { if (!o) onClose(); }}>
       <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>SMS yuborish</DialogTitle>
+          <DialogTitle>{t('title')}</DialogTitle>
         </DialogHeader>
 
         {/* Tabs */}
@@ -154,7 +156,7 @@ export function SmsModal({ open, onClose, recipients, onSend }: SmsModalProps) {
               tab === 'template' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'
             )}
           >
-            📋 Shablon
+            📋 {t('tabTemplate')}
           </button>
           <button
             onClick={() => setTab('custom')}
@@ -163,7 +165,7 @@ export function SmsModal({ open, onClose, recipients, onSend }: SmsModalProps) {
               tab === 'custom' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'
             )}
           >
-            ✏️ Qo&apos;lda yozish
+            ✏️ {t('tabCustom')}
           </button>
         </div>
 
@@ -172,20 +174,20 @@ export function SmsModal({ open, onClose, recipients, onSend }: SmsModalProps) {
           <div className="space-y-3 mt-2">
             {allLeads && (
               <div className="bg-amber-50 border border-amber-200 rounded p-2">
-                <p className="text-xs text-amber-700">⚠️ Leadlar uchun moliyaviy shablonlar mavjud emas</p>
+                <p className="text-xs text-amber-700">⚠️ {t('leadsWarning')}</p>
               </div>
             )}
             {visibleTemplates.length === 0 ? (
-              <p className="text-sm text-gray-400 text-center py-6">Shablonlar topilmadi</p>
+              <p className="text-sm text-gray-400 text-center py-6">{t('noTemplates')}</p>
             ) : (
               <div className="space-y-2 max-h-52 overflow-y-auto pr-1">
-                {visibleTemplates.map((t, index) => (
+                {visibleTemplates.map((tmpl, index) => (
                   <div
-                    key={t.id}
-                    onClick={() => setSelected(selected?.id === t.id ? null : t)}
+                    key={tmpl.id}
+                    onClick={() => setSelected(selected?.id === tmpl.id ? null : tmpl)}
                     className={cn(
                       'border rounded-xl p-3 cursor-pointer transition-colors hover:border-blue-400',
-                      selected?.id === t.id
+                      selected?.id === tmpl.id
                         ? 'border-blue-500 bg-blue-50'
                         : 'border-gray-200 bg-white'
                     )}
@@ -194,9 +196,9 @@ export function SmsModal({ open, onClose, recipients, onSend }: SmsModalProps) {
                       <span className="w-5 h-5 rounded-full bg-blue-600 text-white text-xs flex items-center justify-center font-bold flex-shrink-0">
                         {index + 1}
                       </span>
-                      <span className="text-sm font-semibold text-gray-900">{t.name}</span>
+                      <span className="text-sm font-semibold text-gray-900">{tmpl.name}</span>
                     </div>
-                    <p className="text-xs text-gray-500 whitespace-pre-wrap line-clamp-2">{t.body}</p>
+                    <p className="text-xs text-gray-500 whitespace-pre-wrap line-clamp-2">{tmpl.body}</p>
                   </div>
                 ))}
               </div>
@@ -204,7 +206,7 @@ export function SmsModal({ open, onClose, recipients, onSend }: SmsModalProps) {
 
             {selected && (
               <div>
-                <p className="text-xs font-medium text-gray-500 mb-1">Ko&apos;rinishi:</p>
+                <p className="text-xs font-medium text-gray-500 mb-1">{t('preview')}</p>
                 <div className="bg-gray-50 rounded p-3 text-sm whitespace-pre-wrap text-gray-700">
                   {resolvePreview(selected.body, first)}
                 </div>
@@ -217,14 +219,14 @@ export function SmsModal({ open, onClose, recipients, onSend }: SmsModalProps) {
               value={customText}
               onChange={e => setCustomText(e.target.value)}
               rows={5}
-              placeholder="SMS matnini yozing..."
+              placeholder={t('customPlaceholder')}
               className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
             />
             <div className="flex items-center justify-between">
               <p className="text-xs text-gray-400">{charCount}/160</p>
               {smsParts > 1 && (
                 <p className="text-xs text-amber-600 font-medium">
-                  Bu SMS {smsParts} ta xabarga bo&apos;linadi
+                  {t('smsParts', { count: smsParts })}
                 </p>
               )}
             </div>
@@ -240,7 +242,7 @@ export function SmsModal({ open, onClose, recipients, onSend }: SmsModalProps) {
             onClick={onClose}
             className="flex-1 px-4 py-2 border border-gray-300 text-sm font-medium rounded hover:bg-gray-50"
           >
-            Bekor qilish
+            {t('cancel')}
           </button>
           <button
             onClick={handleSend}
@@ -248,7 +250,7 @@ export function SmsModal({ open, onClose, recipients, onSend }: SmsModalProps) {
             className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded hover:bg-blue-700 disabled:opacity-60"
           >
             <Send className="w-4 h-4" />
-            Yuborish
+            {t('send')}
           </button>
         </div>
       </DialogContent>

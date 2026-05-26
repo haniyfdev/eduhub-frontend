@@ -3,7 +3,7 @@
 import { usePathname, useRouter } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
 import { Bell, ChevronDown, Eye, EyeOff, Globe, LogOut, Paperclip, Plus, Trash2, X } from 'lucide-react';
-import { useLocale } from 'next-intl';
+import { useLocale, useTranslations } from 'next-intl';
 import { getUser, logout } from '@/lib/auth';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { User } from '@/types';
@@ -21,28 +21,7 @@ interface Announcement {
   created_at: string;
 }
 
-const TITLES: Record<string, string> = {
-  dashboard: 'Bosh sahifa',
-  students: "O'quvchilar",
-  groups: 'Guruhlar',
-  teachers: "O'qituvchilar",
-  courses: 'Kurslar',
-  payments: "To'lovlar",
-  debts: 'Qarzlar',
-  reports: 'Hisobotlar',
-  settings: 'Sozlamalar',
-  companies: 'Kompaniyalar',
-};
-
 const LANG_LABELS: Record<string, string> = { uz: 'UZ', ru: 'RU', en: 'EN' };
-
-const ROLE_LABELS: Record<string, string> = {
-  superadmin: 'Superadmin',
-  boss: 'Boss',
-  manager: 'Manager',
-  admin: 'Admin',
-  teacher: "O'qituvchi",
-};
 
 function fmtDate(iso: string) {
   return new Date(iso).toLocaleDateString('uz-UZ', {
@@ -59,6 +38,8 @@ export default function Topbar() {
   const pathname = usePathname();
   const router = useRouter();
   const locale = useLocale();
+  const t = useTranslations('topbar');
+  const tn = useTranslations('navigation');
   const [user, setUser] = useState<User | null>(null);
   const [avatarSrc, setAvatarSrc] = useState<string | null>(null);
   const [companyName, setCompanyName] = useState<string | null>(null);
@@ -182,14 +163,15 @@ export default function Topbar() {
     setCreatingAnn(true);
     try {
       await api.post('/api/v1/announcements/', { title: newTitle, body: newBody });
-      toast.success('Xabar yuborildi');
+      toast.success(t('announcementSent'));
       setShowCreate(false);
       setNewTitle('');
       setNewBody('');
       const { data } = await api.get('/api/v1/announcements/');
       setAnnouncements(data.results ?? data);
-    } catch (err: any) {
-      toast.error(err?.response?.data?.detail || 'Xatolik yuz berdi');
+    } catch (err: unknown) {
+      const e = err as { response?: { data?: { detail?: string } } };
+      toast.error(e?.response?.data?.detail || 'Xatolik yuz berdi');
     } finally {
       setCreatingAnn(false);
     }
@@ -227,11 +209,11 @@ export default function Topbar() {
     const file = e.target.files?.[0];
     if (!file) return;
     if (!['image/jpeg', 'image/png', 'image/jpg'].includes(file.type)) {
-      toast.error('Faqat JPG yoki PNG formatida');
+      toast.error(t('avatarFormatError'));
       return;
     }
     if (file.size > 1024 * 1024) {
-      toast.error('Fayl hajmi 1MB dan oshmasligi kerak');
+      toast.error(t('avatarSizeError'));
       return;
     }
     setAvatarFile(file);
@@ -251,7 +233,7 @@ export default function Topbar() {
 
     const pwFilled = password.old_password || password.new_password || password.confirm;
     if (pwFilled && password.new_password !== password.confirm) {
-      toast.error('Yangi parollar mos kelmaydi');
+      toast.error(t('passwordMismatch'));
       return;
     }
 
@@ -270,8 +252,9 @@ export default function Topbar() {
           await api.patch(`/api/v1/users/${user.id}/`, formData, {
             headers: { 'Content-Type': 'multipart/form-data' },
           });
-        } catch (err: any) {
-          if (err?.response?.status !== 400 && err?.response?.status !== 415) throw err;
+        } catch (err: unknown) {
+          const e = err as { response?: { status?: number } };
+          if (e?.response?.status !== 400 && e?.response?.status !== 415) throw err;
         }
         const newSrc = avatarPreview!;
         setAvatarSrc(newSrc);
@@ -290,17 +273,19 @@ export default function Topbar() {
         });
       }
 
-      toast.success("Ma'lumotlar saqlandi");
+      toast.success(t('dataSaved'));
       setShowProfile(false);
-    } catch (err: any) {
-      toast.error(err?.response?.data?.detail || 'Xatolik yuz berdi');
+    } catch (err: unknown) {
+      const e = err as { response?: { data?: { detail?: string } } };
+      toast.error(e?.response?.data?.detail || 'Xatolik yuz berdi');
     } finally {
       setSaving(false);
     }
   }
 
   const segment = pathname.split('/')[2] ?? 'dashboard';
-  const title = TITLES[segment] ?? 'EduHub';
+  const navKeys = ['dashboard', 'students', 'leads', 'groups', 'teachers', 'courses', 'attendance', 'payments', 'debts', 'reports', 'settings', 'companies', 'archive', 'rooms', 'salaries', 'discounts'];
+  const title = navKeys.includes(segment) ? tn(segment as Parameters<typeof tn>[0]) : 'EduHub';
   const pathWithoutLocale = '/' + pathname.split('/').slice(2).join('/') || '/dashboard';
   const displaySrc = avatarToDelete ? null : (avatarPreview || avatarSrc);
 
@@ -349,7 +334,7 @@ export default function Topbar() {
             <button
               onClick={openBell}
               className="relative p-2 rounded-lg hover:bg-gray-100 transition-colors"
-              title="Bildirishnomalar"
+              title={t('bellTitle')}
             >
               <Bell className={`w-5 h-5 ${unreadCount > 0 ? 'text-gray-600' : 'text-gray-400'}`} />
               {unreadCount > 0 && user?.role !== 'superadmin' && (
@@ -365,7 +350,7 @@ export default function Topbar() {
             <button
               onClick={openProfile}
               className="ml-1 focus:outline-none"
-              aria-label="Profil sozlamalari"
+              aria-label={t('profileButton')}
             >
               {avatarSrc ? (
                 // eslint-disable-next-line @next/next/no-img-element
@@ -386,21 +371,21 @@ export default function Topbar() {
       <Dialog open={showLogoutConfirm} onOpenChange={setShowLogoutConfirm}>
         <DialogContent className="sm:max-w-sm">
           <DialogHeader>
-            <DialogTitle>Tizimdan chiqish</DialogTitle>
+            <DialogTitle>{t('logoutTitle')}</DialogTitle>
           </DialogHeader>
-          <p className="text-sm text-gray-600 mt-1">Rostdan ham chiqmoqchimisiz?</p>
+          <p className="text-sm text-gray-600 mt-1">{t('logoutConfirm')}</p>
           <div className="flex gap-3 mt-4">
             <button
               onClick={() => setShowLogoutConfirm(false)}
               className="flex-1 px-4 py-2 border border-gray-300 text-sm font-medium rounded hover:bg-gray-50"
             >
-              Bekor qilish
+              {t('cancel')}
             </button>
             <button
               onClick={handleLogout}
               className="flex-1 px-4 py-2 bg-red-600 text-white text-sm font-medium rounded hover:bg-red-700"
             >
-              Ha, chiqish
+              {t('logoutYes')}
             </button>
           </div>
         </DialogContent>
@@ -410,22 +395,22 @@ export default function Topbar() {
       <Dialog open={showSaveConfirm} onOpenChange={setShowSaveConfirm}>
         <DialogContent className="sm:max-w-sm">
           <DialogHeader>
-            <DialogTitle>O&apos;zgarishlarni saqlash</DialogTitle>
+            <DialogTitle>{t('saveChangesTitle')}</DialogTitle>
           </DialogHeader>
-          <p className="text-sm text-gray-600 mt-1">Profilingizga kiritilgan o&apos;zgarishlarni tasdiqlaysizmi?</p>
+          <p className="text-sm text-gray-600 mt-1">{t('saveChangesConfirm')}</p>
           <div className="flex gap-3 mt-4">
             <button
               onClick={() => setShowSaveConfirm(false)}
               className="flex-1 px-4 py-2 border border-gray-300 text-sm font-medium rounded hover:bg-gray-50"
             >
-              Bekor qilish
+              {t('cancel')}
             </button>
             <button
               onClick={() => { setShowSaveConfirm(false); handleSave(); }}
               disabled={saving}
               className="flex-1 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded hover:bg-blue-700 disabled:opacity-60"
             >
-              Ha, saqlash
+              {t('saveYes')}
             </button>
           </div>
         </DialogContent>
@@ -435,7 +420,7 @@ export default function Topbar() {
       <Dialog open={bellOpen} onOpenChange={setBellOpen}>
         <DialogContent className="sm:max-w-md p-0 overflow-hidden gap-0 [&>button]:hidden">
           <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100 bg-gray-50">
-            <DialogTitle className="text-sm font-semibold text-gray-900">Bildirishnomalar</DialogTitle>
+            <DialogTitle className="text-sm font-semibold text-gray-900">{t('notifications')}</DialogTitle>
             <div className="flex items-center gap-2">
               {user?.role === 'superadmin' && (
                 <button
@@ -460,7 +445,7 @@ export default function Topbar() {
               </div>
             ) : announcements.length === 0 ? (
               <p className="text-sm text-gray-400 text-center py-10">
-                Hozircha bildirishnomalar yo&apos;q
+                {t('noNotifications')}
               </p>
             ) : (
               <div>
@@ -510,11 +495,11 @@ export default function Topbar() {
       <Dialog open={showCreate} onOpenChange={setShowCreate}>
         <DialogContent className="sm:max-w-sm">
           <DialogHeader>
-            <DialogTitle>Yangi xabar</DialogTitle>
+            <DialogTitle>{t('newAnnouncement')}</DialogTitle>
           </DialogHeader>
           <form onSubmit={handleCreate} className="space-y-4 mt-2">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Sarlavha</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">{t('announcementTitle')}</label>
               <input
                 value={newTitle}
                 onChange={(e) => setNewTitle(e.target.value)}
@@ -524,7 +509,7 @@ export default function Topbar() {
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Xabar matni</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">{t('announcementBody')}</label>
               <textarea
                 ref={bodyRef}
                 value={newBody}
@@ -543,11 +528,11 @@ export default function Topbar() {
             <div className="flex gap-3">
               <button type="button" onClick={() => setShowCreate(false)}
                 className="flex-1 px-4 py-2 border border-gray-300 text-sm font-medium rounded hover:bg-gray-50">
-                Bekor qilish
+                {t('cancel')}
               </button>
               <button type="submit" disabled={creatingAnn}
                 className="flex-1 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded hover:bg-blue-700 disabled:opacity-60">
-                {creatingAnn ? 'Yuborilmoqda...' : 'Yuborish'}
+                {creatingAnn ? t('sending') : t('send')}
               </button>
             </div>
           </form>
@@ -569,7 +554,7 @@ export default function Topbar() {
               onClick={() => setSelectedAnn(null)}
               className="px-4 py-1.5 border border-gray-300 text-sm font-medium rounded hover:bg-gray-50"
             >
-              Yopish
+              {t('close')}
             </button>
           </div>
         </DialogContent>
@@ -579,7 +564,7 @@ export default function Topbar() {
       <Dialog open={showProfile} onOpenChange={(open) => { if (!open) setShowProfile(false); }}>
         <DialogContent className="sm:max-w-md max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Profil sozlamalari</DialogTitle>
+            <DialogTitle>{t('profileSettings')}</DialogTitle>
           </DialogHeader>
 
           {/* Avatar */}
@@ -597,7 +582,7 @@ export default function Topbar() {
             <div className="flex items-center gap-2">
               <label className="cursor-pointer flex items-center gap-1.5 px-3 py-1.5 border border-gray-300 text-sm font-medium rounded hover:bg-gray-50 transition-colors">
                 <Paperclip className="w-3.5 h-3.5" />
-                Rasm yuklash
+                {t('uploadAvatar')}
                 <input
                   type="file"
                   accept="image/jpeg,image/jpg,image/png"
@@ -612,12 +597,12 @@ export default function Topbar() {
                   className="flex items-center gap-1.5 px-3 py-1.5 border border-red-300 text-red-600 text-sm font-medium rounded hover:bg-red-50 transition-colors"
                 >
                   <Trash2 className="w-3.5 h-3.5" />
-                  O&apos;chirish
+                  {t('deleteAvatar')}
                 </button>
               )}
             </div>
             {avatarPreview && !avatarToDelete && (
-              <p className="text-xs text-green-600">Yangi rasm tanlandi</p>
+              <p className="text-xs text-green-600">{t('newAvatarSelected')}</p>
             )}
           </div>
 
@@ -625,10 +610,10 @@ export default function Topbar() {
 
           {/* Personal info */}
           <div className="space-y-4 py-4">
-            <h3 className="text-sm font-semibold text-gray-900">Shaxsiy ma&apos;lumotlar</h3>
+            <h3 className="text-sm font-semibold text-gray-900">{t('personalInfo')}</h3>
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Ism</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">{t('firstName')}</label>
                 <input
                   value={firstName}
                   onChange={(e) => setFirstName(e.target.value)}
@@ -636,7 +621,7 @@ export default function Topbar() {
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Familiya</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">{t('lastName')}</label>
                 <input
                   value={lastName}
                   onChange={(e) => setLastName(e.target.value)}
@@ -645,7 +630,7 @@ export default function Topbar() {
               </div>
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Telefon</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">{t('phone')}</label>
               <div className="flex">
                 <span className="px-3 py-2 bg-gray-100 border border-r-0 border-gray-300 rounded-l text-sm text-gray-500 select-none">
                   +998
@@ -661,7 +646,7 @@ export default function Topbar() {
             </div>
             {user && (
               <div className="inline-block px-3 py-1.5 bg-gray-50 rounded text-xs text-gray-500">
-                Rol: <span className="font-medium">{ROLE_LABELS[user.role ?? ''] ?? user.role}</span>
+                {t('role')}: <span className="font-medium">{t(`roles.${user.role ?? 'admin'}` as Parameters<typeof t>[0])}</span>
               </div>
             )}
           </div>
@@ -675,13 +660,13 @@ export default function Topbar() {
               onClick={() => setShowPasswordSection((v) => !v)}
               className="flex items-center w-full text-left text-sm font-semibold text-gray-900 hover:text-blue-600 transition-colors"
             >
-              Parolni o&apos;zgartirish
+              {t('changePassword')}
               <ChevronDown className={cn('w-4 h-4 transition-transform ml-auto', showPasswordSection && 'rotate-180')} />
             </button>
             {showPasswordSection && (
               <div className="space-y-3">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Eski parol</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">{t('oldPassword')}</label>
                   <div className="relative">
                     <input
                       type={showOld ? 'text' : 'password'}
@@ -696,7 +681,7 @@ export default function Topbar() {
                   </div>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Yangi parol</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">{t('newPassword')}</label>
                   <div className="relative">
                     <input
                       type={showNew ? 'text' : 'password'}
@@ -711,7 +696,7 @@ export default function Topbar() {
                   </div>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Yangi parolni tasdiqlang</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">{t('confirmPassword')}</label>
                   <div className="relative">
                     <input
                       type={showConfirm ? 'text' : 'password'}
@@ -737,7 +722,7 @@ export default function Topbar() {
               className="flex items-center gap-2 px-4 py-2 border border-red-300 text-red-600 text-sm font-medium rounded hover:bg-red-50 transition-colors"
             >
               <LogOut className="w-4 h-4" />
-              Chiqish
+              {t('logout')}
             </button>
             <div className="flex-1" />
             <button
@@ -745,7 +730,7 @@ export default function Topbar() {
               onClick={() => setShowProfile(false)}
               className="px-4 py-2 border border-gray-300 text-sm font-medium rounded hover:bg-gray-50 transition-colors"
             >
-              Yopish
+              {t('close')}
             </button>
             <button
               type="button"
@@ -753,7 +738,7 @@ export default function Topbar() {
               disabled={saving}
               className="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded hover:bg-blue-700 disabled:opacity-60"
             >
-              {saving ? 'Saqlanmoqda...' : 'Saqlash'}
+              {saving ? t('saving') : t('save')}
             </button>
           </div>
         </DialogContent>

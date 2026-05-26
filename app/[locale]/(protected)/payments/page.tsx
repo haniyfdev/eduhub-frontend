@@ -24,8 +24,8 @@ interface Payment {
   paid_at: string;
 }
 
-const TYPE_LABELS: Record<string, string> = {
-  cash: 'Naqd', card: 'Karta', transfer: "O'tkazma",
+const TYPE_LABEL_KEYS: Record<string, string> = {
+  cash: 'cash', card: 'card', transfer: 'transfer',
 };
 const TYPE_STYLES: Record<string, string> = {
   cash:     'bg-green-50 text-green-700 border-green-200',
@@ -109,9 +109,9 @@ export default function PaymentsPage() {
           due_date: r.due_date || '',
         })),
       });
-      toast.success(`${recipients.length} ta SMS yuborildi`);
+      toast.success(common('success'));
     } catch {
-      toast.error('SMS yuborishda xatolik');
+      toast.error(common('error'));
     }
     setSmsSelected(new Set());
   }
@@ -151,7 +151,7 @@ export default function PaymentsPage() {
             className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded hover:bg-indigo-700 transition-colors"
           >
             <Send className="w-4 h-4" />
-            SMS yuborish ({smsSelected.size})
+            {common('send')} ({smsSelected.size})
           </button>
         )}
       </div>
@@ -168,10 +168,10 @@ export default function PaymentsPage() {
         </div>
         <select value={typeFilter} onChange={(e) => setTypeFilter(e.target.value)}
           className="px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-700">
-          <option value="">Barcha turlar</option>
-          <option value="cash">Naqd</option>
-          <option value="card">Karta</option>
-          <option value="transfer">O&apos;tkazma</option>
+          <option value="">{t('allTypes')}</option>
+          <option value="cash">{t('cash')}</option>
+          <option value="card">{t('card')}</option>
+          <option value="transfer">{t('transfer')}</option>
         </select>
       </div>
 
@@ -179,14 +179,14 @@ export default function PaymentsPage() {
       <div className="bg-white rounded border border-gray-200 shadow-sm overflow-hidden">
         {error ? (
           <div className="flex flex-col items-center justify-center py-16 text-gray-500">
-            <p className="mb-3 text-sm">Xatolik yuz berdi</p>
-            <button onClick={fetchPayments} className="text-sm text-blue-600 underline">Qayta urinish</button>
+            <p className="mb-3 text-sm">{common('error')}</p>
+            <button onClick={fetchPayments} className="text-sm text-blue-600 underline">{common('retry')}</button>
           </div>
         ) : (
           <table className="w-full text-sm">
             <thead>
               <tr className="bg-gray-50 border-b border-gray-200">
-                {['№', '', "O'quvchi", 'Telefon', 'Kurs', 'Guruh', 'Summa', 'Turi', 'Sana'].map((h, i) => (
+                {['№', '', common('student'), common('phone'), common('course'), common('group'), common('amount'), t('paymentType'), common('date')].map((h, i) => (
                   <th key={i} className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">{h}</th>
                 ))}
               </tr>
@@ -218,7 +218,7 @@ export default function PaymentsPage() {
                       <td className="px-4 py-3 font-semibold text-gray-900">{formatCurrency(p.amount)}</td>
                       <td className="px-4 py-3">
                         <span className={cn('inline-flex items-center px-2 py-0.5 text-xs font-medium border rounded', TYPE_STYLES[p.payment_type])}>
-                          {TYPE_LABELS[p.payment_type]}
+                          {t(TYPE_LABEL_KEYS[p.payment_type] as Parameters<typeof t>[0])}
                         </span>
                       </td>
                       <td className="px-4 py-3 text-gray-500">{formatDMY(p.paid_at)}</td>

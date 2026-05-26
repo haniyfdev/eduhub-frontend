@@ -77,14 +77,16 @@ const STATUS_COLOR: Record<string, string> = {
   absent:  'bg-red-500',
   late:    'bg-yellow-400',
 };
-const STATUS_LABEL: Record<string, string> = {
-  present: 'Keldi',
-  absent:  'Kelmadi',
-  late:    'Kechikdi',
+const STATUS_LABEL_KEYS: Record<string, string> = {
+  present: 'present',
+  absent:  'absent',
+  late:    'late',
 };
 
 export default function AttendancePage() {
   const t = useTranslations('attendance');
+  const tc = useTranslations('common');
+  const tl = useTranslations('lessons');
   const [rows, setRows]         = useState<AttendanceSummaryRow[]>([]);
   const [loading, setLoading]   = useState(true);
   const [search, setSearch]     = useState('');
@@ -104,15 +106,15 @@ export default function AttendancePage() {
       const list: AttendanceSummaryRow[] = Array.isArray(data) ? data : (data.results ?? []);
       setRows(list);
     } catch {
-      toast.error("Davomat ma'lumotlarini yuklashda xatolik");
+      toast.error(tc('error'));
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [tc]);
 
   useEffect(() => {
-    const t = setTimeout(() => fetchSummary(search), search ? 300 : 0);
-    return () => clearTimeout(t);
+    const timer = setTimeout(() => fetchSummary(search), search ? 300 : 0);
+    return () => clearTimeout(timer);
   }, [search, fetchSummary]);
 
   function getPhone(sid: string, which: 'phone1' | 'phone2'): boolean {
@@ -158,7 +160,7 @@ export default function AttendancePage() {
       days.sort((a, b) => a.date.localeCompare(b.date));
       setCalDays(days);
     } catch {
-      toast.error('Davomat tarixini yuklashda xatolik');
+      toast.error(tc('error'));
     } finally {
       setCalLoading(false);
     }
@@ -192,9 +194,9 @@ export default function AttendancePage() {
           due_date: r.due_date || '',
         })),
       });
-      toast.success(`${recipients.length} ta SMS yuborildi`);
+      toast.success(tc('success'));
     } catch {
-      toast.error('SMS yuborishda xatolik');
+      toast.error(tc('error'));
     }
     setPhoneTargets({});
   }
@@ -260,7 +262,7 @@ export default function AttendancePage() {
         <table className="w-full text-sm">
           <thead>
             <tr className="bg-gray-50 border-b border-gray-200">
-              {["№", "O'quvchi", 'Telefon', 'Ota-ona tel', 'Guruh', 'Darslar', 'Davomat %'].map((h, i) => (
+              {['№', tc('student'), tc('phone'), t('parentPhone'), tc('group'), t('lessons'), t('attendanceRate')].map((h, i) => (
                 <th key={i} className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap">{h}</th>
               ))}
             </tr>
@@ -347,16 +349,16 @@ export default function AttendancePage() {
               {/* Summary */}
               <div className="flex items-center gap-4 text-sm flex-wrap">
                 <PctBadge pct={calendar.attendance_pct} />
-                <span className="text-gray-500">{calendar.present}/{calendar.total} dars</span>
-                <span className="text-red-600 font-medium">{calendar.absent} dars qoldirildi</span>
+                <span className="text-gray-500">{t('lessonOf', { present: calendar.present, total: calendar.total })}</span>
+                <span className="text-red-600 font-medium">{t('lessonsSkipped', { skipped: calendar.absent })}</span>
               </div>
 
               {/* Legend */}
               <div className="flex items-center gap-4 text-xs text-gray-500">
-                {Object.entries(STATUS_LABEL).map(([s, l]) => (
+                {Object.entries(STATUS_LABEL_KEYS).map(([s, k]) => (
                   <div key={s} className="flex items-center gap-1.5">
                     <div className={cn('w-2.5 h-2.5 rounded-full', STATUS_COLOR[s])} />
-                    {l}
+                    {tl(k as Parameters<typeof tl>[0])}
                   </div>
                 ))}
               </div>
@@ -367,15 +369,15 @@ export default function AttendancePage() {
                   {Array(4).fill(0).map((_, i) => <Skeleton key={i} className="h-9 w-full" />)}
                 </div>
               ) : calDays.length === 0 ? (
-                <p className="text-sm text-gray-400 text-center py-6">Davomat ma&apos;lumoti topilmadi</p>
+                <p className="text-sm text-gray-400 text-center py-6">{t('noData')}</p>
               ) : (
                 <table className="w-full text-sm border border-gray-100 rounded overflow-hidden">
                   <thead>
                     <tr className="bg-gray-50 text-xs text-gray-500 uppercase">
                       <th className="text-left px-3 py-2 font-semibold">№</th>
-                      <th className="text-left px-3 py-2 font-semibold">Sana</th>
-                      <th className="text-left px-3 py-2 font-semibold">Holat</th>
-                      <th className="text-left px-3 py-2 font-semibold">Izoh</th>
+                      <th className="text-left px-3 py-2 font-semibold">{tc('date')}</th>
+                      <th className="text-left px-3 py-2 font-semibold">{tc('status')}</th>
+                      <th className="text-left px-3 py-2 font-semibold">{tc('note')}</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-100">
@@ -399,7 +401,7 @@ export default function AttendancePage() {
                               isAbsent ? 'text-red-600' : isLate ? 'text-yellow-600' : 'text-green-600'
                             )}>
                               <div className={cn('w-2 h-2 rounded-full', STATUS_COLOR[day.status])} />
-                              {STATUS_LABEL[day.status]}
+                              {tl(STATUS_LABEL_KEYS[day.status] as Parameters<typeof tl>[0])}
                             </span>
                           </td>
                           <td className="px-3 py-2 text-gray-500 text-xs">{day.note || '—'}</td>

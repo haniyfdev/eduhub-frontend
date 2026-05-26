@@ -143,15 +143,15 @@ export default function GroupsPage() {
   async function handleAdd(e: React.FormEvent) {
     e.preventDefault();
 
-    if (!form.room_id) { toast.error('Xona tanlash majburiy'); return; }
+    if (!form.room_id) { toast.error(t('roomRequired')); return; }
 
-    const startErr = validateTime(form.start_time, 'Boshlanish vaqti');
+    const startErr = validateTime(form.start_time, t('startTime'));
     if (startErr) { toast.error(startErr); return; }
-    const endErr = validateTime(form.end_time, 'Tugash vaqti');
+    const endErr = validateTime(form.end_time, t('endTime'));
     if (endErr) { toast.error(endErr); return; }
 
     if (form.start_time && form.end_time && form.end_time <= form.start_time) {
-      toast.error("Tugash vaqti boshlanish vaqtidan keyin bo'lishi kerak"); return;
+      toast.error(t('endTimeAfterStart')); return;
     }
 
     setSaving(true);
@@ -166,13 +166,13 @@ export default function GroupsPage() {
         ...(form.end_time ? { end_time: form.end_time } : {}),
         ...(form.room_id ? { room_id: form.room_id } : {}),
       });
-      toast.success("Guruh muvaffaqiyatli qo'shildi");
+      toast.success(t('addedSuccess'));
       setShowAdd(false);
       setForm(EMPTY_FORM);
       fetchGroups();
     } catch (err: any) {
       const d = err?.response?.data;
-      const msg = typeof d === 'string' ? d : d?.detail || Object.values(d ?? {})[0] || 'Xatolik yuz berdi';
+      const msg = typeof d === 'string' ? d : d?.detail || Object.values(d ?? {})[0] || common('error');
       toast.error(String(msg));
     } finally {
       setSaving(false);
@@ -183,11 +183,11 @@ export default function GroupsPage() {
     if (!archiveTarget) return;
     try {
       await api.post(`/api/v1/groups/${archiveTarget.id}/archive/`);
-      toast.success('Guruh arxivlandi');
+      toast.success(t('archivedSuccess'));
       setArchiveTarget(null);
       fetchGroups();
     } catch {
-      toast.error('Xatolik yuz berdi');
+      toast.error(common('error'));
     }
   }
 
@@ -195,11 +195,11 @@ export default function GroupsPage() {
     if (!freezeTarget) return;
     try {
       await api.post(`/api/v1/groups/${freezeTarget.id}/freeze/`);
-      toast.success('Guruh muzlatildi');
+      toast.success(t('frozenSuccess'));
       setFreezeTarget(null);
       fetchGroups();
     } catch {
-      toast.error('Xatolik yuz berdi');
+      toast.error(common('error'));
     }
   }
 
@@ -207,11 +207,11 @@ export default function GroupsPage() {
     if (!unfreezeTarget) return;
     try {
       await api.post(`/api/v1/groups/${unfreezeTarget.id}/unfreeze/`);
-      toast.success('Guruh faollashtirildi');
+      toast.success(t('unfrozenSuccess'));
       setUnfreezeTarget(null);
       fetchGroups();
     } catch {
-      toast.error('Xatolik yuz berdi');
+      toast.error(common('error'));
     }
   }
 
@@ -242,13 +242,13 @@ export default function GroupsPage() {
         <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}
           className="px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-700">
           <option value="">{common('all')}</option>
-          <option value="active">Faol</option>
-          <option value="frozen">Muzlatilgan</option>
-          <option value="archived">Arxivlangan</option>
+          <option value="active">{common('active')}</option>
+          <option value="frozen">{common('frozen')}</option>
+          <option value="archived">{common('archived')}</option>
         </select>
         <select value={courseFilter} onChange={(e) => setCourseFilter(e.target.value)}
           className="px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-700">
-          <option value="">Barcha kurslar</option>
+          <option value="">{t('allCourses')}</option>
           {courses.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
         </select>
       </div>
@@ -256,14 +256,14 @@ export default function GroupsPage() {
       <div className="bg-white rounded border border-gray-200 shadow-sm overflow-hidden">
         {error ? (
           <div className="flex flex-col items-center justify-center py-16 text-gray-500">
-            <p className="mb-3 text-sm">Xatolik yuz berdi</p>
-            <button onClick={fetchGroups} className="text-sm text-blue-600 underline">Qayta urinish</button>
+            <p className="mb-3 text-sm">{common('error')}</p>
+            <button onClick={fetchGroups} className="text-sm text-blue-600 underline">{common('retry')}</button>
           </div>
         ) : (
           <table className="w-full text-sm">
             <thead>
               <tr className="bg-gray-50 border-b border-gray-200">
-                {['№', 'Guruh', 'Kurs', "O'qituvchi", "O'quvchilar", 'Kunlar', 'Soatlar', 'Xona', 'Holat', 'Amallar'].map((h) => (
+                {['№', t('groupName'), common('course'), common('teacher'), t('studentsCount'), t('days'), t('hours'), common('room'), common('status'), common('actions')].map((h) => (
                   <th key={h} className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">{h}</th>
                 ))}
               </tr>
@@ -314,7 +314,7 @@ export default function GroupsPage() {
                           : g.status === 'frozen' ? 'bg-sky-100 text-sky-700 border-sky-300'
                           : 'bg-gray-100 text-gray-600 border-gray-200'
                         )}>
-                          {g.status === 'active' ? 'Faol' : g.status === 'frozen' ? 'Muzlatilgan' : 'Arxivlangan'}
+                          {g.status === 'active' ? common('active') : g.status === 'frozen' ? common('frozen') : common('archived')}
                         </span>
                       </td>
                       <td className="px-4 py-3">
@@ -324,14 +324,14 @@ export default function GroupsPage() {
                               <button
                                 onClick={(e) => { e.stopPropagation(); setFreezeTarget({ id: g.id, name: g.name }); }}
                                 className="p-1 rounded text-sky-400 hover:bg-sky-50 hover:text-sky-600 transition-colors"
-                                title="Muzlatish"
+                                title={t('freeze')}
                               >
                                 <Snowflake className="w-4 h-4" />
                               </button>
                               <button
                                 onClick={(e) => { e.stopPropagation(); setArchiveTarget({ id: g.id, name: g.name }); }}
                                 className="p-1 rounded text-red-400 hover:bg-red-50 hover:text-red-600 transition-colors"
-                                title="Arxivlash"
+                                title={common('archive')}
                               >
                                 <Minus className="w-4 h-4" />
                               </button>
@@ -341,7 +341,7 @@ export default function GroupsPage() {
                             <button
                               onClick={(e) => { e.stopPropagation(); setUnfreezeTarget({ id: g.id, name: g.name }); }}
                               className="p-1 rounded text-green-500 hover:bg-green-50 hover:text-green-700 transition-colors"
-                              title="Faollashtirish"
+                              title={t('unfreeze')}
                             >
                               <Play className="w-4 h-4" />
                             </button>
@@ -374,9 +374,9 @@ export default function GroupsPage() {
       {/* Archive confirmation dialog */}
       <Dialog open={!!archiveTarget} onOpenChange={(open) => { if (!open) setArchiveTarget(null); }}>
         <DialogContent className="sm:max-w-sm">
-          <DialogHeader><DialogTitle>Arxivlash</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle>{common('archive')}</DialogTitle></DialogHeader>
           <p className="text-sm text-gray-600 mt-1">
-            <span className="font-medium">{archiveTarget?.name}</span>ni arxivlashni istaysizmi?
+            <span className="font-medium">{archiveTarget?.name}</span> {t('archiveConfirm')}
           </p>
           <div className="flex gap-3 mt-4">
             <button onClick={() => setArchiveTarget(null)}
@@ -385,7 +385,7 @@ export default function GroupsPage() {
             </button>
             <button onClick={confirmArchive}
               className="flex-1 px-4 py-2 bg-red-600 text-white text-sm font-medium rounded hover:bg-red-700">
-              Ha, arxivlash
+              {t('confirmArchive')}
             </button>
           </div>
         </DialogContent>
@@ -394,9 +394,9 @@ export default function GroupsPage() {
       {/* Freeze confirmation dialog */}
       <Dialog open={!!freezeTarget} onOpenChange={(open) => { if (!open) setFreezeTarget(null); }}>
         <DialogContent className="sm:max-w-sm">
-          <DialogHeader><DialogTitle>Guruhni muzlatish</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle>{t('freezeTitle')}</DialogTitle></DialogHeader>
           <p className="text-sm text-gray-600 mt-1">
-            <span className="font-medium">{freezeTarget?.name}</span> guruhini muzlatmoqchimisiz? Muzlatilgan guruh uchun oylik qarz hisoblanmaydi.
+            <span className="font-medium">{freezeTarget?.name}</span> {t('freezeConfirm')}
           </p>
           <div className="flex gap-3 mt-4">
             <button onClick={() => setFreezeTarget(null)}
@@ -405,7 +405,7 @@ export default function GroupsPage() {
             </button>
             <button onClick={confirmFreeze}
               className="flex-1 px-4 py-2 bg-sky-600 text-white text-sm font-medium rounded hover:bg-sky-700">
-              Ha, muzlatish
+              {t('confirmFreeze')}
             </button>
           </div>
         </DialogContent>
@@ -414,9 +414,9 @@ export default function GroupsPage() {
       {/* Unfreeze confirmation dialog */}
       <Dialog open={!!unfreezeTarget} onOpenChange={(open) => { if (!open) setUnfreezeTarget(null); }}>
         <DialogContent className="sm:max-w-sm">
-          <DialogHeader><DialogTitle>Guruhni faollashtirish</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle>{t('unfreezeTitle')}</DialogTitle></DialogHeader>
           <p className="text-sm text-gray-600 mt-1">
-            <span className="font-medium">{unfreezeTarget?.name}</span> guruhini faollashtirishni istaysizmi?
+            <span className="font-medium">{unfreezeTarget?.name}</span> {t('unfreezeConfirm')}
           </p>
           <div className="flex gap-3 mt-4">
             <button onClick={() => setUnfreezeTarget(null)}
@@ -425,7 +425,7 @@ export default function GroupsPage() {
             </button>
             <button onClick={confirmUnfreeze}
               className="flex-1 px-4 py-2 bg-green-600 text-white text-sm font-medium rounded hover:bg-green-700">
-              Ha, faollashtirish
+              {t('confirmUnfreeze')}
             </button>
           </div>
         </DialogContent>
@@ -434,10 +434,10 @@ export default function GroupsPage() {
       {/* Add group dialog */}
       <Dialog open={showAdd} onOpenChange={(open) => { if (!open) setForm(EMPTY_FORM); setShowAdd(open); }}>
         <DialogContent className="sm:max-w-md max-h-[90vh] overflow-y-auto">
-          <DialogHeader><DialogTitle>Yangi guruh</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle>{t('addGroup')}</DialogTitle></DialogHeader>
           <form onSubmit={handleAdd} className="space-y-4 mt-2">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Kurs <span className="text-red-500">*</span></label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">{common('course')} <span className="text-red-500">*</span></label>
               <select
                 ref={courseRef}
                 value={form.course_id}
@@ -446,13 +446,13 @@ export default function GroupsPage() {
                 className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                 required
               >
-                <option value="">Tanlang</option>
+                <option value="">{t('selectPlaceholder')}</option>
                 {courses.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
               </select>
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">O&apos;qituvchi <span className="text-red-500">*</span></label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">{common('teacher')} <span className="text-red-500">*</span></label>
               <select
                 ref={teacherRef}
                 value={form.teacher_id}
@@ -461,13 +461,13 @@ export default function GroupsPage() {
                 className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                 required
               >
-                <option value="">Tanlang</option>
-                {teachers.map((t) => <option key={t.id} value={t.id}>{t.first_name} {t.last_name}</option>)}
+                <option value="">{t('selectPlaceholder')}</option>
+                {teachers.map((tc) => <option key={tc.id} value={tc.id}>{tc.first_name} {tc.last_name}</option>)}
               </select>
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Guruh turi</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">{t('groupType')}</label>
               <select
                 ref={genderRef}
                 value={form.gender_type}
@@ -475,15 +475,15 @@ export default function GroupsPage() {
                 onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); roomRef.current?.focus(); } }}
                 className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
-                <option value="">Tanlang (ixtiyoriy)</option>
-                <option value="a">Bolalar</option>
-                <option value="b">Qizlar</option>
-                <option value="c">Aralash</option>
+                <option value="">{t('selectOptional')}</option>
+                <option value="a">{t('genderA')}</option>
+                <option value="b">{t('genderB')}</option>
+                <option value="c">{t('genderC')}</option>
               </select>
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Xona <span className="text-red-500">*</span></label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">{common('room')} <span className="text-red-500">*</span></label>
               <select
                 ref={roomRef}
                 value={form.room_id}
@@ -491,7 +491,7 @@ export default function GroupsPage() {
                 onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); startTimeRef.current?.focus(); } }}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
-                <option value="">Tanlang</option>
+                <option value="">{t('selectPlaceholder')}</option>
                 {rooms.map((r) => (
                   <option key={r.id} value={r.id}>
                     {r.name}-xona
@@ -504,7 +504,7 @@ export default function GroupsPage() {
 
             {/* Weekday picker */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Dars kunlari</label>
+              <label className="block text-sm font-medium text-gray-700 mb-2">{t('lessonDays')}</label>
               <div className="flex gap-1.5 flex-wrap">
                 {DAYS.map(({ key, label }) => (
                   <button
@@ -527,7 +527,7 @@ export default function GroupsPage() {
             {/* Start / End time */}
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Boshlanish vaqti <span className="text-red-500">*</span></label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">{t('startTime')} <span className="text-red-500">*</span></label>
                 <input
                   ref={startTimeRef}
                   type="text"
@@ -540,7 +540,7 @@ export default function GroupsPage() {
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Tugash vaqti <span className="text-red-500">*</span></label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">{t('endTime')} <span className="text-red-500">*</span></label>
                 <input
                   ref={endTimeRef}
                   type="text"
@@ -557,7 +557,7 @@ export default function GroupsPage() {
             {/* Schedule preview */}
             {(form.days.length > 0 || form.start_time || form.end_time) && (
               <div className="px-3 py-2 bg-gray-50 rounded text-xs text-gray-600">
-                Jadval: <span className="font-medium">
+                {t('schedule')}: <span className="font-medium">
                   {[buildSchedule(form.days), [form.start_time, form.end_time].filter(Boolean).join(' – ')].filter(Boolean).join(' ') || '—'}
                 </span>
               </div>
@@ -577,7 +577,7 @@ export default function GroupsPage() {
                 disabled={saving}
                 className="flex-1 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded hover:bg-blue-700 disabled:opacity-60"
               >
-                {saving ? 'Saqlanmoqda...' : common('save')}
+                {saving ? common('loading') : common('save')}
               </button>
             </div>
           </form>

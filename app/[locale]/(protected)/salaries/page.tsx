@@ -184,7 +184,7 @@ export default function SalariesPage() {
       const all: ExpenseItem[] = data.results ?? data;
       setExpenses(all.filter(e => e.category === 'teacher_salary' || e.category === 'staff_salary'));
     } catch {
-      toast.error('Tarix yuklanmadi');
+      toast.error(common('error'));
     } finally {
       setLoadingHist(false);
     }
@@ -214,10 +214,10 @@ export default function SalariesPage() {
       ]);
       const tCount = tRes.status === 'fulfilled' ? (tRes.value.data.created ?? 0) : 0;
       const sCount = sRes.status === 'fulfilled' ? (sRes.value.data.created?.length ?? 0) : 0;
-      toast.success(`${tCount + sCount} ta maosh hisoblandi`);
+      toast.success(common('success'));
       loadSalaries();
     } catch {
-      toast.error('Xatolik');
+      toast.error(common('error'));
     } finally {
       setGenerating(false);
     }
@@ -289,21 +289,21 @@ export default function SalariesPage() {
           .filter(g => g.status !== 'paid')
           .map(g => ({ salary_id: g.salary_id, amount: parseAmount(bulkAmounts[g.salary_id] || '0') }))
           .filter(p => p.amount >= 10000);
-        if (payments.length === 0) { toast.error("To'lanadigan summa yo'q"); setBulkPaying(false); return; }
+        if (payments.length === 0) { toast.error(common('error')); setBulkPaying(false); return; }
         await api.post('/api/v1/teacher-salaries/bulk-pay/', { payments });
       } else {
         const amount = parseAmount(bulkAmounts[selectionId] || '0');
-        if (amount < 10000) { toast.error("Minimal to'lov 10,000 so'm"); setBulkPaying(false); return; }
+        if (amount < 10000) { toast.error(t('minPayment')); setBulkPaying(false); return; }
         await api.post(`/api/v1/teacher-salaries/${selectionId}/pay/`, { amount });
       }
-      toast.success("Maosh to'landi");
+      toast.success(common('success'));
       setTeacherPay(null);
       setBulkAmounts({});
       loadSalaries();
       loadSummary();
     } catch (err: unknown) {
       const e = err as { response?: { data?: { error?: string } } };
-      toast.error(e?.response?.data?.error || 'Xatolik');
+      toast.error(e?.response?.data?.error || common('error'));
     } finally {
       setBulkPaying(false);
     }
@@ -319,18 +319,18 @@ export default function SalariesPage() {
   async function handlePay() {
     if (!payTarget) return;
     const amount = parseAmount(payAmount);
-    if (!amount || amount <= 0) { toast.error('Summani kiriting'); return; }
-    if (amount < 10000) { toast.error("Minimal to'lov 10,000 so'm"); return; }
+    if (!amount || amount <= 0) { toast.error(t('minPayment')); return; }
+    if (amount < 10000) { toast.error(t('minPayment')); return; }
     setPaying(true);
     try {
       await api.post(`/api/v1/staff-salaries/${payTarget.id}/pay/`, { amount });
-      toast.success("Maosh muvaffaqiyatli to'landi");
+      toast.success(common('success'));
       setPayTarget(null);
       loadSalaries();
       loadSummary();
     } catch (err: unknown) {
       const e = err as { response?: { data?: { error?: string } } };
-      toast.error(e?.response?.data?.error || 'Xatolik');
+      toast.error(e?.response?.data?.error || common('error'));
     } finally {
       setPaying(false);
     }
@@ -343,7 +343,7 @@ export default function SalariesPage() {
     entityType:       'staff',
     name:             s.staff_name,
     roleDisplay:      s.staff_role || '—',
-    badgeText:        s.staff_role || 'Xodim',
+    badgeText:        s.staff_role || t('categoryStaff'),
     badgeStyle:       ROLE_BADGE.other,
     salaryTypeText:   '',
     salaryTypeStyle:  '',
@@ -356,10 +356,10 @@ export default function SalariesPage() {
     month:            s.month ?? null,
     dueDate:          s.due_date ?? null,
     hiredAt:          s.hired_at ?? null,
-  })), [staffSals]);
+  })), [staffSals, t]);
 
   const filteredTeachers = useMemo(() => (
-    statusFilter === 'all' ? teacherGrouped : teacherGrouped.filter(t => t.overall_status === statusFilter)
+    statusFilter === 'all' ? teacherGrouped : teacherGrouped.filter(tg => tg.overall_status === statusFilter)
   ), [teacherGrouped, statusFilter]);
 
   const filteredStaffRows = useMemo(() => (
@@ -414,18 +414,18 @@ export default function SalariesPage() {
             <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)}
               className="px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white focus:ring-2 focus:ring-blue-500 outline-none text-gray-700">
               <option value="all">{common('all')}</option>
-              <option value="unpaid">To&apos;lanmagan</option>
-              <option value="partial">Qisman</option>
-              <option value="paid">To&apos;langan</option>
+              <option value="unpaid">{t('unpaid')}</option>
+              <option value="partial">{t('partial')}</option>
+              <option value="paid">{common('paid')}</option>
             </select>
           </div>
 
           {/* Summary cards */}
           <div className="grid grid-cols-3 gap-4">
             {[
-              { label: 'Jami hisoblangan', value: summary.total_calculated, color: 'text-gray-900',    bg: 'bg-gray-50 border-gray-200' },
-              { label: "To'langan",        value: summary.total_paid,       color: 'text-emerald-600', bg: 'bg-emerald-50 border-emerald-200' },
-              { label: 'Qolgan',           value: summary.total_remaining,  color: 'text-red-600',     bg: 'bg-red-50 border-red-200' },
+              { label: t('totalCalculated'), value: summary.total_calculated, color: 'text-gray-900',    bg: 'bg-gray-50 border-gray-200' },
+              { label: t('totalPaid'),        value: summary.total_paid,       color: 'text-emerald-600', bg: 'bg-emerald-50 border-emerald-200' },
+              { label: t('remaining'),        value: summary.total_remaining,  color: 'text-red-600',     bg: 'bg-red-50 border-red-200' },
             ].map(({ label, value, color, bg }) => (
               <div key={label} className={cn('rounded-xl border p-4', bg)}>
                 <p className="text-xs text-gray-500 font-medium uppercase tracking-wide">{label}</p>
@@ -437,18 +437,18 @@ export default function SalariesPage() {
           {/* ── Teacher salary table ── */}
           <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
             <div className="px-5 py-4 border-b border-gray-100">
-              <h2 className="text-sm font-semibold text-gray-900">O&apos;qituvchilar maoshi</h2>
+              <h2 className="text-sm font-semibold text-gray-900">{t('teachersSection')}</h2>
             </div>
             {loadingSals ? (
               <div className="p-4 space-y-2">{Array(4).fill(0).map((_, i) => <Skel key={i} />)}</div>
             ) : filteredTeachers.length === 0 ? (
-              <p className="px-5 py-10 text-sm text-gray-400 text-center">Bu davr uchun maosh mavjud emas</p>
+              <p className="px-5 py-10 text-sm text-gray-400 text-center">{t('noSalaries')}</p>
             ) : (
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="bg-gray-50 border-b border-gray-200">
-                      {["№", "O'qituvchi", 'Maosh qayd kuni', 'Jami', "To'langan", 'Qoldiq', 'Holat', 'Oxirgi muddat'].map((h, i) => (
+                      {[t('tableHeaders.num'), t('tableHeaders.teacher'), t('paymentDate'), t('tableHeaders.total'), t('tableHeaders.paid'), t('tableHeaders.remaining'), t('tableHeaders.status'), t('lastDate')].map((h, i) => (
                         <th key={i} className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap">{h}</th>
                       ))}
                     </tr>
@@ -478,12 +478,12 @@ export default function SalariesPage() {
                                 onChange={e => setGroupSelections(prev => ({ ...prev, [teacher.teacher_id]: e.target.value }))}
                                 className="text-xs border border-gray-300 rounded px-2 py-1 bg-white focus:outline-none focus:ring-1 focus:ring-blue-500 max-w-[170px]"
                               >
-                                <option value="all">Barcha guruhlar</option>
+                                <option value="all">{t('allGroups')}</option>
                                 {teacher.groups.map(g => (
                                   <option key={g.salary_id} value={g.salary_id}>
                                     {g.first_active_date
                                       ? `${fmtDate(g.first_active_date)} (${g.group_name ?? '?'})`
-                                      : `Hali hisob yo'q (${g.group_name ?? '?'})`}
+                                      : `${t('noAccount')} (${g.group_name ?? '?'})`}
                                   </option>
                                 ))}
                               </select>
@@ -504,22 +504,22 @@ export default function SalariesPage() {
                               ? <span className="text-red-600">{formatCurrency(vals.qoldiq)}</span>
                               : <span className="text-gray-400">—</span>}
                           </td>
-                          {/* Holat */}
+                          {/* Status */}
                           <td className="px-4 py-3 min-w-[130px]">
                             {vals.status === 'paid' ? (
-                              <span className="text-emerald-600 font-medium text-xs">To&apos;langan ✓</span>
+                              <span className="text-emerald-600 font-medium text-xs">{t('paidStatus')}</span>
                             ) : (
                               <span className="relative inline-block">
                                 <span className={cn(
                                   'group-hover:hidden text-xs font-medium',
                                   vals.status === 'partial' ? 'text-orange-500' : 'text-amber-500',
                                 )}>
-                                  {vals.status === 'partial' ? 'Qisman' : "To'lanmagan"}
+                                  {vals.status === 'partial' ? t('partial') : t('unpaid')}
                                 </span>
                                 <button
                                   className="hidden group-hover:inline-flex items-center gap-1 px-2.5 py-1 bg-emerald-500 text-white text-xs font-semibold rounded-lg hover:bg-emerald-600 transition-colors"
                                   onClick={() => openTeacherPayModal(teacher, selId)}>
-                                  <Banknote className="w-3 h-3" /> To&apos;lash
+                                  <Banknote className="w-3 h-3" /> {t('pay')}
                                 </button>
                               </span>
                             )}
@@ -541,13 +541,13 @@ export default function SalariesPage() {
           {filteredStaffRows.length > 0 && (
             <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
               <div className="px-5 py-4 border-b border-gray-100">
-                <h2 className="text-sm font-semibold text-gray-900">Xodimlar maoshi</h2>
+                <h2 className="text-sm font-semibold text-gray-900">{t('staffSection')}</h2>
               </div>
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="bg-gray-50 border-b border-gray-200">
-                      {["№", "Xodim", "Maosh qayd kuni", "Jami", "To'langan", 'Qoldiq', 'Holat', 'Oxirgi muddat'].map((h, i) => (
+                      {[t('tableHeaders.num'), t('tableHeaders.staff'), t('paymentDate'), t('tableHeaders.total'), t('tableHeaders.paid'), t('tableHeaders.remaining'), t('tableHeaders.status'), t('lastDate')].map((h, i) => (
                         <th key={i} className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap">{h}</th>
                       ))}
                     </tr>
@@ -577,16 +577,16 @@ export default function SalariesPage() {
                           </td>
                           <td className="px-4 py-3 min-w-[130px]">
                             {row.status === 'paid' ? (
-                              <span className="text-emerald-600 font-medium text-xs">To&apos;langan ✓</span>
+                              <span className="text-emerald-600 font-medium text-xs">{t('paidStatus')}</span>
                             ) : (
                               <span className="relative inline-block">
                                 <span className={cn('group-hover:hidden text-xs font-medium', row.status === 'partial' ? 'text-orange-500' : 'text-amber-500')}>
-                                  {row.status === 'partial' ? 'Qisman' : "To'lanmagan"}
+                                  {row.status === 'partial' ? t('partial') : t('unpaid')}
                                 </span>
                                 <button
                                   className="hidden group-hover:inline-flex items-center gap-1 px-2.5 py-1 bg-emerald-500 text-white text-xs font-semibold rounded-lg hover:bg-emerald-600 transition-colors"
                                   onClick={() => openPayModal(row)}>
-                                  <Banknote className="w-3 h-3" /> To&apos;lash
+                                  <Banknote className="w-3 h-3" /> {t('pay')}
                                 </button>
                               </span>
                             )}
@@ -632,21 +632,21 @@ export default function SalariesPage() {
                   <select value={histCategory} onChange={e => setHistCategory(e.target.value)}
                     className="px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white focus:ring-2 focus:ring-blue-500 outline-none text-gray-700">
                     <option value="all">{common('all')}</option>
-                    <option value="teacher_salary">O&apos;qituvchi</option>
-                    <option value="staff_salary">Xodim</option>
+                    <option value="teacher_salary">{t('categoryTeacher')}</option>
+                    <option value="staff_salary">{t('categoryStaff')}</option>
                   </select>
                 </div>
                 <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
                   {loadingHist ? (
                     <div className="p-4 space-y-2">{Array(5).fill(0).map((_, i) => <Skel key={i} />)}</div>
                   ) : filteredExp.length === 0 ? (
-                    <p className="px-5 py-10 text-sm text-gray-400 text-center">Bu oy uchun to&apos;lov tarixi yo&apos;q</p>
+                    <p className="px-5 py-10 text-sm text-gray-400 text-center">{t('noHistory')}</p>
                   ) : (
                     <div className="overflow-x-auto">
                       <table className="w-full text-sm">
                         <thead>
                           <tr className="bg-gray-50 border-b border-gray-200">
-                            {['№', 'Ism', 'Guruh', 'Kategoriya', 'Miqdor', 'Sana'].map((h, i) => (
+                            {[t('tableHeaders.num'), t('tableHeaders.name'), t('tableHeaders.group'), t('tableHeaders.category'), t('tableHeaders.amount'), t('tableHeaders.date')].map((h, i) => (
                               <th key={i} className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap">{h}</th>
                             ))}
                           </tr>
@@ -662,7 +662,7 @@ export default function SalariesPage() {
                                 <td className="px-4 py-3">
                                   <span className={cn('inline-flex items-center px-2 py-0.5 text-xs font-medium rounded-full',
                                     exp.category === 'teacher_salary' ? 'bg-blue-50 text-blue-700' : 'bg-gray-100 text-gray-700')}>
-                                    {exp.category === 'teacher_salary' ? "O'qituvchi" : 'Xodim'}
+                                    {exp.category === 'teacher_salary' ? t('categoryTeacher') : t('categoryStaff')}
                                   </span>
                                 </td>
                                 <td className="px-4 py-3 font-semibold text-emerald-600 whitespace-nowrap">{formatCurrency(exp.amount)}</td>
@@ -685,11 +685,11 @@ export default function SalariesPage() {
       <Dialog open={!!teacherDetail} onOpenChange={open => { if (!open) setTeacherDetail(null); }}>
         <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>{teacherDetail?.teacher_name} — Maosh tafsiloti</DialogTitle>
+            <DialogTitle>{teacherDetail?.teacher_name} — {t('detail')}</DialogTitle>
           </DialogHeader>
           {teacherDetail && (() => {
-            const t = teacherDetail;
-            const remaining = Math.max(t.total_owed - t.total_paid, 0);
+            const td = teacherDetail;
+            const remaining = Math.max(td.total_owed - td.total_paid, 0);
             const Row = ({ label, value, valueClass }: { label: string; value: string; valueClass?: string }) => (
               <div className="flex justify-between items-center py-1.5">
                 <span className="text-sm text-gray-500">{label}</span>
@@ -699,46 +699,46 @@ export default function SalariesPage() {
             return (
               <div className="mt-1 space-y-3">
                 <div className="space-y-0.5">
-                  <Row label="Muallim" value={t.teacher_subject || '—'} />
-                  <Row label="Maosh turi" value={
-                    t.salary_type === 'fixed' ? 'Belgilangan' :
-                    t.salary_type === 'percent' ? `Foizli (${t.salary_percent ?? 0}%)` :
-                    "O'quvchi boshiga"
+                  <Row label={t('salarySubject')} value={td.teacher_subject || '—'} />
+                  <Row label={t('salaryTypeLabel')} value={
+                    td.salary_type === 'fixed' ? t('salaryFixed') :
+                    td.salary_type === 'percent' ? t('salaryPercent', { pct: td.salary_percent ?? 0 }) :
+                    t('salaryPerStudent')
                   } />
-                  <Row label="Guruhlar" value={`${t.groups.length}ta (${t.groups.map(g => g.group_name).filter(Boolean).join(', ')})`} />
+                  <Row label={t('groups')} value={`${td.groups.length}ta (${td.groups.map(g => g.group_name).filter(Boolean).join(', ')})`} />
                 </div>
 
-                {t.groups.filter(g => g.student_count > 0 || g.course_price > 0).length === 0 ? (
-                  <div className="py-3 text-sm text-gray-400 text-center">Hisob ma&apos;lumotlari yo&apos;q</div>
-                ) : t.groups.filter(g => g.student_count > 0 || g.course_price > 0).map((g, i) => (
+                {td.groups.filter(g => g.student_count > 0 || g.course_price > 0).length === 0 ? (
+                  <div className="py-3 text-sm text-gray-400 text-center">{t('noCalcData')}</div>
+                ) : td.groups.filter(g => g.student_count > 0 || g.course_price > 0).map((g, i) => (
                   <div key={g.salary_id}>
                     <hr className="border-gray-100" />
                     <div className="space-y-1 mt-2">
                       <p className="text-xs font-semibold text-gray-700 mb-1">
                         ({g.group_name ?? '?'}) — {g.course_name ?? '—'}
                       </p>
-                      {t.salary_type === 'fixed' && (
-                        <Row label="Belgilangan oylik" value={formatCurrency(g.calculated_amount - g.kpi_amount)} />
+                      {td.salary_type === 'fixed' && (
+                        <Row label={t('fixedMonthly')} value={formatCurrency(g.calculated_amount - g.kpi_amount)} />
                       )}
-                      {t.salary_type === 'percent' && (() => {
-                        const perStudent = g.course_price * (t.salary_percent ?? 0) / 100;
+                      {td.salary_type === 'percent' && (() => {
+                        const perStudent = g.course_price * (td.salary_percent ?? 0) / 100;
                         return (<>
-                          <Row label="O'qitilgan talabalar" value={`${g.student_count} ta`} />
-                          <Row label="Kurs narxi" value={formatCurrency(g.course_price)} />
-                          <Row label="Har talaba uchun" value={formatCurrency(perStudent)} />
+                          <Row label={t('studentsCount')} value={`${g.student_count} ta`} />
+                          <Row label={t('coursePrice')} value={formatCurrency(g.course_price)} />
+                          <Row label={t('perStudentAmount')} value={formatCurrency(perStudent)} />
                           <Row
-                            label="Hisoblangan"
+                            label={t('calculated2')}
                             value={`${g.student_count} × ${formatCurrency(perStudent)} = ${formatCurrency(g.student_count * perStudent)}`}
                           />
                         </>);
                       })()}
-                      {t.salary_type === 'per_student' && (() => {
-                        const perAmt = t.per_student_amt ?? 0;
+                      {td.salary_type === 'per_student' && (() => {
+                        const perAmt = td.per_student_amt ?? 0;
                         return (<>
-                          <Row label="O'qitilgan talabalar" value={`${g.student_count} ta`} />
-                          <Row label="Har talaba uchun" value={formatCurrency(perAmt)} />
+                          <Row label={t('studentsCount')} value={`${g.student_count} ta`} />
+                          <Row label={t('perStudentAmount')} value={formatCurrency(perAmt)} />
                           <Row
-                            label="Hisoblangan"
+                            label={t('calculated2')}
                             value={`${g.student_count} × ${formatCurrency(perAmt)} = ${formatCurrency(g.student_count * perAmt)}`}
                           />
                         </>);
@@ -752,21 +752,21 @@ export default function SalariesPage() {
 
                 <hr className="border-gray-100" />
 
-                {t.kpi_amount > 0 ? (
-                  <Row label="KPI" value={`+${formatCurrency(t.kpi_amount)}`} valueClass="text-blue-600" />
+                {td.kpi_amount > 0 ? (
+                  <Row label="KPI" value={`+${formatCurrency(td.kpi_amount)}`} valueClass="text-blue-600" />
                 ) : (
-                  <Row label="KPI" value="0 so'm" valueClass="text-gray-400" />
+                  <Row label="KPI" value="0" valueClass="text-gray-400" />
                 )}
 
                 <hr className="border-gray-100" />
 
                 <div className="bg-gray-50 rounded-lg p-3 space-y-1">
                   <div className="flex justify-between items-center pt-0.5">
-                    <span className="text-sm font-bold text-gray-900">Jami</span>
-                    <span className="text-base font-bold text-gray-900">{formatCurrency(t.total_owed)}</span>
+                    <span className="text-sm font-bold text-gray-900">{t('totalLabel')}</span>
+                    <span className="text-base font-bold text-gray-900">{formatCurrency(td.total_owed)}</span>
                   </div>
-                  <Row label="To'langan" value={formatCurrency(t.total_paid)} valueClass="text-emerald-600" />
-                  <Row label="Qoldiq" value={formatCurrency(remaining)} valueClass={remaining > 0 ? 'text-red-600' : 'text-emerald-600'} />
+                  <Row label={t('tableHeaders.paid')} value={formatCurrency(td.total_paid)} valueClass="text-emerald-600" />
+                  <Row label={t('tableHeaders.remaining')} value={formatCurrency(remaining)} valueClass={remaining > 0 ? 'text-red-600' : 'text-emerald-600'} />
                 </div>
 
                 <div className="flex gap-3 pt-1">
@@ -774,11 +774,11 @@ export default function SalariesPage() {
                     className="flex-1 px-4 py-2 border border-gray-300 text-sm font-medium rounded-lg hover:bg-gray-50 transition-colors">
                     {common('close')}
                   </button>
-                  {t.overall_status !== 'paid' && (
+                  {td.overall_status !== 'paid' && (
                     <button
-                      onClick={() => { setTeacherDetail(null); openTeacherPayModal(t, getSelection(t.teacher_id)); }}
+                      onClick={() => { setTeacherDetail(null); openTeacherPayModal(td, getSelection(td.teacher_id)); }}
                       className="flex-1 px-4 py-2 bg-emerald-600 text-white text-sm font-medium rounded-lg hover:bg-emerald-700 transition-colors">
-                      To&apos;lash
+                      {t('pay')}
                     </button>
                   )}
                 </div>
@@ -792,7 +792,7 @@ export default function SalariesPage() {
       <Dialog open={!!teacherPay} onOpenChange={open => { if (!open) { setTeacherPay(null); setBulkAmounts({}); } }}>
         <DialogContent className="sm:max-w-sm max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>{teacherPay?.teacher.teacher_name}ga maosh to&apos;lash</DialogTitle>
+            <DialogTitle>{t('payModalTitle', { name: teacherPay?.teacher.teacher_name ?? '' })}</DialogTitle>
           </DialogHeader>
           {teacherPay && (() => {
             const { teacher, selectionId } = teacherPay;
@@ -811,7 +811,7 @@ export default function SalariesPage() {
                         ({g.group_name ?? '?'}) {g.course_name ?? '—'}
                       </p>
                       <p className="text-xs text-gray-500">
-                        Qoldiq: <span className="font-semibold text-red-600">{formatCurrency(rem)}</span>
+                        {t('remaining2')}: <span className="font-semibold text-red-600">{formatCurrency(rem)}</span>
                       </p>
                       <input
                         type="text" inputMode="numeric"
@@ -827,7 +827,7 @@ export default function SalariesPage() {
 
                 {isAll && payableGroups.length > 1 && (
                   <div className="flex justify-between items-center pt-1 border-t border-gray-200">
-                    <span className="text-sm font-semibold text-gray-700">Jami to&apos;lov</span>
+                    <span className="text-sm font-semibold text-gray-700">{t('totalPayment')}</span>
                     <span className="text-sm font-bold text-gray-900">{formatCurrency(totalAmt)}</span>
                   </div>
                 )}
@@ -852,7 +852,7 @@ export default function SalariesPage() {
       <Dialog open={!!payTarget} onOpenChange={open => { if (!open) setPayTarget(null); }}>
         <DialogContent className="sm:max-w-sm">
           <DialogHeader>
-            <DialogTitle>{payTarget?.name}ga maosh to&apos;lash</DialogTitle>
+            <DialogTitle>{t('payModalTitle', { name: payTarget?.name ?? '' })}</DialogTitle>
           </DialogHeader>
           {payTarget && (() => {
             const amt     = parseAmount(payAmount);
@@ -861,22 +861,22 @@ export default function SalariesPage() {
               <div className="mt-2 space-y-4">
                 <div className="text-sm text-gray-600 space-y-1.5 bg-gray-50 rounded-lg px-3 py-3">
                   <div className="flex justify-between">
-                    <span>Hisoblangan</span>
+                    <span>{t('calculated')}</span>
                     <span className="font-semibold text-gray-900">{formatCurrency(payTarget.calculatedAmount)}</span>
                   </div>
                   {payTarget.carryOver > 0 && (
                     <div className="flex justify-between text-orange-600 text-xs">
-                      <span>O&apos;tgan oy qarzi</span>
+                      <span>{t('prevMonthDebt')}</span>
                       <span className="font-semibold">{formatCurrency(payTarget.carryOver)}</span>
                     </div>
                   )}
                   <div className="flex justify-between font-semibold border-t border-gray-200 pt-1.5">
-                    <span>Qolgan</span>
+                    <span>{t('remaining2')}</span>
                     <span className="text-red-600">{formatCurrency(payTarget.totalOwed)}</span>
                   </div>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">To&apos;lov summasi (so&apos;m)</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">{t('paymentAmount')}</label>
                   <input type="text" inputMode="numeric" value={payAmount}
                     onChange={e => setPayAmount(formatAmount(e.target.value))}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none"
@@ -884,7 +884,7 @@ export default function SalariesPage() {
                   <p className="text-xs text-gray-400 mt-1">Min: 10,000 | Max: {formatCurrency(payTarget.totalOwed)}</p>
                   {preview && (
                     <p className={cn('text-xs mt-1 font-medium', preview === 'paid' ? 'text-emerald-600' : 'text-orange-500')}>
-                      {preview === 'paid' ? "✓ To'liq to'lanadi" : `◑ Qisman — ${formatCurrency(payTarget.totalOwed - amt)} qoladi`}
+                      {preview === 'paid' ? t('fullPaid') : t('partialRemaining', { rem: formatCurrency(payTarget.totalOwed - amt) })}
                     </p>
                   )}
                 </div>

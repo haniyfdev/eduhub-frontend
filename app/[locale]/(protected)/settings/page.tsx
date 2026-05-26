@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
+import { useTranslations } from 'next-intl';
 import toast, { Toaster } from 'react-hot-toast';
 import { ChevronDown, Pencil, Plus, Trash2 } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -35,24 +36,6 @@ interface SmsTemplate {
 
 type Tab = 'company' | 'sms';
 
-const TRIGGER_CHOICES = [
-  ['debt_reminder', 'Qarzdorlik eslatmasi'],
-  ['payment_confirmed', "To'lov tasdiqi"],
-  ['lesson_reminder', 'Dars eslatmasi'],
-  ['course_started', 'Kurs boshlanishi'],
-  ['overdue_debt', "Muddati o'tgan qarz"],
-  ['custom', 'Boshqa'],
-];
-
-const triggerLabel: Record<string, string> = {
-  debt_reminder: 'Qarz eslatmasi',
-  payment_confirmed: "To'lov tasdiqi",
-  lesson_reminder: 'Dars eslatmasi',
-  course_started: 'Kurs boshlanishi',
-  overdue_debt: "Muddati o'tgan qarz",
-  custom: 'Boshqa',
-};
-
 const triggerBadge: Record<string, string> = {
   debt_reminder: 'bg-yellow-100 text-yellow-700',
   payment_confirmed: 'bg-green-100 text-green-700',
@@ -63,18 +46,32 @@ const triggerBadge: Record<string, string> = {
 };
 
 const VARIABLES = [
-  ['{student_name}', "O'quvchi to'liq ismi"],
-  ['{amount}', "To'lov summasi"],
-  ['{balance}', 'Qarz summasi'],
-  ['{due_date}', "To'lov muddati"],
-  ['{course_name}', 'Kurs nomi'],
-  ['{group_name}', 'Guruh nomi (masalan 2B)'],
-  ['{teacher_name}', "O'qituvchi ismi"],
-  ['{company_name}', "O'quv markaz nomi"],
-  ['{phone}', "O'quvchi telefon raqami"],
-  ['{lesson_time}', 'Dars boshlanish vaqti'],
-  ['{room_number}', 'Xona raqami'],
+  '{student_name}',
+  '{amount}',
+  '{balance}',
+  '{due_date}',
+  '{course_name}',
+  '{group_name}',
+  '{teacher_name}',
+  '{company_name}',
+  '{phone}',
+  '{lesson_time}',
+  '{room_number}',
 ];
+
+const VARIABLE_DESCS: Record<string, string> = {
+  '{student_name}': "O'quvchi to'liq ismi",
+  '{amount}': "To'lov summasi",
+  '{balance}': 'Qarz summasi',
+  '{due_date}': "To'lov muddati",
+  '{course_name}': 'Kurs nomi',
+  '{group_name}': 'Guruh nomi (masalan 2B)',
+  '{teacher_name}': "O'qituvchi ismi",
+  '{company_name}': "O'quv markaz nomi",
+  '{phone}': "O'quvchi telefon raqami",
+  '{lesson_time}': 'Dars boshlanish vaqti',
+  '{room_number}': 'Xona raqami',
+};
 
 const SAMPLE_VALUES: Record<string, string> = {
   '{student_name}': 'Jasur Karimov',
@@ -94,6 +91,9 @@ const inputCls = 'w-full px-3 py-2 border border-gray-300 rounded text-sm focus:
 const labelCls = 'block text-sm font-medium text-gray-700 mb-1';
 
 export default function SettingsPage() {
+  const t = useTranslations('settings');
+  const common = useTranslations('common');
+
   const [user, setUser] = useState<User | null>(null);
   const [tab, setTab] = useState<Tab>('company');
   const [settings, setSettings] = useState<CompanySettings>({
@@ -118,6 +118,16 @@ export default function SettingsPage() {
   const [savingModal, setSavingModal] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<SmsTemplate | null>(null);
   const bodyRef = useRef<HTMLTextAreaElement>(null);
+
+  // Trigger choices built from translation keys
+  const TRIGGER_CHOICES: [string, string][] = [
+    ['debt_reminder', t('triggerChoices.debt_reminder')],
+    ['payment_confirmed', t('triggerChoices.payment_confirmed')],
+    ['lesson_reminder', t('triggerChoices.lesson_reminder')],
+    ['course_started', t('triggerChoices.course_started')],
+    ['overdue_debt', t('triggerChoices.overdue_debt')],
+    ['custom', t('triggerChoices.custom')],
+  ];
 
   useEffect(() => {
     const u = getUser();
@@ -165,11 +175,11 @@ export default function SettingsPage() {
     const file = e.target.files?.[0];
     if (!file) return;
     if (!['image/jpeg', 'image/png', 'image/jpg'].includes(file.type)) {
-      toast.error('Faqat JPG yoki PNG format qabul qilinadi');
+      toast.error(t('logoFormatError'));
       return;
     }
     if (file.size > 1024 * 1024) {
-      toast.error('Fayl hajmi 1MB dan oshmasligi kerak');
+      toast.error(t('logoSizeError'));
       return;
     }
     const reader = new FileReader();
@@ -177,7 +187,7 @@ export default function SettingsPage() {
       const b64 = ev.target?.result as string;
       setCompanyLogo(b64);
       try { localStorage.setItem('company_logo', b64); } catch {}
-      toast.success('Logo saqlandi');
+      toast.success(t('logoSaved'));
     };
     reader.readAsDataURL(file);
   }
@@ -192,11 +202,12 @@ export default function SettingsPage() {
         phone: companyForm.phone,
         address: companyForm.address,
       });
-      toast.success("Kompaniya ma'lumotlari saqlandi");
+      toast.success(t('companySaved'));
       setCompanyInfo((c) => c ? { ...c, ...companyForm } : c);
       try { localStorage.setItem('company_name', companyForm.name); } catch {}
-    } catch (err: any) {
-      toast.error(err?.response?.data?.detail || 'Xatolik yuz berdi');
+    } catch (err: unknown) {
+      const e2 = err as { response?: { data?: { detail?: string } } };
+      toast.error(e2?.response?.data?.detail || common('error'));
     } finally {
       setSavingCompanyInfo(false);
     }
@@ -207,9 +218,10 @@ export default function SettingsPage() {
     setSavingSettings(true);
     try {
       await api.patch('/api/v1/company-settings/my/', settings);
-      toast.success('Sozlamalar saqlandi');
-    } catch (err: any) {
-      toast.error(err?.response?.data?.detail || 'Xatolik yuz berdi');
+      toast.success(t('settingsSaved'));
+    } catch (err: unknown) {
+      const e2 = err as { response?: { data?: { detail?: string } } };
+      toast.error(e2?.response?.data?.detail || common('error'));
     } finally {
       setSavingSettings(false);
     }
@@ -257,15 +269,16 @@ export default function SettingsPage() {
     try {
       if (editingTemplate) {
         const { data } = await api.patch(`/api/v1/sms-templates/${editingTemplate.id}/`, modalData);
-        setSmsTemplates((prev) => prev.map((t) => t.id === editingTemplate.id ? { ...t, ...data } : t));
+        setSmsTemplates((prev) => prev.map((tmpl) => tmpl.id === editingTemplate.id ? { ...tmpl, ...data } : tmpl));
       } else {
         const { data } = await api.post('/api/v1/sms-templates/', modalData);
         setSmsTemplates((prev) => [...prev, data]);
       }
-      toast.success('Shablon saqlandi');
+      toast.success(t('templateSaved'));
       setShowModal(false);
-    } catch (err: any) {
-      toast.error(err?.response?.data?.detail || 'Xatolik yuz berdi');
+    } catch (err: unknown) {
+      const e2 = err as { response?: { data?: { detail?: string } } };
+      toast.error(e2?.response?.data?.detail || common('error'));
     } finally {
       setSavingModal(false);
     }
@@ -275,25 +288,26 @@ export default function SettingsPage() {
     if (!deleteTarget) return;
     try {
       await api.delete(`/api/v1/sms-templates/${deleteTarget.id}/`);
-      setSmsTemplates((prev) => prev.filter((t) => t.id !== deleteTarget.id));
-      toast.success("Shablon o'chirildi");
+      setSmsTemplates((prev) => prev.filter((tmpl) => tmpl.id !== deleteTarget.id));
+      toast.success(t('templateDeleted'));
       setDeleteTarget(null);
-    } catch (err: any) {
-      toast.error(err?.response?.data?.detail || 'Xatolik yuz berdi');
+    } catch (err: unknown) {
+      const e2 = err as { response?: { data?: { detail?: string } } };
+      toast.error(e2?.response?.data?.detail || common('error'));
     }
   }
 
   const tabs: Array<{ key: Tab; label: string; show: boolean }> = [
-    { key: 'company', label: 'Kompaniya', show: canEditCompany },
-    { key: 'sms', label: 'SMS shablonlar', show: canEditCompany },
+    { key: 'company', label: t('tabs.company'), show: canEditCompany },
+    { key: 'sms', label: t('tabs.sms'), show: canEditCompany },
   ];
 
-  const visibleTabs = tabs.filter((t) => t.show);
+  const visibleTabs = tabs.filter((tab) => tab.show);
 
   return (
     <div className="space-y-5">
       <Toaster position="top-right" />
-      <h1 className="text-xl font-bold text-gray-900">Sozlamalar</h1>
+      <h1 className="text-xl font-bold text-gray-900">{t('title')}</h1>
 
       {visibleTabs.length > 1 && (
         <div className="flex border-b border-gray-200">
@@ -318,7 +332,7 @@ export default function SettingsPage() {
         <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
           {user?.company_id && (
             <div className="bg-white rounded border border-gray-200 shadow-sm p-6">
-              <h2 className="text-sm font-semibold text-gray-900 mb-4">Kompaniya ma&apos;lumotlari</h2>
+              <h2 className="text-sm font-semibold text-gray-900 mb-4">{t('companyInfo')}</h2>
               <div className="flex items-center gap-5 mb-5">
                 <div className="relative flex-shrink-0">
                   {companyLogo ? (
@@ -333,74 +347,74 @@ export default function SettingsPage() {
                   )}
                 </div>
                 <label className="cursor-pointer px-3 py-1.5 border border-gray-300 text-sm font-medium rounded hover:bg-gray-50 transition-colors">
-                  Logo yuklash
+                  {t('uploadLogo')}
                   <input type="file" accept="image/jpeg,image/jpg,image/png" className="hidden" onChange={handleCompanyLogoChange} />
                 </label>
               </div>
               <form onSubmit={handleCompanyInfoSave} className="space-y-4">
                 <div>
-                  <label className={labelCls}>Kompaniya nomi</label>
+                  <label className={labelCls}>{t('companyName')}</label>
                   <input value={companyForm.name} onChange={(e) => setCompanyForm((f) => ({ ...f, name: e.target.value }))}
                     className={inputCls} required />
                 </div>
                 <div>
-                  <label className={labelCls}>Telefon</label>
+                  <label className={labelCls}>{t('phone')}</label>
                   <input value={companyForm.phone} onChange={(e) => setCompanyForm((f) => ({ ...f, phone: e.target.value }))}
                     className={inputCls} />
                 </div>
                 <div>
-                  <label className={labelCls}>Manzil</label>
+                  <label className={labelCls}>{t('address')}</label>
                   <input value={companyForm.address} onChange={(e) => setCompanyForm((f) => ({ ...f, address: e.target.value }))}
                     className={inputCls} />
                 </div>
                 <button type="submit" disabled={savingCompanyInfo}
                   className="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded hover:bg-blue-700 disabled:opacity-60">
-                  {savingCompanyInfo ? 'Saqlanmoqda...' : 'Saqlash'}
+                  {savingCompanyInfo ? t('saving') : t('save')}
                 </button>
               </form>
             </div>
           )}
 
           <div className="bg-white rounded border border-gray-200 shadow-sm p-6">
-            <h2 className="text-sm font-semibold text-gray-900 mb-4">Kompaniya sozlamalari</h2>
+            <h2 className="text-sm font-semibold text-gray-900 mb-4">{t('companySettings')}</h2>
             {loadingSettings ? (
               <div className="space-y-4">{Array(3).fill(0).map((_, i) => <Skeleton key={i} className="h-10 w-full" />)}</div>
             ) : (
               <form onSubmit={handleSettingsSave} className="space-y-5">
                 <div>
-                  <label className={labelCls}>Hisoblash turi</label>
+                  <label className={labelCls}>{t('billingType')}</label>
                   <select
                     value={settings.billing_type}
                     onChange={(e) => setSettings((s) => ({ ...s, billing_type: e.target.value }))}
                     className={inputCls}
                   >
-                    <option value="monthly">Oylik (to&apos;liq narx)</option>
-                    <option value="per_lesson">Dars bo&apos;yicha</option>
-                    <option value="upfront">Oldindan to&apos;liq</option>
+                    <option value="monthly">{t('billingMonthly')}</option>
+                    <option value="per_lesson">{t('billingPerLesson')}</option>
+                    <option value="upfront">{t('billingUpfront')}</option>
                   </select>
                 </div>
                 <div>
-                  <label className={labelCls}>Davomatsizlik siyosati</label>
+                  <label className={labelCls}>{t('absentPolicy')}</label>
                   <select
                     value={settings.absent_policy}
                     onChange={(e) => setSettings((s) => ({ ...s, absent_policy: e.target.value }))}
                     className={inputCls}
                   >
-                    <option value="ignore">E&apos;tiborsiz (hech narsa qilmaydi)</option>
-                    <option value="deduct">Qarzdan ayirish</option>
-                    <option value="penalty">Jarima qo&apos;shish (+5%)</option>
+                    <option value="ignore">{t('absentIgnore')}</option>
+                    <option value="deduct">{t('absentDeduct')}</option>
+                    <option value="penalty">{t('absentPenalty')}</option>
                   </select>
                 </div>
                 <div>
-                  <label className={labelCls}>O&apos;qituvchi shartnoma bekor siyosati</label>
+                  <label className={labelCls}>{t('contractPolicy')}</label>
                   <select
                     value={settings.teacher_contract_break_policy}
                     onChange={(e) => setSettings((s) => ({ ...s, teacher_contract_break_policy: e.target.value }))}
                     className={inputCls}
                   >
-                    <option value="full">To&apos;liq maosh</option>
-                    <option value="prorate">Ishlagan kunlar bo&apos;yicha</option>
-                    <option value="none">Maosh yo&apos;q</option>
+                    <option value="full">{t('contractFull')}</option>
+                    <option value="prorate">{t('contractProrate')}</option>
+                    <option value="none">{t('contractNone')}</option>
                   </select>
                 </div>
                 <button
@@ -408,7 +422,7 @@ export default function SettingsPage() {
                   disabled={savingSettings}
                   className="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded hover:bg-blue-700 disabled:opacity-60"
                 >
-                  {savingSettings ? 'Saqlanmoqda...' : 'Saqlash'}
+                  {savingSettings ? t('saving') : t('save')}
                 </button>
               </form>
             )}
@@ -426,23 +440,23 @@ export default function SettingsPage() {
               className="flex items-center justify-between w-full"
             >
               <span className="text-sm font-semibold text-blue-700">
-                📋 Mavjud o&apos;zgaruvchilar
+                📋 {t('variables')}
               </span>
               <ChevronDown className={cn('w-4 h-4 text-blue-600 transition-transform', varsOpen && 'rotate-180')} />
             </button>
             {varsOpen && (
               <div className="mt-3 grid grid-cols-2 gap-2">
-                {VARIABLES.map(([variable, desc]) => (
+                {VARIABLES.map((variable) => (
                   <div
                     key={variable}
                     className="flex items-center gap-2 bg-white rounded px-2 py-1.5 border border-blue-100 cursor-pointer hover:bg-blue-50"
                     onClick={() => {
                       navigator.clipboard.writeText(variable);
-                      toast.success(`${variable} nusxalandi`);
+                      toast.success(t('copied', { var: variable }));
                     }}
                   >
                     <code className="text-xs font-mono text-blue-600 font-semibold">{variable}</code>
-                    <span className="text-xs text-gray-500">{desc}</span>
+                    <span className="text-xs text-gray-500">{VARIABLE_DESCS[variable]}</span>
                   </div>
                 ))}
               </div>
@@ -451,13 +465,13 @@ export default function SettingsPage() {
 
           {/* Templates header */}
           <div className="flex items-center justify-between">
-            <h2 className="text-sm font-semibold text-gray-900">SMS shablonlar</h2>
+            <h2 className="text-sm font-semibold text-gray-900">{t('templates')}</h2>
             <button
               onClick={openCreate}
               className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 text-white text-sm font-medium rounded hover:bg-blue-700 transition-colors"
             >
               <Plus className="w-4 h-4" />
-              Shablon qo&apos;shish
+              {t('addTemplate')}
             </button>
           </div>
 
@@ -468,7 +482,7 @@ export default function SettingsPage() {
             </div>
           ) : smsTemplates.length === 0 ? (
             <div className="py-10 text-center text-gray-400 text-sm">
-              Hech qanday shablon topilmadi
+              {t('noTemplates')}
             </div>
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -501,10 +515,10 @@ export default function SettingsPage() {
                   <p className="text-sm text-gray-600 whitespace-pre-wrap leading-relaxed mb-3">{tmpl.body}</p>
                   <div className="flex items-center justify-between">
                     <span className={cn('inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium', triggerBadge[tmpl.trigger] ?? 'bg-gray-100 text-gray-600')}>
-                      {triggerLabel[tmpl.trigger] ?? tmpl.trigger}
+                      {t(`triggerChoices.${tmpl.trigger}` as Parameters<typeof t>[0]) ?? tmpl.trigger}
                     </span>
                     {tmpl.is_default && (
-                      <span className="text-xs text-gray-400">Standart shablon</span>
+                      <span className="text-xs text-gray-400">{t('defaultTemplate')}</span>
                     )}
                   </div>
                 </div>
@@ -518,20 +532,20 @@ export default function SettingsPage() {
       <Dialog open={showModal} onOpenChange={(open) => { if (!open) setShowModal(false); }}>
         <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>{editingTemplate ? 'Shablonni tahrirlash' : 'Yangi shablon'}</DialogTitle>
+            <DialogTitle>{editingTemplate ? t('editTemplate') : t('newTemplate')}</DialogTitle>
           </DialogHeader>
           <div className="space-y-4 mt-2">
             <div>
-              <label className={labelCls}>Shablon nomi</label>
+              <label className={labelCls}>{t('templateName')}</label>
               <input
                 value={modalData.name}
                 onChange={(e) => setModalData((d) => ({ ...d, name: e.target.value }))}
                 className={inputCls}
-                placeholder="Masalan: Qarzdorlik eslatmasi"
+                placeholder={t('templateNamePlaceholder')}
               />
             </div>
             <div>
-              <label className={labelCls}>Holat uchun</label>
+              <label className={labelCls}>{t('templateTrigger')}</label>
               <select
                 value={modalData.trigger}
                 onChange={(e) => setModalData((d) => ({ ...d, trigger: e.target.value }))}
@@ -543,20 +557,20 @@ export default function SettingsPage() {
               </select>
             </div>
             <div>
-              <label className={labelCls}>Matn</label>
+              <label className={labelCls}>{t('templateBody')}</label>
               <textarea
                 ref={bodyRef}
                 value={modalData.body}
                 onChange={(e) => setModalData((d) => ({ ...d, body: e.target.value }))}
                 rows={5}
                 className={cn(inputCls, 'resize-none')}
-                placeholder="SMS matnini kiriting..."
+                placeholder={t('templateBodyPlaceholder')}
               />
               <p className="text-xs text-gray-400 mt-1">
-                O&apos;zgaruvchi qo&apos;shish uchun yuqoridagi ro&apos;yxatdan bosing yoki qo&apos;lda yozing
+                {t('templateBodyHint')}
               </p>
               <div className="flex flex-wrap gap-1.5 mt-2">
-                {VARIABLES.map(([variable]) => (
+                {VARIABLES.map((variable) => (
                   <button
                     key={variable}
                     type="button"
@@ -570,7 +584,7 @@ export default function SettingsPage() {
             </div>
             {modalData.body && (
               <div>
-                <label className={labelCls}>Ko&apos;rinishi</label>
+                <label className={labelCls}>{t('preview')}</label>
                 <div className="bg-gray-50 rounded p-3 text-sm text-gray-700 whitespace-pre-wrap border border-gray-200">
                   {renderPreview(modalData.body)}
                 </div>
@@ -582,7 +596,7 @@ export default function SettingsPage() {
                 onClick={() => setShowModal(false)}
                 className="flex-1 px-4 py-2 border border-gray-300 text-sm font-medium rounded hover:bg-gray-50"
               >
-                Bekor qilish
+                {common('cancel')}
               </button>
               <button
                 type="button"
@@ -590,7 +604,7 @@ export default function SettingsPage() {
                 disabled={savingModal || !modalData.name.trim() || !modalData.body.trim()}
                 className="flex-1 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded hover:bg-blue-700 disabled:opacity-60"
               >
-                {savingModal ? 'Saqlanmoqda...' : 'Saqlash'}
+                {savingModal ? t('saving') : t('save')}
               </button>
             </div>
           </div>
@@ -601,12 +615,12 @@ export default function SettingsPage() {
       <Dialog open={!!deleteTarget} onOpenChange={(open) => { if (!open) setDeleteTarget(null); }}>
         <DialogContent className="sm:max-w-sm">
           <DialogHeader>
-            <DialogTitle>Shablonni o&apos;chirish</DialogTitle>
+            <DialogTitle>{t('deleteTemplate')}</DialogTitle>
           </DialogHeader>
           <p className="text-sm text-gray-600 mt-1">
             {deleteTarget?.is_default
-              ? "Bu standart shablon o'chiriladi va barcha markazlarda ko'rinmay qoladi."
-              : <><span className="font-medium">{deleteTarget?.name}</span> shabloni o&apos;chiriladi.</>
+              ? t('deleteDefaultBody')
+              : t('deleteBody', { name: deleteTarget?.name ?? '' })
             }
           </p>
           <div className="flex gap-3 mt-4">
@@ -614,13 +628,13 @@ export default function SettingsPage() {
               onClick={() => setDeleteTarget(null)}
               className="flex-1 px-4 py-2 border border-gray-300 text-sm font-medium rounded hover:bg-gray-50"
             >
-              Bekor qilish
+              {common('cancel')}
             </button>
             <button
               onClick={handleDelete}
               className="flex-1 px-4 py-2 bg-red-600 text-white text-sm font-medium rounded hover:bg-red-700"
             >
-              O&apos;chirish
+              {common('delete')}
             </button>
           </div>
         </DialogContent>
@@ -628,4 +642,3 @@ export default function SettingsPage() {
     </div>
   );
 }
-

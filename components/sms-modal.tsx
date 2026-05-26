@@ -20,7 +20,7 @@ export interface SmsRecipient {
   id: string;
   name: string;
   phone: string;
-  type?: 'student' | 'lead';
+  type?: 'student' | 'lead' | 'parent';
   amount?: string;
   balance?: string;
   due_date?: string;
@@ -104,7 +104,7 @@ export function SmsModal({ open, onClose, recipients, onSend }: SmsModalProps) {
   }, [open]);
 
   const first = recipients[0];
-  const allLeads = recipients.length > 0 && recipients.every(r => r.type === 'lead');
+  const allLeads = recipients.length > 0 && recipients.every(r => r.type === 'lead') && !recipients.some(r => r.type === 'parent');
   const visibleTemplates = allLeads
     ? templates.filter(tmpl => !FINANCIAL_TRIGGERS.includes(tmpl.trigger))
     : templates;

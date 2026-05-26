@@ -413,43 +413,43 @@ export default function TeachersPage() {
                     ))
                     : teachers.length === 0
                       ? <tr><td colSpan={9} className="px-4 py-16 text-center text-gray-400">{t('noTeachers')}</td></tr>
-                      : teachers.map((t, idx) => (
-                        <tr key={t.id} className={cn('transition-colors', t.status === 'archived' ? 'bg-yellow-50 hover:bg-yellow-100' : 'hover:bg-gray-50')}>
+                      : teachers.map((teacher, idx) => (
+                        <tr key={teacher.id} className={cn('transition-colors', teacher.status === 'archived' ? 'bg-yellow-50 hover:bg-yellow-100' : 'hover:bg-gray-50')}>
                           <td className="px-4 py-3 text-gray-400 text-xs">{(page - 1) * pageSize + idx + 1}</td>
-                          <td className="px-4 py-3 font-medium text-gray-900">{t.first_name} {t.last_name}</td>
-                          <td className="px-4 py-3 text-gray-500">{formatPhone(t.phone)}</td>
-                          <td className="px-4 py-3 text-gray-600">{t.subject || '—'}</td>
+                          <td className="px-4 py-3 font-medium text-gray-900">{teacher.first_name} {teacher.last_name}</td>
+                          <td className="px-4 py-3 text-gray-500">{formatPhone(teacher.phone)}</td>
+                          <td className="px-4 py-3 text-gray-600">{teacher.subject || '—'}</td>
                           <td className="px-4 py-3">
                             <Popover>
-                              <PopoverTrigger className={cn('inline-flex items-center gap-1 px-2 py-0.5 text-xs font-medium border rounded cursor-pointer hover:scale-110 transition-transform', SALARY_STYLES[t.salary_type])}>
-                                {t.salary_type === 'fixed'       && <Banknote className="w-3 h-3" />}
-                                {t.salary_type === 'percent'     && <Percent   className="w-3 h-3" />}
-                                {t.salary_type === 'per_student' && <Users     className="w-3 h-3" />}
-                                {t(SALARY_LABELS[t.salary_type] as Parameters<typeof t>[0])}
+                              <PopoverTrigger className={cn('inline-flex items-center gap-1 px-2 py-0.5 text-xs font-medium border rounded cursor-pointer hover:scale-110 transition-transform', SALARY_STYLES[teacher.salary_type])}>
+                                {teacher.salary_type === 'fixed'       && <Banknote className="w-3 h-3" />}
+                                {teacher.salary_type === 'percent'     && <Percent   className="w-3 h-3" />}
+                                {teacher.salary_type === 'per_student' && <Users     className="w-3 h-3" />}
+                                {t(SALARY_LABELS[teacher.salary_type] as Parameters<typeof t>[0])}
                               </PopoverTrigger>
                               <PopoverContent className="w-56 p-3 bg-blue-600 text-white shadow-xl" side="right" align="start">
-                                <p className="text-xs font-semibold text-white/70 uppercase tracking-wide mb-2">Maosh tafsiloti</p>
+                                <p className="text-xs font-semibold text-white/70 uppercase tracking-wide mb-2">{common('salary')}</p>
                                 <div className="text-center">
                                   <span className="text-xl font-bold text-white">
-                                    {t.salary_type === 'fixed'       && formatCurrency(t.fixed_amount ?? 0)}
-                                    {t.salary_type === 'percent'     && `${t.salary_percent ?? 0}%`}
-                                    {t.salary_type === 'per_student' && formatCurrency(t.per_student_amt ?? 0)}
+                                    {teacher.salary_type === 'fixed'       && formatCurrency(teacher.fixed_amount ?? 0)}
+                                    {teacher.salary_type === 'percent'     && `${teacher.salary_percent ?? 0}%`}
+                                    {teacher.salary_type === 'per_student' && formatCurrency(teacher.per_student_amt ?? 0)}
                                   </span>
                                 </div>
                               </PopoverContent>
                             </Popover>
                           </td>
-                          <td className="px-4 py-3 text-gray-500 text-xs">{formatDMY(t.birth_date)}</td>
-                          <td className="px-4 py-3 text-gray-500 text-xs">{formatDMY(t.hired_at)}</td>
+                          <td className="px-4 py-3 text-gray-500 text-xs">{formatDMY(teacher.birth_date)}</td>
+                          <td className="px-4 py-3 text-gray-500 text-xs">{formatDMY(teacher.hired_at)}</td>
                           <td className="px-4 py-3">
                             <span className={cn('inline-flex items-center px-2 py-0.5 text-xs font-medium border rounded',
-                              t.status === 'active' ? 'bg-green-50 text-green-700 border-green-200' : 'bg-gray-100 text-gray-600 border-gray-200')}>
-                              {t.status === 'active' ? common('active') : common('archived')}
+                              teacher.status === 'active' ? 'bg-green-50 text-green-700 border-green-200' : 'bg-gray-100 text-gray-600 border-gray-200')}>
+                              {teacher.status === 'active' ? common('active') : common('archived')}
                             </span>
                           </td>
                           <td className="px-4 py-3">
-                            {t.status === 'active' && (
-                              <button onClick={() => setArchiveTarget({ id: t.id, name: `${t.first_name} ${t.last_name}` })}
+                            {teacher.status === 'active' && (
+                              <button onClick={() => setArchiveTarget({ id: teacher.id, name: `${teacher.first_name} ${teacher.last_name}` })}
                                 className="p-1 rounded text-red-400 hover:bg-red-50 hover:text-red-600 transition-colors"
                                 title={common('archive')}>
                                 <Minus className="w-4 h-4" />

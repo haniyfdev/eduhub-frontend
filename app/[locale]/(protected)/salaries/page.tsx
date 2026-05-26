@@ -188,7 +188,7 @@ export default function SalariesPage() {
     } finally {
       setLoadingHist(false);
     }
-  }, [histMonth]);
+  }, [histMonth, common]);
 
   const loadSummary = useCallback(async () => {
     try {
@@ -212,8 +212,7 @@ export default function SalariesPage() {
         api.post(`/api/v1/teacher-salaries/generate/?month=${month}`),
         api.post(`/api/v1/staff-salaries/generate/?month=${month}`),
       ]);
-      const tCount = tRes.status === 'fulfilled' ? (tRes.value.data.created ?? 0) : 0;
-      const sCount = sRes.status === 'fulfilled' ? (sRes.value.data.created?.length ?? 0) : 0;
+      void tRes; void sRes;
       toast.success(common('success'));
       loadSalaries();
     } catch {

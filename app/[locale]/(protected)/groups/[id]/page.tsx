@@ -132,7 +132,7 @@ export default function GroupDetailPage() {
       setLoadingGroup(false);
       setLoadingStudents(false);
     }
-  }, [id]);
+  }, [id, common]);
 
   const fetchLessons = useCallback(async () => {
     setLoadingLessons(true);
@@ -146,7 +146,7 @@ export default function GroupDetailPage() {
     } finally {
       setLoadingLessons(false);
     }
-  }, [id]);
+  }, [id, common]);
 
   useEffect(() => { fetchGroup(); }, [fetchGroup]);
   useEffect(() => { fetchLessons(); }, [fetchLessons]);

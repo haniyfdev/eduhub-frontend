@@ -223,7 +223,7 @@ export default function TeachersPage() {
     } finally {
       setStaffLoading(false);
     }
-  }, [staffSearch, staffStatusFilter]);
+  }, [staffSearch, staffStatusFilter, common]);
 
   useEffect(() => { if (activeTab === 'staff') fetchStaff(); }, [activeTab, fetchStaff]);
 

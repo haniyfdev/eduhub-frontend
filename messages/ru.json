@@ -682,7 +682,8 @@
     "discountAmount": "Сумма скидки",
     "finalAmount": "К оплате",
     "confirmTitle": "Подтвердить скидку",
-    "noDiscounts": "Нет скидок"
+    "noDiscounts": "Нет скидок",
+    "parentPhone": "Тел. родителя"
   },
   "smsModal": {
     "title": "Отправить SMS",

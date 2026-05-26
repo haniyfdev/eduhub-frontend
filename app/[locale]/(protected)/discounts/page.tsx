@@ -158,11 +158,6 @@ export default function DiscountsPage() {
     }
   }
 
-  const headers = [
-    '№', tc('student'), tc('course'), 'Kurs narxi',
-    t('percent'), t('months'), tc('phone'), 'Ota-ona tel',
-    tc('status'), tc('actions'),
-  ];
 
   return (
     <div className="space-y-5">
@@ -188,20 +183,29 @@ export default function DiscountsPage() {
         <table className="w-full text-sm">
           <thead>
             <tr className="bg-gray-50 border-b border-gray-200">
-              {headers.map((h, i) => (
-                <th key={i} className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">{h}</th>
-              ))}
+              {(() => { const th = 'text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide'; return (<>
+                <th className={th}>№</th>
+                <th className={th}>{tc('student')}</th>
+                <th className={th}>{tc('course')}</th>
+                <th className={th}>Kurs narxi</th>
+                <th className={`${th} w-28`}>{t('percent')}</th>
+                <th className={`${th} w-28`}>{t('months')}</th>
+                <th className={th}>{tc('phone')}</th>
+                <th className={th}>{t('parentPhone')}</th>
+                <th className={th}>{tc('status')}</th>
+                <th className={`${th} text-right`}>{tc('actions')}</th>
+              </>); })()}
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100">
             {loading
               ? Array(5).fill(0).map((_, i) => (
-                <tr key={i}>{Array(headers.length).fill(0).map((_, j) => (
+                <tr key={i}>{Array(10).fill(0).map((_, j) => (
                   <td key={j} className="px-4 py-3"><Skeleton className="h-4 w-full" /></td>
                 ))}</tr>
               ))
               : discounts.length === 0
-                ? <tr><td colSpan={headers.length} className="px-4 py-16 text-center text-gray-400">{t('noDiscounts')}</td></tr>
+                ? <tr><td colSpan={10} className="px-4 py-16 text-center text-gray-400">{t('noDiscounts')}</td></tr>
                 : discounts.map((d, idx) => {
                     const active = isActiveDiscount(d.end_month);
                     return (
@@ -218,7 +222,7 @@ export default function DiscountsPage() {
                         <td className="px-4 py-3 text-gray-600">{d.months} {tc('month')}</td>
 
                         {/* Phone 1 */}
-                        <td className="px-4 py-3">
+                        <td className="px-4 py-3 whitespace-nowrap">
                           <label className="flex items-center gap-2 cursor-pointer select-none">
                             <input
                               type="checkbox"
@@ -226,12 +230,12 @@ export default function DiscountsPage() {
                               onChange={() => togglePhone(d.id, 'phone1')}
                               className="rounded border-gray-300 flex-shrink-0"
                             />
-                            <span className="text-gray-500 text-xs">{formatPhone(d.student_phone)}</span>
+                            <span className="text-gray-500 text-xs whitespace-nowrap">{formatPhone(d.student_phone)}</span>
                           </label>
                         </td>
 
                         {/* Phone 2 (parent) */}
-                        <td className="px-4 py-3">
+                        <td className="px-4 py-3 whitespace-nowrap">
                           {d.student_second_phone ? (
                             <label className="flex items-center gap-2 cursor-pointer select-none">
                               <input
@@ -240,7 +244,7 @@ export default function DiscountsPage() {
                                 onChange={() => togglePhone(d.id, 'phone2')}
                                 className="rounded border-gray-300 flex-shrink-0"
                               />
-                              <span className="text-gray-500 text-xs">{formatPhone(d.student_second_phone)}</span>
+                              <span className="text-gray-500 text-xs whitespace-nowrap">{formatPhone(d.student_second_phone)}</span>
                             </label>
                           ) : (
                             <span className="text-gray-300">—</span>
@@ -257,7 +261,7 @@ export default function DiscountsPage() {
                             {active ? tc('active') : 'Tugagan'}
                           </span>
                         </td>
-                        <td className="px-4 py-3">
+                        <td className="px-4 py-3 text-right">
                           <button
                             onClick={() => handleDelete(d.id)}
                             disabled={deletingId === d.id}

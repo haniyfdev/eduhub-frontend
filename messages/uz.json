@@ -749,7 +749,8 @@
     "discountAmount": "Chegirma miqdori",
     "finalAmount": "To'lanajak",
     "confirmTitle": "Chegirmani tasdiqlash",
-    "noDiscounts": "Chegirmalar yo'q"
+    "noDiscounts": "Chegirmalar yo'q",
+    "parentPhone": "Ota-ona tel"
   },
   "smsModal": {
     "title": "SMS yuborish",

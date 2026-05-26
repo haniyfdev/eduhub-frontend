@@ -682,7 +682,8 @@
     "discountAmount": "Discount amount",
     "finalAmount": "Amount to pay",
     "confirmTitle": "Confirm discount",
-    "noDiscounts": "No discounts"
+    "noDiscounts": "No discounts",
+    "parentPhone": "Parent phone"
   },
   "smsModal": {
     "title": "Send SMS",

@@ -138,7 +138,9 @@
     "courseDistribution": "By course",
     "worstStudents": "Worst students",
     "topTeachers": "Top teachers",
-    "attendanceRate": "Attendance"
+    "attendanceRate": "Attendance",
+    "room": "Room",
+    "time": "Time"
   },
   "common": {
     "save": "Save",

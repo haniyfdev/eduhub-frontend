@@ -138,7 +138,9 @@
     "courseDistribution": "Kurslar bo'yicha",
     "worstStudents": "Eng past natija",
     "topTeachers": "Top o'qituvchilar",
-    "attendanceRate": "Davomat"
+    "attendanceRate": "Davomat",
+    "room": "Xona",
+    "time": "Vaqt"
   },
   "common": {
     "save": "Saqlash",

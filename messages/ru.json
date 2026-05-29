@@ -138,7 +138,9 @@
     "courseDistribution": "По курсам",
     "worstStudents": "Слабые ученики",
     "topTeachers": "Топ учителей",
-    "attendanceRate": "Посещаемость"
+    "attendanceRate": "Посещаемость",
+    "room": "Кабинет",
+    "time": "Время"
   },
   "common": {
     "save": "Сохранить",

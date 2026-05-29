@@ -316,7 +316,7 @@ export default function DashboardPage() {
     fetchPaymentStatus();
     fetchCourseDistribution();
     fetchTopTeachers();
-  }, []);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const d = data ? resolve(data) : null;
 
@@ -327,21 +327,6 @@ export default function DashboardPage() {
     { label: t('debtors'), value: d.debtors, icon: AlertCircle, variant: 'danger' as const },
     { label: tc('teacher'), value: d.teachers, icon: GraduationCap, variant: 'success' as const },
   ] : [];
-
-  function lessonStatusBadge(status?: string) {
-    if (!status) return null;
-    const map: Record<string, { label: string; cls: string }> = {
-      finished: { label: t('lessonStatusFinished'), cls: 'bg-gray-100 text-gray-600' },
-      ongoing: { label: t('lessonStatusOngoing'), cls: 'bg-green-100 text-green-700' },
-      scheduled: { label: t('lessonStatusScheduled'), cls: 'bg-blue-100 text-blue-700' },
-    };
-    const entry = map[status] ?? { label: status, cls: 'bg-gray-100 text-gray-500' };
-    return (
-      <span className={cn('px-2 py-0.5 rounded-full text-xs font-medium whitespace-nowrap', entry.cls)}>
-        {entry.label}
-      </span>
-    );
-  }
 
   // ── Render ─────────────────────────────────────────────────────────────
 
@@ -371,15 +356,20 @@ export default function DashboardPage() {
 
       {/* Today's Lessons */}
       <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-5">
-        <h2 className="text-sm font-semibold text-gray-900 mb-4 flex items-center gap-2">
-          <BookOpen className="w-4 h-4 text-blue-500" />
-          {t('todayLessons')}
-        </h2>
-        {todayLessonsLoading ? (
-          <div className="space-y-2">{Array(3).fill(0).map((_, i) => <Skeleton key={i} className="h-10 w-full" />)}</div>
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-sm font-semibold text-gray-900 flex items-center gap-2">
+            <CalendarCheck className="w-4 h-4 text-emerald-500" />
+            {t('todayLessons')}
+          </h2>
+          <span className="text-xs text-gray-400">
+            {!todayLoading && `${todayLessons.length} ${t('groups2')}`}
+          </span>
+        </div>
+        {todayLoading ? (
+          <div className="space-y-2">{Array(4).fill(0).map((_, i) => <Skeleton key={i} className="h-10 w-full" />)}</div>
         ) : todayLessons.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-8">
-            <BookOpen className="w-8 h-8 text-gray-200 mb-2" />
+            <CalendarCheck className="w-8 h-8 text-gray-200 mb-2" />
             <p className="text-sm text-gray-400">{t('noLessons')}</p>
           </div>
         ) : (
@@ -387,19 +377,33 @@ export default function DashboardPage() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-gray-100">
-                  {[tc('group'), tc('teacher'), tc('room'), t('lessonTime'), tc('status')].map((h) => (
-                    <th key={h} className="text-left pb-2.5 text-xs font-semibold text-gray-400 uppercase tracking-wide pr-3">{h}</th>
+                  {[t('groupHeader'), t('courseHeader'), t('teacherHeader'), t('room'), t('time'), t('studentsHeader')].map((h) => (
+                    <th key={h} className="text-left pb-2.5 text-xs font-semibold text-gray-400 uppercase tracking-wide pr-4">{h}</th>
                   ))}
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-50">
                 {todayLessons.map((lesson) => (
                   <tr key={lesson.id} className="hover:bg-gray-50 transition-colors">
-                    <td className="py-2.5 pr-3 font-medium text-gray-800 whitespace-nowrap">{getLessonGroup(lesson)}</td>
-                    <td className="py-2.5 pr-3 text-gray-600 whitespace-nowrap">{getLessonTeacher(lesson)}</td>
-                    <td className="py-2.5 pr-3 text-gray-500 whitespace-nowrap">{getLessonRoom(lesson)}</td>
-                    <td className="py-2.5 pr-3 text-gray-500 whitespace-nowrap">{getLessonTime(lesson)}</td>
-                    <td className="py-2.5">{lessonStatusBadge(lesson.status)}</td>
+                    <td className="py-3 pr-4">
+                      <span className="inline-flex items-center justify-center w-8 h-8 rounded-lg bg-blue-600 text-white text-xs font-bold">
+                        {lesson.display_name}
+                      </span>
+                    </td>
+                    <td className="py-3 pr-4 text-gray-700 text-xs font-medium">{lesson.course_name}</td>
+                    <td className="py-3 pr-4 text-gray-600 text-xs">{lesson.teacher_name}</td>
+                    <td className="py-3 pr-4 text-gray-500 text-xs">{lesson.room_name}</td>
+                    <td className="py-3 pr-4">
+                      <span className="text-xs font-semibold text-gray-700 whitespace-nowrap">
+                        {lesson.start_time}{lesson.end_time && lesson.end_time !== '—' ? ` — ${lesson.end_time}` : ''}
+                      </span>
+                    </td>
+                    <td className="py-3">
+                      <span className="inline-flex items-center gap-1 text-xs font-semibold text-gray-700">
+                        <Users className="w-3 h-3 text-gray-400" />
+                        {lesson.students_count}
+                      </span>
+                    </td>
                   </tr>
                 ))}
               </tbody>

@@ -29,6 +29,7 @@ interface GroupStudentRaw {
   last_name?: string;
   birth_date?: string | null;
   phone?: string;
+  status?: string;
 }
 
 interface AttendanceRecord {
@@ -238,10 +239,11 @@ export default function LessonAttendancePage() {
   }
 
   async function handleSave() {
-    const unmarked = students.filter(gs => !attendance[getStudentData(gs).id]?.status);
+    const requiredStudents = students.filter(gs => !gs.status || gs.status === 'active' || gs.status === 'trial');
+    const unmarked = requiredStudents.filter(gs => !attendance[getStudentData(gs).id]?.status);
     if (unmarked.length > 0) {
       setShowConfirm(false);
-      toast.error(`${unmarked.map(gs => getStudentData(gs).name).join(', ')} belgilanmagan!`);
+      toast.error(`Belgilanmagan: ${unmarked.map(gs => getStudentData(gs).name).join(', ')}`);
       return;
     }
     setSaving(true);
@@ -273,7 +275,7 @@ export default function LessonAttendancePage() {
       setLesson(data);
       toast.success('Davomat saqlandi');
     } catch (err: any) {
-      toast.error(err?.response?.data?.detail ?? 'Xatolik yuz berdi');
+      toast.error(err?.response?.data?.error ?? err?.response?.data?.detail ?? 'Xatolik yuz berdi');
     } finally {
       setSaving(false);
     }
@@ -298,7 +300,8 @@ export default function LessonAttendancePage() {
     late: entries.filter((e) => e.status === 'late').length,
     unmarked: entries.filter((e) => !e.status).length,
   };
-  const allMarked = students.length > 0 && summary.unmarked === 0;
+  const requiredStudents = students.filter(gs => !gs.status || gs.status === 'active' || gs.status === 'trial');
+  const allMarked = requiredStudents.length > 0 && requiredStudents.every(gs => !!attendance[getStudentData(gs).id]?.status);
 
   if (loadingLesson) {
     return (
@@ -479,7 +482,7 @@ export default function LessonAttendancePage() {
                           entry.status === 'present' && '',
                           entry.status === 'absent' && 'bg-red-100',
                           entry.status === 'late' && 'bg-yellow-100',
-                          !entry.status && 'hover:bg-gray-50',
+                          !entry.status && 'bg-yellow-50',
                         )}
                       >
                         <td className="px-4 py-3 text-gray-500">{idx + 1}</td>

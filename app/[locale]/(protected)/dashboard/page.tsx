@@ -29,6 +29,7 @@ interface TodayLesson {
   end_time: string;
   schedule: string;
   students_count: number;
+  lesson_status: string | null;
 }
 interface TeacherTop {
   id: string;
@@ -358,13 +359,14 @@ export default function DashboardPage() {
               </thead>
               <tbody className="divide-y divide-gray-50">
                 {todayLessons.map((lesson) => {
-                  const now = new Date();
-                  const cur = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
-                  const started = lesson.start_time && lesson.start_time !== '—' && cur >= lesson.start_time;
-                  const finished = started && lesson.end_time && lesson.end_time !== '—' && cur >= lesson.end_time;
-                  const rowCls = finished ? 'bg-white' : started ? 'bg-blue-50' : 'bg-blue-50/40';
                   return (
-                  <tr key={lesson.id} className={cn('transition-colors hover:brightness-95', rowCls)}>
+                  <tr
+                    key={lesson.id}
+                    className={cn(
+                      'transition-colors hover:brightness-95',
+                      lesson.lesson_status === 'finished' ? 'bg-white' : 'bg-blue-50'
+                    )}
+                  >
                     <td className="py-3 pr-4">
                       <span className="inline-flex items-center justify-center w-8 h-8 rounded-lg bg-blue-600 text-white text-xs font-bold">
                         {lesson.display_name}

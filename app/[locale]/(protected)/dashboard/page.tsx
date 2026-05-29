@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import {
   Users, UserPlus, Users2, CreditCard, AlertCircle, GraduationCap,
-  TrendingUp, MessageSquare, BookOpen, UserMinus,
+  TrendingUp, MessageSquare, CalendarCheck, UserMinus,
 } from 'lucide-react';
 import Link from 'next/link';
 import { useLocale, useTranslations } from 'next-intl';
@@ -24,14 +24,14 @@ interface Debtor { id: string; student_name: string; amount: number; due_date: s
 interface LeaderboardEntry { student_id: string; student_name: string; avg_score: number; group_name?: string; }
 interface TodayLesson {
   id: string;
-  group?: { name: string } | string;
-  group_name?: string;
-  teacher?: { first_name: string; last_name: string } | string;
-  teacher_name?: string;
-  room?: { name: string } | string;
-  time?: string;
-  start_time?: string;
-  status?: string;
+  display_name: string;
+  course_name: string;
+  teacher_name: string;
+  room_name: string;
+  start_time: string;
+  end_time: string;
+  schedule: string;
+  students_count: number;
 }
 interface TeacherTop {
   id: string;
@@ -79,27 +79,6 @@ function timeAgo(dateStr: string, tFn: (key: string, params?: Record<string, num
   return tFn('timeAgoDays', { n: Math.floor(diff / 86400) });
 }
 
-function getLessonGroup(lesson: TodayLesson): string {
-  if (!lesson.group) return lesson.group_name ?? '—';
-  if (typeof lesson.group === 'string') return lesson.group;
-  return lesson.group.name ?? '—';
-}
-
-function getLessonTeacher(lesson: TodayLesson): string {
-  if (!lesson.teacher) return lesson.teacher_name ?? '—';
-  if (typeof lesson.teacher === 'string') return lesson.teacher;
-  return `${lesson.teacher.first_name} ${lesson.teacher.last_name}`;
-}
-
-function getLessonRoom(lesson: TodayLesson): string {
-  if (!lesson.room) return '—';
-  if (typeof lesson.room === 'string') return lesson.room;
-  return lesson.room.name ?? '—';
-}
-
-function getLessonTime(lesson: TodayLesson): string {
-  return lesson.time ?? lesson.start_time ?? '—';
-}
 
 const RANK_BADGES = ['🥇', '🥈', '🥉', '4', '5', '6', '7', '8', '9', '10'];
 const DEBTOR_COLORS = [
@@ -189,7 +168,7 @@ export default function DashboardPage() {
   const [leaderboardLoading, setLeaderboardLoading] = useState(true);
 
   const [todayLessons, setTodayLessons] = useState<TodayLesson[]>([]);
-  const [todayLessonsLoading, setTodayLessonsLoading] = useState(true);
+  const [todayLoading, setTodayLoading] = useState(true);
 
   const [churnTotal, setChurnTotal] = useState(0);
   const [churnLoading, setChurnLoading] = useState(true);
@@ -265,12 +244,11 @@ export default function DashboardPage() {
   }
 
   async function fetchTodayLessons() {
-    setTodayLessonsLoading(true);
+    setTodayLoading(true);
     try {
-      const today = new Date().toISOString().split('T')[0];
-      const { data: d } = await api.get('/api/v1/lessons/', { params: { date: today, page_size: 20 } });
-      setTodayLessons(d.results ?? []);
-    } catch { setTodayLessons([]); } finally { setTodayLessonsLoading(false); }
+      const { data } = await api.get('/api/v1/groups/today/');
+      setTodayLessons(Array.isArray(data) ? data : (data.results ?? []));
+    } catch { setTodayLessons([]); } finally { setTodayLoading(false); }
   }
 
   async function fetchChurn() {

@@ -2,14 +2,11 @@
 
 import { useEffect, useState } from 'react';
 import {
-  Users, UserPlus, Users2, CreditCard, AlertCircle, GraduationCap,
+  Users, UserPlus, Users2, AlertCircle, GraduationCap,
   MessageSquare, CalendarCheck, UserMinus,
 } from 'lucide-react';
 import Link from 'next/link';
 import { useLocale, useTranslations } from 'next-intl';
-import {
-  PieChart, Pie, Cell, Tooltip,
-} from 'recharts';
 import toast, { Toaster } from 'react-hot-toast';
 import StatCard from '@/components/stat-card';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -53,6 +50,17 @@ interface StudentNote {
   text?: string;
   created_at: string;
 }
+interface ChurnStudent {
+  id: string;
+  first_name: string;
+  last_name: string;
+  phone: string;
+  second_phone?: string | null;
+  last_group?: string;
+  course_name?: string | null;
+  archived_at?: string | null;
+  archive_reason?: string;
+}
 
 // ── Helpers ────────────────────────────────────────────────────────────────
 
@@ -75,8 +83,6 @@ function timeAgo(dateStr: string, tFn: (key: string, params?: Record<string, num
 
 
 const RANK_BADGES = ['🥇', '🥈', '🥉', '4', '5', '6', '7', '8', '9', '10'];
-const DONUT_COLORS_PAYMENT = ['#10b981', '#f59e0b', '#6b7280', '#ef4444'];
-const DONUT_COLORS_COURSE = ['#3b82f6', '#8b5cf6', '#f59e0b', '#10b981', '#ef4444', '#06b6d4'];
 
 function CardSkeleton() { return <Skeleton className="h-28 w-full rounded-xl" />; }
 
@@ -154,14 +160,8 @@ export default function DashboardPage() {
   const [todayLessons, setTodayLessons] = useState<TodayLesson[]>([]);
   const [todayLoading, setTodayLoading] = useState(true);
 
-  const [churnTotal, setChurnTotal] = useState(0);
+  const [churnList, setChurnList] = useState<ChurnStudent[]>([]);
   const [churnLoading, setChurnLoading] = useState(true);
-
-  const [paymentStatus, setPaymentStatus] = useState<{ name: string; value: number }[]>([]);
-  const [paymentStatusLoading, setPaymentStatusLoading] = useState(true);
-
-  const [courseDistribution, setCourseDistribution] = useState<{ name: string; value: number }[]>([]);
-  const [courseDistributionLoading, setCourseDistributionLoading] = useState(true);
 
   const [topTeachers, setTopTeachers] = useState<TeacherTop[]>([]);
   const [topTeachersLoading, setTopTeachersLoading] = useState(true);
@@ -227,49 +227,16 @@ export default function DashboardPage() {
     } catch { setTodayLessons([]); } finally { setTodayLoading(false); }
   }
 
-  async function fetchChurn() {
+  async function fetchChurnList() {
     setChurnLoading(true);
     try {
-      const { data: d } = await api.get('/api/v1/students/', { params: { status: 'archived', page_size: 1 } });
-      setChurnTotal(d.count ?? 0);
-    } catch { setChurnTotal(0); } finally { setChurnLoading(false); }
-  }
-
-  async function fetchPaymentStatus() {
-    setPaymentStatusLoading(true);
-    try {
-      const [r1, r2, r3, r4] = await Promise.all([
-        api.get('/api/v1/debts/', { params: { status: 'paid', page_size: 1 } }),
-        api.get('/api/v1/debts/', { params: { status: 'partial', page_size: 1 } }),
-        api.get('/api/v1/debts/', { params: { status: 'unpaid', page_size: 1 } }),
-        api.get('/api/v1/debts/', { params: { status: 'overdue', page_size: 1 } }),
-      ]);
-      setPaymentStatus([
-        { name: tc('paid'), value: r1.data.count ?? 0 },
-        { name: tc('partial'), value: r2.data.count ?? 0 },
-        { name: tc('unpaid'), value: r3.data.count ?? 0 },
-        { name: tc('overdue'), value: r4.data.count ?? 0 },
-      ]);
-    } catch { setPaymentStatus([]); } finally { setPaymentStatusLoading(false); }
-  }
-
-  async function fetchCourseDistribution() {
-    setCourseDistributionLoading(true);
-    try {
-      const { data: d } = await api.get('/api/v1/groups/', { params: { status: 'active', page_size: 100 } });
-      const groups: Array<{ course?: { name: string }; students_count?: number }> = d.results ?? [];
-      const map = new Map<string, number>();
-      groups.forEach((g) => {
-        const name = g.course?.name ?? 'Other';
-        map.set(name, (map.get(name) ?? 0) + (g.students_count ?? 0));
+      const now = new Date();
+      const fromDate = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0];
+      const { data: d } = await api.get('/api/v1/students/', {
+        params: { status: 'archived', archive_reason: 'dropped_out', from_date: fromDate, page_size: 100 },
       });
-      setCourseDistribution(
-        Array.from(map.entries())
-          .map(([name, value]) => ({ name, value }))
-          .sort((a, b) => b.value - a.value)
-          .slice(0, 6),
-      );
-    } catch { setCourseDistribution([]); } finally { setCourseDistributionLoading(false); }
+      setChurnList(d.results ?? []);
+    } catch { setChurnList([]); } finally { setChurnLoading(false); }
   }
 
   async function fetchTopTeachers() {
@@ -287,9 +254,7 @@ export default function DashboardPage() {
     fetchNotes();
     fetchLeaderboard();
     fetchTodayLessons();
-    fetchChurn();
-    fetchPaymentStatus();
-    fetchCourseDistribution();
+    fetchChurnList();
     fetchTopTeachers();
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -399,92 +364,53 @@ export default function DashboardPage() {
         )}
       </div>
 
-      {/* Churn + Payment Status + Course Distribution */}
-      <div className="grid grid-cols-1 xl:grid-cols-3 gap-4">
-        {/* Churn */}
-        <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-5">
-          <h2 className="text-sm font-semibold text-gray-900 mb-1 flex items-center gap-2">
-            <UserMinus className="w-4 h-4 text-rose-400" />
-            {t('churnTitle')}
-          </h2>
-          <p className="text-xs text-gray-400 mb-4">{t('last30days')}</p>
-          {churnLoading ? (
-            <Skeleton className="h-20 w-full rounded-lg" />
-          ) : (
-            <div className="flex flex-col items-center justify-center py-4">
-              <span className="text-5xl font-bold text-rose-500">{churnTotal}</span>
-              <span className="text-xs text-gray-400 mt-2">{tc('archived')}</span>
-            </div>
+      {/* Churn Table */}
+      <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
+        <div className="flex items-center gap-2 px-5 py-4 border-b border-gray-100">
+          <UserMinus className="w-4 h-4 text-rose-400 shrink-0" />
+          <h2 className="text-sm font-semibold text-gray-900">{t('churnTitle')}</h2>
+          {!churnLoading && (
+            <span className={cn(
+              'ml-1 text-xs font-medium px-2 py-0.5 rounded-full',
+              churnList.length > 0 ? 'text-rose-600 bg-rose-50' : 'text-green-600 bg-green-50'
+            )}>
+              {churnList.length} {t('churnCount')}
+            </span>
           )}
         </div>
-
-        {/* Payment Status Donut */}
-        <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-5">
-          <h2 className="text-sm font-semibold text-gray-900 mb-4 flex items-center gap-2">
-            <CreditCard className="w-4 h-4 text-blue-400" />
-            {t('paymentStatus')}
-          </h2>
-          {paymentStatusLoading ? (
-            <Skeleton className="h-44 w-full rounded-lg" />
-          ) : paymentStatus.length === 0 || paymentStatus.every((p) => p.value === 0) ? (
-            <p className="text-sm text-gray-400 text-center py-8">{tc('noData')}</p>
-          ) : (
-            <div className="flex flex-col items-center">
-              <PieChart width={150} height={150}>
-                <Pie data={paymentStatus} cx="50%" cy="50%" innerRadius={45} outerRadius={68} dataKey="value" paddingAngle={2}>
-                  {paymentStatus.map((_, i) => <Cell key={i} fill={DONUT_COLORS_PAYMENT[i % DONUT_COLORS_PAYMENT.length]} />)}
-                </Pie>
-                {/* @ts-expect-error recharts ValueType */}
-                <Tooltip formatter={(v: number) => [v, '']} />
-              </PieChart>
-              <div className="space-y-1.5 w-full mt-2">
-                {paymentStatus.map((p, i) => (
-                  <div key={p.name} className="flex items-center justify-between text-xs">
-                    <div className="flex items-center gap-1.5">
-                      <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: DONUT_COLORS_PAYMENT[i % DONUT_COLORS_PAYMENT.length] }} />
-                      <span className="text-gray-600">{p.name}</span>
-                    </div>
-                    <span className="font-semibold text-gray-800">{p.value}</span>
-                  </div>
+        {churnLoading ? (
+          <div className="p-4 space-y-2">{Array(4).fill(0).map((_, i) => <Skeleton key={i} className="h-10 w-full" />)}</div>
+        ) : churnList.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-10 gap-2">
+            <span className="text-2xl text-green-500">✓</span>
+            <p className="text-sm text-green-600 font-medium">{t('churnEmpty')}</p>
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="bg-gray-50 border-b border-gray-100">
+                  {["№", "O'quvchi", 'Telefon', 'Ota-ona tel', 'Guruh', 'Kurs', 'Arxivlangan sana'].map((h) => (
+                    <th key={h} className="text-left px-4 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wide">{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-red-100">
+                {churnList.map((s, idx) => (
+                  <tr key={s.id} className="bg-red-50 transition-colors hover:brightness-95">
+                    <td className="px-4 py-3 text-gray-400 text-xs font-medium">{idx + 1}</td>
+                    <td className="px-4 py-3 font-semibold text-gray-900">{s.first_name} {s.last_name}</td>
+                    <td className="px-4 py-3 text-gray-600">{s.phone || '—'}</td>
+                    <td className="px-4 py-3 text-gray-500">{s.second_phone || '—'}</td>
+                    <td className="px-4 py-3 text-gray-600">{s.last_group || '—'}</td>
+                    <td className="px-4 py-3 text-gray-500">{s.course_name || '—'}</td>
+                    <td className="px-4 py-3 text-gray-500">{s.archived_at ? s.archived_at.slice(0, 10) : '—'}</td>
+                  </tr>
                 ))}
-              </div>
-            </div>
-          )}
-        </div>
-
-        {/* Course Distribution Donut */}
-        <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-5">
-          <h2 className="text-sm font-semibold text-gray-900 mb-4 flex items-center gap-2">
-            <GraduationCap className="w-4 h-4 text-violet-400" />
-            {t('courseDistribution')}
-          </h2>
-          {courseDistributionLoading ? (
-            <Skeleton className="h-44 w-full rounded-lg" />
-          ) : courseDistribution.length === 0 ? (
-            <p className="text-sm text-gray-400 text-center py-8">{tc('noData')}</p>
-          ) : (
-            <div className="flex flex-col items-center">
-              <PieChart width={150} height={150}>
-                <Pie data={courseDistribution} cx="50%" cy="50%" innerRadius={45} outerRadius={68} dataKey="value" paddingAngle={2}>
-                  {courseDistribution.map((_, i) => <Cell key={i} fill={DONUT_COLORS_COURSE[i % DONUT_COLORS_COURSE.length]} />)}
-                </Pie>
-                {/* @ts-expect-error recharts ValueType */}
-                <Tooltip formatter={(v: number) => [v, '']} />
-              </PieChart>
-              <div className="space-y-1.5 w-full mt-2">
-                {courseDistribution.map((c, i) => (
-                  <div key={c.name} className="flex items-center justify-between text-xs">
-                    <div className="flex items-center gap-1.5">
-                      <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: DONUT_COLORS_COURSE[i % DONUT_COLORS_COURSE.length] }} />
-                      <span className="text-gray-600 truncate">{c.name}</span>
-                    </div>
-                    <span className="font-semibold text-gray-800 ml-2">{c.value}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-        </div>
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
 
       {/* Best + Worst Students */}

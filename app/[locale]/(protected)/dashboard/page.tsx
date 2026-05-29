@@ -3,24 +3,21 @@
 import { useEffect, useState } from 'react';
 import {
   Users, UserPlus, Users2, CreditCard, AlertCircle, GraduationCap,
-  TrendingUp, MessageSquare, CalendarCheck, UserMinus,
+  MessageSquare, CalendarCheck, UserMinus,
 } from 'lucide-react';
 import Link from 'next/link';
 import { useLocale, useTranslations } from 'next-intl';
 import {
-  AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
-  PieChart, Pie, Cell,
+  PieChart, Pie, Cell, Tooltip,
 } from 'recharts';
 import toast, { Toaster } from 'react-hot-toast';
 import StatCard from '@/components/stat-card';
 import { Skeleton } from '@/components/ui/skeleton';
 import api from '@/lib/axios';
-import { formatCurrency, cn } from '@/lib/utils';
+import { cn } from '@/lib/utils';
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
-interface RevenuePoint { month: string; revenue: number; }
-interface Debtor { id: string; student_name: string; amount: number; due_date: string; }
 interface LeaderboardEntry { student_id: string; student_name: string; avg_score: number; group_name?: string; }
 interface TodayLesson {
   id: string;
@@ -44,10 +41,8 @@ interface TeacherTop {
 interface DashboardData {
   total_students?: number; active_students?: number; students_count?: number;
   active_groups?: number; groups_count?: number;
-  monthly_revenue?: number; total_revenue?: number;
   debtors_count?: number; total_debtors?: number;
   teachers_count?: number;
-  revenue_chart?: RevenuePoint[];
 }
 interface StudentNote {
   id: string;
@@ -64,10 +59,8 @@ function resolve(data: DashboardData) {
   return {
     students: data.active_students || data.students_count || data.total_students || (data as any).students || 0,
     groups: data.active_groups || data.groups_count || (data as any).groups || 0,
-    revenue: data.monthly_revenue || data.total_revenue || (data as any).revenue || 0,
     debtors: data.debtors_count || data.total_debtors || (data as any).debtors || 0,
     teachers: data.teachers_count || (data as any).teachers || 0,
-    chart: data.revenue_chart || [],
   };
 }
 
@@ -81,13 +74,6 @@ function timeAgo(dateStr: string, tFn: (key: string, params?: Record<string, num
 
 
 const RANK_BADGES = ['🥇', '🥈', '🥉', '4', '5', '6', '7', '8', '9', '10'];
-const DEBTOR_COLORS = [
-  'bg-red-100 text-red-700',
-  'bg-orange-100 text-orange-700',
-  'bg-rose-100 text-rose-700',
-  'bg-pink-100 text-pink-700',
-  'bg-amber-100 text-amber-700',
-];
 const DONUT_COLORS_PAYMENT = ['#10b981', '#f59e0b', '#6b7280', '#ef4444'];
 const DONUT_COLORS_COURSE = ['#3b82f6', '#8b5cf6', '#f59e0b', '#10b981', '#ef4444', '#06b6d4'];
 
@@ -157,9 +143,6 @@ export default function DashboardPage() {
 
   const [leadsCount, setLeadsCount] = useState(0);
 
-  const [topDebtors, setTopDebtors] = useState<Debtor[]>([]);
-  const [topDebtorsLoading, setTopDebtorsLoading] = useState(true);
-
   const [notes, setNotes] = useState<StudentNote[]>([]);
   const [notesLoading, setNotesLoading] = useState(true);
 
@@ -199,14 +182,6 @@ export default function DashboardPage() {
     } finally {
       setLoading(false);
     }
-  }
-
-  async function fetchTopDebtors() {
-    setTopDebtorsLoading(true);
-    try {
-      const { data: d } = await api.get('/api/v1/debts/', { params: { status: 'unpaid,overdue', page_size: 5, ordering: '-amount' } });
-      setTopDebtors(d.results ?? []);
-    } catch { setTopDebtors([]); } finally { setTopDebtorsLoading(false); }
   }
 
   async function fetchNotes() {
@@ -308,7 +283,6 @@ export default function DashboardPage() {
 
   useEffect(() => {
     fetchData();
-    fetchTopDebtors();
     fetchNotes();
     fetchLeaderboard();
     fetchTodayLessons();
@@ -383,8 +357,14 @@ export default function DashboardPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-50">
-                {todayLessons.map((lesson) => (
-                  <tr key={lesson.id} className="hover:bg-gray-50 transition-colors">
+                {todayLessons.map((lesson) => {
+                  const now = new Date();
+                  const cur = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+                  const started = lesson.start_time && lesson.start_time !== '—' && cur >= lesson.start_time;
+                  const finished = started && lesson.end_time && lesson.end_time !== '—' && cur >= lesson.end_time;
+                  const rowCls = finished ? 'bg-white' : started ? 'bg-blue-50' : 'bg-blue-50/40';
+                  return (
+                  <tr key={lesson.id} className={cn('transition-colors hover:brightness-95', rowCls)}>
                     <td className="py-3 pr-4">
                       <span className="inline-flex items-center justify-center w-8 h-8 rounded-lg bg-blue-600 text-white text-xs font-bold">
                         {lesson.display_name}
@@ -392,7 +372,11 @@ export default function DashboardPage() {
                     </td>
                     <td className="py-3 pr-4 text-gray-700 text-xs font-medium">{lesson.course_name}</td>
                     <td className="py-3 pr-4 text-gray-600 text-xs">{lesson.teacher_name}</td>
-                    <td className="py-3 pr-4 text-gray-500 text-xs">{lesson.room_name}</td>
+                    <td className="py-3 pr-4">
+                      <span className="inline-flex items-center justify-center min-w-[2rem] h-8 px-2 rounded-lg bg-blue-100 text-blue-700 text-xs font-bold">
+                        {lesson.room_name}
+                      </span>
+                    </td>
                     <td className="py-3 pr-4">
                       <span className="text-xs font-semibold text-gray-700 whitespace-nowrap">
                         {lesson.start_time}{lesson.end_time && lesson.end_time !== '—' ? ` — ${lesson.end_time}` : ''}
@@ -405,82 +389,12 @@ export default function DashboardPage() {
                       </span>
                     </td>
                   </tr>
-                ))}
+                  );
+                })}
               </tbody>
             </table>
           </div>
         )}
-      </div>
-
-      {/* Revenue chart + Top Debtors */}
-      <div className="grid grid-cols-1 xl:grid-cols-3 gap-4">
-        <div className="xl:col-span-2 bg-white rounded-xl border border-gray-100 shadow-sm p-5">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-sm font-semibold text-gray-900 flex items-center gap-2">
-              <TrendingUp className="w-4 h-4 text-blue-500" />
-              {t('revenueChart')}
-            </h2>
-            {d?.revenue ? (
-              <div className="text-right">
-                <p className="text-[10px] text-gray-400 uppercase tracking-wide">{t('thisMonth')}</p>
-                <p className="text-sm font-bold text-blue-600">{formatCurrency(d.revenue)}</p>
-              </div>
-            ) : null}
-          </div>
-          {loading ? <Skeleton className="h-52 w-full rounded-lg" /> : (
-            <ResponsiveContainer width="100%" height={210}>
-              <AreaChart data={d?.chart ?? []}>
-                <defs>
-                  <linearGradient id="revenueGrad" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#2563EB" stopOpacity={0.18} />
-                    <stop offset="95%" stopColor="#2563EB" stopOpacity={0} />
-                  </linearGradient>
-                </defs>
-                <CartesianGrid strokeDasharray="3 3" stroke="#F3F4F6" />
-                <XAxis dataKey="month" tick={{ fontSize: 11, fill: '#9CA3AF' }} axisLine={false} tickLine={false} />
-                <YAxis tick={{ fontSize: 11, fill: '#9CA3AF' }} axisLine={false} tickLine={false} />
-                <Tooltip
-                  contentStyle={{ border: '1px solid #E5E7EB', borderRadius: 8, fontSize: 12, boxShadow: '0 4px 6px -1px rgba(0,0,0,0.07)' }}
-                  // @ts-expect-error recharts ValueType
-                  formatter={(v: number) => [formatCurrency(v), t('revenueChart')]}
-                />
-                <Area type="monotone" dataKey="revenue" stroke="#2563EB" strokeWidth={2.5}
-                  fill="url(#revenueGrad)" dot={{ fill: '#2563EB', r: 3, strokeWidth: 0 }} activeDot={{ r: 5, strokeWidth: 0 }} />
-              </AreaChart>
-            </ResponsiveContainer>
-          )}
-        </div>
-
-        {/* Top Debtors */}
-        <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-5">
-          <h2 className="text-sm font-semibold text-gray-900 mb-4 flex items-center gap-2">
-            <AlertCircle className="w-4 h-4 text-red-400" />
-            {t('topDebtors')}
-          </h2>
-          {topDebtorsLoading ? (
-            <div className="space-y-3">{Array(4).fill(0).map((_, i) => <Skeleton key={i} className="h-12 w-full rounded-lg" />)}</div>
-          ) : topDebtors.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-10">
-              <AlertCircle className="w-8 h-8 text-gray-200 mb-2" />
-              <p className="text-sm text-gray-400">{tc('noData')}</p>
-            </div>
-          ) : (
-            <div className="space-y-2">
-              {topDebtors.map((debt, i) => (
-                <div key={debt.id} className="flex items-center gap-3 p-2 rounded-lg hover:bg-gray-50 transition-colors">
-                  <div className={cn('w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 text-xs font-bold', DEBTOR_COLORS[i % DEBTOR_COLORS.length])}>
-                    {debt.student_name.split(' ').map((w) => w[0]).join('').slice(0, 2).toUpperCase()}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-gray-900 truncate">{debt.student_name}</p>
-                    <p className="text-xs text-gray-400">{debt.due_date}</p>
-                  </div>
-                  <span className="text-sm font-bold text-red-500 flex-shrink-0">{formatCurrency(debt.amount)}</span>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
       </div>
 
       {/* Churn + Payment Status + Course Distribution */}

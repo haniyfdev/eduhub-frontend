@@ -28,13 +28,13 @@ interface TodayLesson {
   students_count: number;
   lesson_status: string | null;
 }
-interface TeacherTop {
+interface TopTeacher {
   id: string;
-  first_name: string;
-  last_name: string;
-  groups_count?: number;
-  students_count?: number;
-  attendance_rate?: number;
+  name: string;
+  groups_count: number;
+  group_names: string[];
+  students_count: number;
+  attendance_rate: number;
 }
 interface DashboardData {
   total_students?: number; active_students?: number; students_count?: number;
@@ -163,8 +163,8 @@ export default function DashboardPage() {
   const [churnList, setChurnList] = useState<ChurnStudent[]>([]);
   const [churnLoading, setChurnLoading] = useState(true);
 
-  const [topTeachers, setTopTeachers] = useState<TeacherTop[]>([]);
-  const [topTeachersLoading, setTopTeachersLoading] = useState(true);
+  const [teacherStats, setTeacherStats] = useState<TopTeacher[]>([]);
+  const [teacherStatsLoading, setTeacherStatsLoading] = useState(true);
 
   // ── Fetch ──────────────────────────────────────────────────────────────
 
@@ -239,14 +239,12 @@ export default function DashboardPage() {
     } catch { setChurnList([]); } finally { setChurnLoading(false); }
   }
 
-  async function fetchTopTeachers() {
-    setTopTeachersLoading(true);
+  async function fetchTeacherStats() {
+    setTeacherStatsLoading(true);
     try {
-      const { data: d } = await api.get('/api/v1/teachers/', { params: { page_size: 10 } });
-      const teachers: TeacherTop[] = d.results ?? [];
-      teachers.sort((a, b) => (b.students_count ?? 0) - (a.students_count ?? 0));
-      setTopTeachers(teachers);
-    } catch { setTopTeachers([]); } finally { setTopTeachersLoading(false); }
+      const { data } = await api.get('/api/v1/teachers/top/');
+      setTeacherStats(Array.isArray(data) ? data : (data.results ?? []));
+    } catch { setTeacherStats([]); } finally { setTeacherStatsLoading(false); }
   }
 
   useEffect(() => {
@@ -255,7 +253,7 @@ export default function DashboardPage() {
     fetchLeaderboard();
     fetchTodayLessons();
     fetchChurnList();
-    fetchTopTeachers();
+    fetchTeacherStats();
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const d = data ? resolve(data) : null;
@@ -364,55 +362,6 @@ export default function DashboardPage() {
         )}
       </div>
 
-      {/* Churn Table */}
-      <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
-        <div className="flex items-center gap-2 px-5 py-4 border-b border-gray-100">
-          <UserMinus className="w-4 h-4 text-rose-400 shrink-0" />
-          <h2 className="text-sm font-semibold text-gray-900">{t('churnTitle')}</h2>
-          {!churnLoading && (
-            <span className={cn(
-              'ml-1 text-xs font-medium px-2 py-0.5 rounded-full',
-              churnList.length > 0 ? 'text-rose-600 bg-rose-50' : 'text-green-600 bg-green-50'
-            )}>
-              {churnList.length} {t('churnCount')}
-            </span>
-          )}
-        </div>
-        {churnLoading ? (
-          <div className="p-4 space-y-2">{Array(4).fill(0).map((_, i) => <Skeleton key={i} className="h-10 w-full" />)}</div>
-        ) : churnList.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-10 gap-2">
-            <span className="text-2xl text-green-500">✓</span>
-            <p className="text-sm text-green-600 font-medium">{t('churnEmpty')}</p>
-          </div>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="bg-gray-50 border-b border-gray-100">
-                  {["№", "O'quvchi", 'Telefon', 'Ota-ona tel', 'Guruh', 'Kurs', 'Arxivlangan sana'].map((h) => (
-                    <th key={h} className="text-left px-4 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wide">{h}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-red-100">
-                {churnList.map((s, idx) => (
-                  <tr key={s.id} className="bg-red-50 transition-colors hover:brightness-95">
-                    <td className="px-4 py-3 text-gray-400 text-xs font-medium">{idx + 1}</td>
-                    <td className="px-4 py-3 font-semibold text-gray-900">{s.first_name} {s.last_name}</td>
-                    <td className="px-4 py-3 text-gray-600">{s.phone || '—'}</td>
-                    <td className="px-4 py-3 text-gray-500">{s.second_phone || '—'}</td>
-                    <td className="px-4 py-3 text-gray-600">{s.last_group || '—'}</td>
-                    <td className="px-4 py-3 text-gray-500">{s.course_name || '—'}</td>
-                    <td className="px-4 py-3 text-gray-500">{s.archived_at ? s.archived_at.slice(0, 10) : '—'}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </div>
-
       {/* Best + Worst Students */}
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
         {/* Top 10 Best */}
@@ -478,45 +427,56 @@ export default function DashboardPage() {
           <GraduationCap className="w-4 h-4 text-violet-500" />
           {t('topTeachers')}
         </h2>
-        {topTeachersLoading ? (
+        {teacherStatsLoading ? (
           <div className="space-y-2">{Array(5).fill(0).map((_, i) => <Skeleton key={i} className="h-10 w-full" />)}</div>
-        ) : topTeachers.length === 0 ? (
+        ) : teacherStats.length === 0 ? (
           <p className="text-sm text-gray-400 text-center py-6">{tc('noData')}</p>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-gray-100">
-                  {[tc('teacher'), t('activeGroups'), tc('student'), t('attendanceRate')].map((h) => (
-                    <th key={h} className="text-left pb-2.5 text-xs font-semibold text-gray-400 uppercase tracking-wide pr-3">{h}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-50">
-                {topTeachers.map((teacher) => (
-                  <tr key={teacher.id} className="hover:bg-gray-50 transition-colors">
-                    <td className="py-2.5 pr-3">
-                      <div className="flex items-center gap-2">
-                        <div className="w-7 h-7 rounded-full bg-violet-100 flex items-center justify-center flex-shrink-0">
-                          <span className="text-[10px] font-bold text-violet-700">
-                            {teacher.first_name[0]}{teacher.last_name[0]}
-                          </span>
-                        </div>
-                        <span className="font-medium text-gray-800 whitespace-nowrap">
-                          {teacher.first_name} {teacher.last_name}
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-gray-100">
+                {['№', t('teacherHeader'), t('activeGroups'), t('studentsHeader'), t('attendanceRate')].map((h) => (
+                  <th key={h} className="text-left pb-2.5 text-xs font-semibold text-gray-400 uppercase tracking-wide pr-4">{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-50">
+              {teacherStats.map((teacher, idx) => (
+                <tr key={teacher.id} className="hover:bg-gray-50 transition-colors">
+                  <td className="py-3 pr-4 text-gray-400 text-xs">{idx + 1}</td>
+                  <td className="py-3 pr-4">
+                    <div className="flex items-center gap-2">
+                      <div className="w-7 h-7 rounded-full bg-violet-100 flex items-center justify-center flex-shrink-0">
+                        <span className="text-[10px] font-bold text-violet-700">
+                          {teacher.name.charAt(0)}
                         </span>
                       </div>
-                    </td>
-                    <td className="py-2.5 pr-3 text-gray-600">{teacher.groups_count ?? '—'}</td>
-                    <td className="py-2.5 pr-3 text-gray-600">{teacher.students_count ?? '—'}</td>
-                    <td className="py-2.5 text-gray-500">
-                      {teacher.attendance_rate != null ? `${teacher.attendance_rate}%` : '—'}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                      <span className="text-sm font-medium text-gray-900">{teacher.name}</span>
+                    </div>
+                  </td>
+                  <td className="py-3 pr-4">
+                    <div className="flex items-center gap-1 flex-wrap">
+                      <span className="text-sm font-semibold text-gray-700">{teacher.groups_count}</span>
+                      <span className="text-xs text-gray-400">({teacher.group_names.join(', ')})</span>
+                    </div>
+                  </td>
+                  <td className="py-3 pr-4">
+                    <span className="text-sm font-semibold text-gray-700">{teacher.students_count}</span>
+                  </td>
+                  <td className="py-3">
+                    <span className={cn(
+                      'inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold',
+                      teacher.attendance_rate >= 80 ? 'bg-green-100 text-green-700' :
+                      teacher.attendance_rate >= 60 ? 'bg-yellow-100 text-yellow-700' :
+                      'bg-red-100 text-red-700'
+                    )}>
+                      {teacher.attendance_rate}%
+                    </span>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         )}
       </div>
 
@@ -564,6 +524,55 @@ export default function DashboardPage() {
                 </div>
               );
             })}
+          </div>
+        )}
+      </div>
+
+      {/* Churn Table */}
+      <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
+        <div className="flex items-center gap-2 px-5 py-4 border-b border-gray-100">
+          <UserMinus className="w-4 h-4 text-rose-400 shrink-0" />
+          <h2 className="text-sm font-semibold text-gray-900">{t('churnTitle')}</h2>
+          {!churnLoading && (
+            <span className={cn(
+              'ml-1 text-xs font-medium px-2 py-0.5 rounded-full',
+              churnList.length > 0 ? 'text-rose-600 bg-rose-50' : 'text-green-600 bg-green-50'
+            )}>
+              {churnList.length} {t('churnCount')}
+            </span>
+          )}
+        </div>
+        {churnLoading ? (
+          <div className="p-4 space-y-2">{Array(4).fill(0).map((_, i) => <Skeleton key={i} className="h-10 w-full" />)}</div>
+        ) : churnList.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-10 gap-2">
+            <span className="text-2xl text-green-500">✓</span>
+            <p className="text-sm text-green-600 font-medium">{t('churnEmpty')}</p>
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="bg-gray-50 border-b border-gray-100">
+                  {["№", "O'quvchi", 'Telefon', 'Ota-ona tel', 'Guruh', 'Kurs', 'Arxivlangan sana'].map((h) => (
+                    <th key={h} className="text-left px-4 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wide">{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-red-100">
+                {churnList.map((s, idx) => (
+                  <tr key={s.id} className="bg-red-50 transition-colors hover:brightness-95">
+                    <td className="px-4 py-3 text-gray-400 text-xs font-medium">{idx + 1}</td>
+                    <td className="px-4 py-3 font-semibold text-gray-900">{s.first_name} {s.last_name}</td>
+                    <td className="px-4 py-3 text-gray-600">{s.phone || '—'}</td>
+                    <td className="px-4 py-3 text-gray-500">{s.second_phone || '—'}</td>
+                    <td className="px-4 py-3 text-gray-600">{s.last_group || '—'}</td>
+                    <td className="px-4 py-3 text-gray-500">{s.course_name || '—'}</td>
+                    <td className="px-4 py-3 text-gray-500">{s.archived_at ? s.archived_at.slice(0, 10) : '—'}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         )}
       </div>

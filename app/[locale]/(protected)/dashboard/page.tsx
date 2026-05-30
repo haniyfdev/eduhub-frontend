@@ -565,6 +565,16 @@ export default function DashboardPage() {
             maxLength={10}
             className="px-3 py-2 border border-gray-300 rounded-lg text-sm w-32"
           />
+          <select
+            value={selectedGroup}
+            onChange={e => { setSelectedGroup(e.target.value); setActivePreset('custom'); }}
+            className="px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white text-gray-700"
+          >
+            <option value="">Barcha guruhlar</option>
+            {groups.map(g => (
+              <option key={g.id} value={g.id}>{g.display_name ?? g.name}</option>
+            ))}
+          </select>
           {(fromDate || toDate) && (
             <button
               onClick={() => { setFromDate(''); setToDate(''); setActivePreset(''); }}
@@ -578,22 +588,10 @@ export default function DashboardPage() {
 
       {/* Recent Notes */}
       <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-5">
-        <div className="flex items-center justify-between mb-4 flex-wrap gap-3">
-          <h2 className="text-sm font-semibold text-gray-900 flex items-center gap-2">
-            <MessageSquare className="w-4 h-4 text-gray-400" />
-            {t('recentNotes')}
-          </h2>
-          <select
-            value={selectedGroup}
-            onChange={e => setSelectedGroup(e.target.value)}
-            className="px-3 py-2 border border-gray-300 rounded-lg text-sm"
-          >
-            <option value="">Barcha guruhlar</option>
-            {groups.map(g => (
-              <option key={g.id} value={g.id}>{g.display_name ?? g.name}</option>
-            ))}
-          </select>
-        </div>
+        <h2 className="text-sm font-semibold text-gray-900 flex items-center gap-2 mb-4">
+          <MessageSquare className="w-4 h-4 text-gray-400" />
+          {t('recentNotes')}
+        </h2>
         {notesLoading ? (
           <div className="space-y-4">
             {Array(3).fill(0).map((_, i) => (
@@ -612,9 +610,9 @@ export default function DashboardPage() {
             <p className="text-sm text-gray-400">Izohlar yo&apos;q</p>
           </div>
         ) : (
-          <div>
+          <div className="grid grid-cols-2 gap-3">
             {notes.map((note, idx) => (
-              <div key={note.id} className="flex items-start gap-3 py-3 border-b border-gray-100">
+              <div key={note.id} className="flex items-start gap-3 p-3 border border-gray-100 rounded-lg">
                 <span className="inline-flex items-center justify-center w-7 h-7 rounded-full bg-blue-600 text-white text-xs font-bold shrink-0">
                   {idx + 1}
                 </span>

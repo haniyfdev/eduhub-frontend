@@ -11,7 +11,7 @@ const AnimatedPie = Pie as React.ComponentType<any>;
 import {
   TrendingUp, TrendingDown, DollarSign, AlertTriangle,
   Users, GraduationCap, Users2, Lightbulb, AlertCircle,
-  ChevronDown, ChevronUp, Plus, UserMinus, PencilLine,
+  Plus, PencilLine,
 } from 'lucide-react';
 import toast, { Toaster } from 'react-hot-toast';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -57,11 +57,6 @@ interface ConversionStats {
 }
 interface ReferralItem { source: string; label: string; count: number; percent: number; }
 interface ReferralData { total: number; data: ReferralItem[]; }
-interface ArchivedStudent {
-  id: string; first_name: string; last_name: string;
-  phone: string; second_phone: string | null;
-  course_name: string | null; archived_at: string | null; last_group?: string;
-}
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -145,10 +140,7 @@ export default function ReportsPage() {
   const [debt,         setDebt]         = useState<DebtForecast | null>(null);
   const [conversion,   setConversion]   = useState<ConversionStats | null>(null);
   const [referral,     setReferral]     = useState<ReferralData | null>(null);
-  const [churn,        setChurn]        = useState<ArchivedStudent[]>([]);
-
   const [activePreset, setActivePreset] = useState<'current_month' | 'current_year' | 'custom'>('current_month');
-  const [churnOpen, setChurnOpen] = useState(false);
 
   const [activePie1, setActivePie1] = useState<number | undefined>();
   const [activePie2, setActivePie2] = useState<number | undefined>();
@@ -174,17 +166,15 @@ export default function ReportsPage() {
       api.get(`/api/v1/profit-loss/debt-forecast/`),
       api.get(`/api/v1/leads/conversion-stats/`),
       api.get(`/api/v1/leads/referral-stats/`),
-      api.get(`/api/v1/students/?status=archived&archive_reason=dropped_out&${q}`),
     ]);
 
-    const [pnlR, histR, courseR, debtR, convR, refR, churnR] = results;
+    const [pnlR, histR, courseR, debtR, convR, refR] = results;
     if (pnlR.status    === 'fulfilled') setPnl(pnlR.value.data);
     if (histR.status   === 'fulfilled') setHistory(histR.value.data);
     if (courseR.status === 'fulfilled') setCourseIncome(courseR.value.data);
     if (debtR.status   === 'fulfilled') setDebt(debtR.value.data);
     if (convR.status   === 'fulfilled') setConversion(convR.value.data);
     if (refR.status    === 'fulfilled') setReferral(refR.value.data);
-    if (churnR.status  === 'fulfilled') setChurn(churnR.value.data.results ?? churnR.value.data);
 
     setLoading(false);
   }, [fromDate, toDate]);
@@ -659,66 +649,6 @@ export default function ReportsPage() {
               </tbody>
             </table>
           </div>
-        )}
-      </div>
-
-      {/* ── Section 7: Churn Table ── */}
-      <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
-        <button
-          onClick={() => setChurnOpen(o => !o)}
-          className="w-full flex items-center justify-between px-5 py-4 hover:bg-gray-50 transition-colors"
-        >
-          <div className="flex items-center gap-2">
-            <UserMinus className="w-4 h-4 text-red-500 shrink-0" />
-            <div className="text-left">
-              <h2 className="text-sm font-semibold text-gray-900">{t('churnTitle')}</h2>
-              <p className="text-xs text-gray-400">{t('churnDesc')}</p>
-            </div>
-            {!loading && churn.length > 0 && (
-              <span className="ml-2 text-xs font-medium text-gray-500 bg-gray-100 px-2 py-0.5 rounded-full shrink-0">
-                {churn.length} ta
-              </span>
-            )}
-          </div>
-          {churnOpen
-            ? <ChevronUp className="w-4 h-4 text-gray-400 shrink-0" />
-            : <ChevronDown className="w-4 h-4 text-gray-400 shrink-0" />}
-        </button>
-        {churnOpen && (
-          <>
-            {loading ? (
-              <div className="p-4 space-y-2 border-t border-gray-100">{Array(3).fill(0).map((_, i) => <Skel key={i} className="h-8 w-full" />)}</div>
-            ) : churn.length === 0 ? (
-              <p className="px-5 py-8 text-sm text-gray-400 text-center border-t border-gray-100">{t('noChurn')}</p>
-            ) : (
-              <div className="overflow-x-auto border-t border-gray-100">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="bg-gray-50 border-b border-gray-200">
-                      {['№', common('student'), common('phone'), t('parentPhone'), common('group'), common('course'), t('archiveDate')].map((h, i) => (
-                        <th key={i} className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">{h}</th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-gray-100">
-                    {churn.map((s, idx) => (
-                      <tr key={s.id} className="hover:bg-gray-50 transition-colors">
-                        <td className="px-4 py-3 text-gray-400 text-xs font-medium">{idx + 1}</td>
-                        <td className="px-4 py-3 font-semibold text-gray-900 text-sm">{s.first_name} {s.last_name}</td>
-                        <td className="px-4 py-3 text-gray-600 text-sm font-medium">{s.phone || '—'}</td>
-                        <td className="px-4 py-3 text-gray-500 text-sm font-medium">{s.second_phone || '—'}</td>
-                        <td className="px-4 py-3 text-gray-600 text-sm font-medium">{s.last_group || '—'}</td>
-                        <td className="px-4 py-3 text-gray-500 text-sm font-medium">{s.course_name || '—'}</td>
-                        <td className="px-4 py-3 text-gray-500 text-sm font-medium">
-                          {s.archived_at ? s.archived_at.slice(0, 10) : '—'}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
-          </>
         )}
       </div>
 

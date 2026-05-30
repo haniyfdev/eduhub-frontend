@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import {
   Users, UserPlus, Users2, AlertCircle, GraduationCap,
-  MessageSquare, CalendarCheck, UserMinus,
+  MessageSquare, CalendarCheck, TrendingDown, ChevronUp, ChevronDown,
 } from 'lucide-react';
 import Link from 'next/link';
 import { useLocale, useTranslations } from 'next-intl';
@@ -82,7 +82,6 @@ function timeAgo(dateStr: string, tFn: (key: string, params?: Record<string, num
 }
 
 
-const RANK_BADGES = ['🥇', '🥈', '🥉', '4', '5', '6', '7', '8', '9', '10'];
 
 function CardSkeleton() { return <Skeleton className="h-28 w-full rounded-xl" />; }
 
@@ -162,6 +161,7 @@ export default function DashboardPage() {
 
   const [churnList, setChurnList] = useState<ChurnStudent[]>([]);
   const [churnLoading, setChurnLoading] = useState(true);
+  const [churnOpen, setChurnOpen] = useState(false);
 
   const [teacherStats, setTeacherStats] = useState<TopTeacher[]>([]);
   const [teacherStatsLoading, setTeacherStatsLoading] = useState(true);
@@ -365,7 +365,7 @@ export default function DashboardPage() {
       {/* Best + Worst Students */}
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
         {/* Top 10 Best */}
-        <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-5">
+        <div className="bg-white rounded-xl border-2 border-green-200 shadow-sm p-5">
           <h2 className="text-sm font-semibold text-gray-900 mb-4">
             🏆 {t('topStudents')}
           </h2>
@@ -379,13 +379,13 @@ export default function DashboardPage() {
           ) : (
             <div className="space-y-1">
               {leaderboard.map((entry, i) => (
-                <div key={entry.student_id} className="flex items-center gap-3 py-2 border-b border-gray-50 last:border-0">
-                  <span className="text-base w-6 flex-shrink-0 text-center">{RANK_BADGES[i] ?? `${i + 1}`}</span>
+                <div key={entry.student_id} className="flex items-center gap-3 py-2.5 border-b border-gray-50 last:border-0">
+                  <span className="text-xs font-bold text-gray-400 w-5 flex-shrink-0 text-center">{i + 1}</span>
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-gray-900 truncate">{entry.student_name}</p>
+                    <p className="text-sm font-semibold text-gray-900 truncate">{entry.student_name}</p>
                     {entry.group_name && <p className="text-xs text-gray-400">{entry.group_name}</p>}
                   </div>
-                  <span className="text-sm font-bold text-blue-600 flex-shrink-0">{entry.avg_score.toFixed(1)}</span>
+                  <span className="text-sm font-bold text-green-600 flex-shrink-0">{entry.avg_score > 0 ? entry.avg_score.toFixed(1) : '—'}</span>
                 </div>
               ))}
             </div>
@@ -393,7 +393,7 @@ export default function DashboardPage() {
         </div>
 
         {/* Top 10 Worst */}
-        <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-5">
+        <div className="bg-white rounded-xl border-2 border-red-200 shadow-sm p-5">
           <h2 className="text-sm font-semibold text-gray-900 mb-4">
             📉 {t('worstStudents')}
           </h2>
@@ -407,13 +407,13 @@ export default function DashboardPage() {
           ) : (
             <div className="space-y-1">
               {worstStudents.map((entry, i) => (
-                <div key={entry.student_id} className="flex items-center gap-3 py-2 border-b border-gray-50 last:border-0">
-                  <span className="text-sm w-6 flex-shrink-0 text-center text-gray-400 font-mono">{i + 1}.</span>
+                <div key={entry.student_id} className="flex items-center gap-3 py-2.5 border-b border-gray-50 last:border-0">
+                  <span className="text-xs font-bold text-gray-400 w-5 flex-shrink-0 text-center">{i + 1}</span>
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-gray-900 truncate">{entry.student_name}</p>
+                    <p className="text-sm font-semibold text-gray-900 truncate">{entry.student_name}</p>
                     {entry.group_name && <p className="text-xs text-gray-400">{entry.group_name}</p>}
                   </div>
-                  <span className="text-sm font-bold text-rose-500 flex-shrink-0">{entry.avg_score.toFixed(1)}</span>
+                  <span className="text-sm font-bold text-red-500 flex-shrink-0">{entry.avg_score > 0 ? entry.avg_score.toFixed(1) : '—'}</span>
                 </div>
               ))}
             </div>
@@ -530,49 +530,59 @@ export default function DashboardPage() {
 
       {/* Churn Table */}
       <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
-        <div className="flex items-center gap-2 px-5 py-4 border-b border-gray-100">
-          <UserMinus className="w-4 h-4 text-rose-400 shrink-0" />
-          <h2 className="text-sm font-semibold text-gray-900">{t('churnTitle')}</h2>
-          {!churnLoading && (
-            <span className={cn(
-              'ml-1 text-xs font-medium px-2 py-0.5 rounded-full',
-              churnList.length > 0 ? 'text-rose-600 bg-rose-50' : 'text-green-600 bg-green-50'
-            )}>
-              {churnList.length} {t('churnCount')}
-            </span>
-          )}
-        </div>
-        {churnLoading ? (
-          <div className="p-4 space-y-2">{Array(4).fill(0).map((_, i) => <Skeleton key={i} className="h-10 w-full" />)}</div>
-        ) : churnList.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-10 gap-2">
-            <span className="text-2xl text-green-500">✓</span>
-            <p className="text-sm text-green-600 font-medium">{t('churnEmpty')}</p>
+        <button
+          onClick={() => setChurnOpen(o => !o)}
+          className="w-full flex items-center justify-between px-5 py-4 hover:bg-gray-50 transition-colors"
+        >
+          <div className="flex items-center gap-2">
+            <TrendingDown className="w-4 h-4 text-rose-500" />
+            <span className="text-sm font-semibold text-gray-900">{t('churnTitle')}</span>
+            {!churnLoading && churnList.length > 0 && (
+              <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-rose-100 text-rose-700">
+                {churnList.length} {t('churnCount')}
+              </span>
+            )}
           </div>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="bg-gray-50 border-b border-gray-100">
-                  {["№", "O'quvchi", 'Telefon', 'Ota-ona tel', 'Guruh', 'Kurs', 'Arxivlangan sana'].map((h) => (
-                    <th key={h} className="text-left px-4 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wide">{h}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-red-100">
-                {churnList.map((s, idx) => (
-                  <tr key={s.id} className="bg-red-50 transition-colors hover:brightness-95">
-                    <td className="px-4 py-3 text-gray-400 text-xs font-medium">{idx + 1}</td>
-                    <td className="px-4 py-3 font-semibold text-gray-900">{s.first_name} {s.last_name}</td>
-                    <td className="px-4 py-3 text-gray-600">{s.phone || '—'}</td>
-                    <td className="px-4 py-3 text-gray-500">{s.second_phone || '—'}</td>
-                    <td className="px-4 py-3 text-gray-600">{s.last_group || '—'}</td>
-                    <td className="px-4 py-3 text-gray-500">{s.course_name || '—'}</td>
-                    <td className="px-4 py-3 text-gray-500">{s.archived_at ? s.archived_at.slice(0, 10) : '—'}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+          {churnOpen
+            ? <ChevronUp className="w-4 h-4 text-gray-400" />
+            : <ChevronDown className="w-4 h-4 text-gray-400" />}
+        </button>
+
+        {churnOpen && (
+          <div className="border-t border-gray-100">
+            {churnLoading ? (
+              <div className="p-4 space-y-2">{Array(4).fill(0).map((_, i) => <Skeleton key={i} className="h-10 w-full" />)}</div>
+            ) : churnList.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-10 gap-2">
+                <span className="text-2xl text-green-500">✓</span>
+                <p className="text-sm text-green-600 font-medium">{t('churnEmpty')}</p>
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="bg-gray-50 border-b border-gray-100">
+                      {["№", "O'quvchi", 'Telefon', 'Ota-ona tel', 'Guruh', 'Kurs', 'Arxivlangan sana'].map((h) => (
+                        <th key={h} className="text-left px-4 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wide">{h}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-red-100">
+                    {churnList.map((s, idx) => (
+                      <tr key={s.id} className="bg-red-50 transition-colors hover:brightness-95">
+                        <td className="px-4 py-3 text-gray-400 text-xs font-medium">{idx + 1}</td>
+                        <td className="px-4 py-3 font-semibold text-gray-900">{s.first_name} {s.last_name}</td>
+                        <td className="px-4 py-3 text-gray-600">{s.phone || '—'}</td>
+                        <td className="px-4 py-3 text-gray-500">{s.second_phone || '—'}</td>
+                        <td className="px-4 py-3 text-gray-600">{s.last_group || '—'}</td>
+                        <td className="px-4 py-3 text-gray-500">{s.course_name || '—'}</td>
+                        <td className="px-4 py-3 text-gray-500">{s.archived_at ? s.archived_at.slice(0, 10) : '—'}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
           </div>
         )}
       </div>

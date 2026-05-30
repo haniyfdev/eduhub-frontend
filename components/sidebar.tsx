@@ -33,7 +33,7 @@ const sections = [
   {
     label: 'Moliya',
     items: [
-      { key: 'discounts', icon: Tag, href: '/discounts', roles: ['boss', 'manager'] },
+      { key: 'discounts', icon: Tag, href: '/discounts', roles: ['boss', 'manager', 'admin'] },
       { key: 'payments', icon: CreditCard, href: '/payments' },
       { key: 'debts', icon: AlertCircle, href: '/debts' },
       { key: 'salaries', icon: Banknote, href: '/salaries', roles: ['boss', 'manager'] },
@@ -92,9 +92,22 @@ export default function Sidebar() {
         <nav className="flex-1 px-2 py-3 overflow-y-auto space-y-4">
           {sections.map((section, si) => {
             const visibleItems = section.items.filter((item) => {
+              if (!user) return false;
+              if (user.role === 'superadmin') return true;
+
+              if (user.role === 'teacher') {
+                return item.key === 'dashboard' || item.key === 'groups';
+              }
+
+              if (user.role === 'admin') {
+                if (item.key === 'reports') return false;
+                const roles = (item as { roles?: string[] | null }).roles;
+                if (roles) return roles.includes('admin') || roles.includes('boss');
+                return true;
+              }
+
               const roles = (item as { roles?: string[] | null }).roles;
-              if (user?.role === 'superadmin') return true;
-              if (roles) return roles.includes(user?.role ?? '');
+              if (roles) return roles.includes(user.role ?? '');
               return true;
             });
             if (visibleItems.length === 0) return null;

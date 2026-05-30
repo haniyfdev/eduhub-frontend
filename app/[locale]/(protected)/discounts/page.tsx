@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback } from 'react';
 import { Minus, Send } from 'lucide-react';
 import toast, { Toaster } from 'react-hot-toast';
 import { useTranslations } from 'next-intl';
+import { getUser } from '@/lib/auth';
 import { Skeleton } from '@/components/ui/skeleton';
 import { SmsModal, type SmsRecipient } from '@/components/sms-modal';
 import api from '@/lib/axios';
@@ -39,6 +40,7 @@ function isActiveDiscount(endMonth: string) {
 export default function DiscountsPage() {
   const t  = useTranslations('discounts');
   const tc = useTranslations('common');
+  const isAdmin = getUser()?.role === 'admin';
 
   const [discounts, setDiscounts]   = useState<Discount[]>([]);
   const [loading, setLoading]       = useState(true);
@@ -262,14 +264,16 @@ export default function DiscountsPage() {
                           </span>
                         </td>
                         <td className="px-4 py-3 text-right">
-                          <button
-                            onClick={() => handleDelete(d.id)}
-                            disabled={deletingId === d.id}
-                            className="p-1 rounded text-red-400 hover:bg-red-50 hover:text-red-600 transition-colors disabled:opacity-40"
-                            title={tc('archive')}
-                          >
-                            <Minus className="w-4 h-4" />
-                          </button>
+                          {!isAdmin && (
+                            <button
+                              onClick={() => handleDelete(d.id)}
+                              disabled={deletingId === d.id}
+                              className="p-1 rounded text-red-400 hover:bg-red-50 hover:text-red-600 transition-colors disabled:opacity-40"
+                              title={tc('archive')}
+                            >
+                              <Minus className="w-4 h-4" />
+                            </button>
+                          )}
                         </td>
                       </tr>
                     );

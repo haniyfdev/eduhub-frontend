@@ -75,8 +75,9 @@ export default function GroupDetailPage() {
   const locale = useLocale();
   const t = useTranslations('groups');
   const common = useTranslations('common');
-  const user = getUser(); // yoki useAuth() — qaysi hook ishlatayotgan bo'lsang
+  const user = getUser();
   const canEdit = ['boss', 'manager', 'admin'].includes(user?.role ?? '');
+  const isTeacher = user?.role === 'teacher';
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -479,18 +480,24 @@ export default function GroupDetailPage() {
                           <td className="px-4 py-3">
                             {isLeft ? (
                               <span className="text-xs text-gray-400">Chiqdi: {formatDMY(s.left_at)}</span>
-                            ) : canEdit ? (
+                            ) : (canEdit || isTeacher) ? (
                               <div className="flex items-center gap-1">
                                 <button
-                                  onClick={() => { setArchiveReason(''); setArchiveTarget({ studentId: s.id, name: `${s.first_name} ${s.last_name}`, status: s.status }); }}
-                                  className="p-1 rounded text-red-400 hover:bg-red-50 hover:text-red-600 transition-colors"
+                                  onClick={() => {
+                                    if (isTeacher) { toast.error("Bu amal uchun huquqingiz yo'q. Admin orqali murojaat qiling."); return; }
+                                    setArchiveReason(''); setArchiveTarget({ studentId: s.id, name: `${s.first_name} ${s.last_name}`, status: s.status });
+                                  }}
+                                  className={cn('p-1 rounded transition-colors', isTeacher ? 'text-gray-300 cursor-not-allowed' : 'text-red-400 hover:bg-red-50 hover:text-red-600')}
                                   title={common('archive')}
                                 >
                                   <Minus className="w-4 h-4" />
                                 </button>
                                 <button
-                                  onClick={() => { setNewGroupId(''); setChangeGroupTarget({ studentId: s.id, name: `${s.first_name} ${s.last_name}` }); }}
-                                  className="p-1 rounded text-blue-400 hover:bg-blue-50 hover:text-blue-600 transition-colors"
+                                  onClick={() => {
+                                    if (isTeacher) { toast.error("Bu amal uchun huquqingiz yo'q. Admin orqali murojaat qiling."); return; }
+                                    setNewGroupId(''); setChangeGroupTarget({ studentId: s.id, name: `${s.first_name} ${s.last_name}` });
+                                  }}
+                                  className={cn('p-1 rounded transition-colors', isTeacher ? 'text-gray-300 cursor-not-allowed' : 'text-blue-400 hover:bg-blue-50 hover:text-blue-600')}
                                   title={t('transferStudent')}
                                 >
                                   <ArrowLeftRight className="w-4 h-4" />

@@ -140,6 +140,8 @@ export default function SettingsPage() {
   }, []);
 
   const canEditCompany = ['boss', 'manager', 'superadmin'].includes(user?.role ?? '');
+  const canSaveCompany = ['boss', 'superadmin'].includes(user?.role ?? '');
+  const canEditSms = ['boss', 'manager', 'admin', 'superadmin'].includes(user?.role ?? '');
 
   useEffect(() => {
     if (tab === 'company' && canEditCompany) {
@@ -304,7 +306,7 @@ export default function SettingsPage() {
 
   const tabs: Array<{ key: Tab; label: string; show: boolean }> = [
     { key: 'company', label: t('tabs.company'), show: canEditCompany },
-    { key: 'sms', label: t('tabs.sms'), show: canEditCompany },
+    { key: 'sms', label: t('tabs.sms'), show: canEditSms },
   ];
 
   const visibleTabs = tabs.filter((tab) => tab.show);
@@ -389,10 +391,12 @@ export default function SettingsPage() {
                   <input value={companyForm.address} onChange={(e) => setCompanyForm((f) => ({ ...f, address: e.target.value }))}
                     className={inputCls} />
                 </div>
-                <button type="submit" disabled={savingCompanyInfo}
-                  className="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded hover:bg-blue-700 disabled:opacity-60">
-                  {savingCompanyInfo ? t('saving') : t('save')}
-                </button>
+                {canSaveCompany && (
+                  <button type="submit" disabled={savingCompanyInfo}
+                    className="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded hover:bg-blue-700 disabled:opacity-60">
+                    {savingCompanyInfo ? t('saving') : t('save')}
+                  </button>
+                )}
               </form>
             </div>
           )}
@@ -453,7 +457,7 @@ export default function SettingsPage() {
       )}
 
       {/* SMS Templates tab */}
-      {tab === 'sms' && canEditCompany && (
+      {tab === 'sms' && canEditSms && (
         <div className="space-y-4">
           {/* Variables reference panel */}
           <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">

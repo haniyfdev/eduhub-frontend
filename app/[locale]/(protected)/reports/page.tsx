@@ -1,7 +1,9 @@
 'use client';
 
 import { useEffect, useState, useCallback, useMemo } from 'react';
-import { useTranslations } from 'next-intl';
+import { useRouter } from 'next/navigation';
+import { useTranslations, useLocale } from 'next-intl';
+import { getUser } from '@/lib/auth';
 import {
   AreaChart, Area, PieChart, Pie, Cell, Sector,
   XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
@@ -132,6 +134,17 @@ function DateField({ value, onChange }: { value: string; onChange: (v: string) =
 export default function ReportsPage() {
   const t = useTranslations('reports');
   const common = useTranslations('common');
+  const router = useRouter();
+  const locale = useLocale();
+
+  useEffect(() => {
+    const user = getUser();
+    if (user?.role === 'admin') {
+      toast.error("Hisobotlar bo'limiga kirishga ruxsat yo'q");
+      router.push(`/${locale}/dashboard`);
+    }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
   const [fromDate, setFromDate] = useState(monthStartStr);
   const [toDate,   setToDate]   = useState(todayStr);
   const [loading,  setLoading]  = useState(true);

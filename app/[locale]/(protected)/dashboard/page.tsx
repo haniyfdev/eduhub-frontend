@@ -5,7 +5,6 @@ import {
   Users, UserPlus, Users2, AlertCircle, GraduationCap,
   MessageSquare, CalendarCheck, TrendingDown, ChevronUp, ChevronDown,
 } from 'lucide-react';
-import Link from 'next/link';
 import { useLocale, useTranslations } from 'next-intl';
 import toast, { Toaster } from 'react-hot-toast';
 import StatCard from '@/components/stat-card';
@@ -111,49 +110,41 @@ function CardSkeleton() { return <Skeleton className="h-28 w-full rounded-xl" />
 
 // ── Funnel Widget ──────────────────────────────────────────────────────────
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 function FunnelWidget({ locale }: { locale: string }) {
-  const td = useTranslations('dashboard');
-  const [counts, setCounts] = useState<{ leads: number; trial: number; active: number } | null>(null);
+  const [conversionStats, setConversionStats] = useState<any>(null);
 
   useEffect(() => {
-    async function load() {
-      try {
-        const [r1, r2, r3] = await Promise.all([
-          api.get('/api/v1/leads/', { params: { page_size: 1 } }),
-          api.get('/api/v1/leads/', { params: { status: 'trial', page_size: 1 } }),
-          api.get('/api/v1/students/', { params: { status: 'active', page_size: 1 } }),
-        ]);
-        setCounts({ leads: r1.data.count ?? 0, trial: r2.data.count ?? 0, active: r3.data.count ?? 0 });
-      } catch { setCounts({ leads: 0, trial: 0, active: 0 }); }
-    }
-    load();
+    api.get('/api/v1/leads/conversion-stats/')
+      .then(({ data }) => setConversionStats(data))
+      .catch(() => {});
   }, []);
 
-  if (!counts) return <Skeleton className="h-24 w-full rounded-lg" />;
+  if (!conversionStats) return <Skeleton className="h-40 w-full rounded-lg" />;
 
-  const conv1 = counts.leads > 0 ? Math.round((counts.trial / counts.leads) * 100) : 0;
-  const conv2 = counts.trial > 0 ? Math.round((counts.active / counts.trial) * 100) : 0;
-
-  const steps = [
-    { label: td('funnelLeads'), count: counts.leads, color: 'bg-amber-400', href: `/${locale}/leads`, width: 100 },
-    { label: td('funnelTrial'), count: counts.trial, color: 'bg-blue-400', href: `/${locale}/leads?status=trial`, width: 72 },
-    { label: td('funnelActive'), count: counts.active, color: 'bg-emerald-500', href: `/${locale}/students`, width: 50 },
+  const funnelRows = [
+    { label: 'Jami',              count: conversionStats.grand_total,       percent: 100,                              color: '#6B7280' },
+    { label: "Faol o'quvchilar",  count: conversionStats.active?.count,     percent: conversionStats.active?.percent,  color: '#22C55E' },
+    { label: 'Sinov muddatida',   count: conversionStats.trial?.count,      percent: conversionStats.trial?.percent,   color: '#F97316' },
+    { label: 'Muzlatilgan',       count: conversionStats.frozen?.count,     percent: conversionStats.frozen?.percent,  color: '#06B6D4' },
+    { label: 'Kutilmoqda',        count: conversionStats.pending?.count,    percent: conversionStats.pending?.percent, color: '#EAB308' },
+    { label: 'Rad etdi',          count: conversionStats.ignored?.count,    percent: conversionStats.ignored?.percent, color: '#EF4444' },
+    { label: 'Arxivlangan',       count: conversionStats.archived?.count,   percent: conversionStats.archived?.percent,color: '#9CA3AF' },
   ];
 
   return (
-    <div className="flex flex-col items-center gap-1.5 py-1">
-      {steps.map((step, i) => (
-        <div key={step.label} className="w-full flex items-center gap-3">
-          <Link href={step.href} style={{ width: `${step.width}%` }}
-            className="group block rounded-lg overflow-hidden hover:opacity-90 transition-opacity">
-            <div className={cn('py-2.5 px-4 flex items-center justify-between text-white', step.color)}>
-              <span className="text-sm font-medium">{step.label}</span>
-              <span className="font-bold">{step.count.toLocaleString()}</span>
-            </div>
-          </Link>
-          {i < steps.length - 1 && (
-            <span className="text-xs text-gray-400 flex-shrink-0">↓ {[conv1, conv2][i]}%</span>
-          )}
+    <div className="flex flex-col gap-2.5">
+      {funnelRows.map(row => (
+        <div key={row.label} className="flex items-center gap-3">
+          <span className="w-44 text-sm text-gray-600 shrink-0">{row.label}</span>
+          <div className="flex-1 bg-gray-100 rounded-full h-3">
+            <div
+              className="h-3 rounded-full transition-all"
+              style={{ width: `${row.percent ?? 0}%`, backgroundColor: row.color }}
+            />
+          </div>
+          <span className="w-12 text-sm font-semibold text-right">{row.count ?? 0}</span>
+          <span className="w-14 text-sm text-gray-500 text-right">{row.percent ?? 0}%</span>
         </div>
       ))}
     </div>

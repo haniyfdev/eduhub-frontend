@@ -45,7 +45,7 @@ interface PnLData {
     active_groups: number; total_debtors: number; total_debt_amount: number;
   };
 }
-interface HistoryItem  { month: string; income: number; expenses: number; profit: number; }
+interface HistoryItem  { month?: string; date?: string; label?: string; income: number; expenses: number; profit: number; }
 interface CourseIncome { course: string; amount: number; }
 interface DebtForecast { total: number; }
 interface ConversionStats {
@@ -156,12 +156,19 @@ export default function ReportsPage() {
 
   // ── Data Fetching ────────────────────────────────────────────────────────────
 
+  const daysDiff = useMemo(() => {
+    if (!fromDate || !toDate) return 365;
+    return Math.floor((new Date(toDate).getTime() - new Date(fromDate).getTime()) / (1000 * 60 * 60 * 24));
+  }, [fromDate, toDate]);
+  const groupBy = daysDiff <= 31 ? 'day' : 'month';
+
   const loadData = useCallback(async () => {
     setLoading(true);
     const q = `from_date=${fromDate}&to_date=${toDate}`;
+    const gb = daysDiff <= 31 ? 'day' : 'month';
     const results = await Promise.allSettled([
       api.get(`/api/v1/profit-loss/?${q}`),
-      api.get(`/api/v1/profit-loss/history/?${q}`),
+      api.get(`/api/v1/profit-loss/history/?${q}&group_by=${gb}`),
       api.get(`/api/v1/profit-loss/income-by-course/?${q}`),
       api.get(`/api/v1/profit-loss/debt-forecast/`),
       api.get(`/api/v1/leads/conversion-stats/`),
@@ -247,7 +254,7 @@ export default function ReportsPage() {
   const displayExpenses = useMemo(() => pnl?.expenses?.breakdown ?? [], [pnl]);
 
   const trendData = history.map(h => ({
-    period: shortMonth(h.month),
+    period: h.label ?? shortMonth(h.month ?? ''),
     income: Number(h.income),
     expenses: Number(h.expenses),
   }));
@@ -468,7 +475,8 @@ export default function ReportsPage() {
                   </linearGradient>
                 </defs>
                 <CartesianGrid strokeDasharray="3 3" stroke="#F3F4F6" vertical={false} />
-                <XAxis dataKey="period" tick={{ fontSize: 11, fill: '#9CA3AF' }} axisLine={false} tickLine={false} />
+                <XAxis dataKey="period" tick={{ fontSize: 11, fill: '#9CA3AF' }} axisLine={false} tickLine={false}
+                  interval={groupBy === 'day' && daysDiff > 14 ? 'preserveStartEnd' : 0} />
                 <YAxis tick={{ fontSize: 10, fill: '#9CA3AF' }} axisLine={false} tickLine={false} width={58}
                   tickFormatter={v => v >= 1_000_000 ? `${(v/1_000_000).toFixed(1)}M` : v >= 1000 ? `${(v/1000).toFixed(0)}K` : String(v)} />
                 <Tooltip contentStyle={{ border: '1px solid #E5E7EB', borderRadius: 8, fontSize: 12 }}

@@ -50,10 +50,12 @@ interface CourseIncome { course: string; amount: number; }
 interface DebtForecast { total: number; }
 interface ConversionStats {
   grand_total: number;
-  active:  { count: number; percent: number };
-  pending: { count: number; percent: number };
-  frozen:  { count: number; percent: number };
-  ignored: { count: number; percent: number };
+  active:   { count: number; percent: number };
+  trial:    { count: number; percent: number };
+  frozen:   { count: number; percent: number };
+  archived: { count: number; percent: number };
+  pending:  { count: number; percent: number };
+  ignored:  { count: number; percent: number };
 }
 interface ReferralItem { source: string; label: string; count: number; percent: number; }
 interface ReferralData { total: number; data: ReferralItem[]; }
@@ -260,11 +262,13 @@ export default function ReportsPage() {
   }));
 
   const funnelRows = conversion ? [
-    { label: t('funnelLabels.total'),   value: conversion.grand_total,   percent: 100,                        color: '#9CA3AF' },
-    { label: t('funnelLabels.active'),  value: conversion.active.count,  percent: conversion.active.percent,  color: '#22C55E' },
-    { label: t('funnelLabels.pending'), value: conversion.pending.count, percent: conversion.pending.percent, color: '#EAB308' },
-    { label: t('funnelLabels.frozen'),  value: conversion.frozen.count,  percent: conversion.frozen.percent,  color: '#06B6D4' },
-    { label: t('funnelLabels.ignored'), value: conversion.ignored.count, percent: conversion.ignored.percent, color: '#EF4444' },
+    { label: "Jami (leads+students)",  value: conversion.grand_total,       percent: 100,                           color: '#6B7280' },
+    { label: "Faol o'quvchilar",       value: conversion.active?.count,     percent: conversion.active?.percent,    color: '#22C55E' },
+    { label: "Sinov muddatida",        value: conversion.trial?.count,      percent: conversion.trial?.percent,     color: '#F97316' },
+    { label: "Muzlatilgan",            value: conversion.frozen?.count,     percent: conversion.frozen?.percent,    color: '#06B6D4' },
+    { label: "Kutilmoqda",             value: conversion.pending?.count,    percent: conversion.pending?.percent,   color: '#EAB308' },
+    { label: "Rad etdi",               value: conversion.ignored?.count,    percent: conversion.ignored?.percent,   color: '#EF4444' },
+    { label: "Arxivlangan",            value: conversion.archived?.count,   percent: conversion.archived?.percent,  color: '#9CA3AF' },
   ] : [];
 
   const debtPct = (income + debtAmt) > 0 ? (debtAmt / (income + debtAmt)) * 100 : 0;
@@ -395,13 +399,15 @@ export default function ReportsPage() {
           <div className="flex-1 flex flex-col justify-center space-y-2.5">
               {funnelRows.map(({ label, value, percent, color }) => (
                 <div key={label} className="flex items-center gap-3">
-                  <span className="text-xs text-gray-600 shrink-0 w-36">{label}</span>
-                  <div className="flex-1 h-5 bg-gray-100 rounded overflow-hidden">
-                    <div className="h-full rounded transition-all duration-700"
-                      style={{ width: `${percent}%`, backgroundColor: color }} />
+                  <span className="w-44 text-sm text-gray-600 shrink-0">{label}</span>
+                  <div className="flex-1 bg-gray-100 rounded-full h-3">
+                    <div
+                      className="h-3 rounded-full transition-all"
+                      style={{ width: `${percent ?? 0}%`, backgroundColor: color }}
+                    />
                   </div>
-                  <span className="w-10 text-xs font-bold text-gray-900 text-right shrink-0">{value}</span>
-                  <span className="w-14 text-xs text-gray-400 text-right shrink-0">{percent.toFixed(1)}%</span>
+                  <span className="w-12 text-sm font-semibold text-gray-900 text-right shrink-0">{value ?? 0}</span>
+                  <span className="w-14 text-sm text-gray-500 text-right shrink-0">{(percent ?? 0).toFixed(1)}%</span>
                 </div>
               ))}
             </div>

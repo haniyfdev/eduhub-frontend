@@ -51,6 +51,7 @@ interface StaffForm {
   last_name: string;
   phone: string;
   role: string;
+  password: string;
   salary_amount: string;
   notes: string;
 }
@@ -87,7 +88,7 @@ const formatAmount = (val: string) =>
 const parseAmount = (val: string) => Number(val.replace(/,/g, ''));
 
 function blankStaffForm(): StaffForm {
-  return { first_name: '', last_name: '', phone: '', role: 'admin', salary_amount: '', notes: '' };
+  return { first_name: '', last_name: '', phone: '', role: 'admin', password: '', salary_amount: '', notes: '' };
 }
 
 // ── Keyboard helper ──────────────────────────────────────────────────────────
@@ -289,6 +290,7 @@ export default function TeachersPage() {
         last_name:     staffForm.last_name,
         phone:         '+998' + staffForm.phone.replace(/\D/g, ''),
         role:          staffForm.role,
+        password:      staffForm.password || 'parol123',
         salary_amount: salaryNum,
         notes:         staffForm.notes || null,
       });
@@ -781,6 +783,15 @@ export default function TeachersPage() {
                 {Object.entries(ROLE_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
               </select>
             </div>
+            {['admin', 'manager'].includes(staffForm.role) && (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Parol *</label>
+                <input type="password" value={staffForm.password}
+                  onChange={e => setStaffForm(f => ({ ...f, password: e.target.value }))}
+                  className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="Kamida 6 ta belgi" minLength={6} required />
+              </div>
+            )}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">{t('monthlySalary')} *</label>
               <input type="text" inputMode="numeric" value={staffForm.salary_amount}

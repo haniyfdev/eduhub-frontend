@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import toast, { Toaster } from 'react-hot-toast';
-import { ChevronDown, Pencil, Plus, Trash2 } from 'lucide-react';
+import { ChevronDown, ChevronRight, GitBranch, Pencil, Plus, Trash2 } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import api from '@/lib/axios';
@@ -109,6 +109,11 @@ export default function SettingsPage() {
   const [companyForm, setCompanyForm] = useState({ name: '', phone: '', address: '' });
   const [savingCompanyInfo, setSavingCompanyInfo] = useState(false);
   const [companyLogo, setCompanyLogo] = useState<string | null>(null);
+
+  // Branch state
+  const [branchOpen, setBranchOpen] = useState(false);
+  const [branches, setBranches] = useState<Array<{ id: string; name: string; phone?: string; address?: string }>>([]);
+  const [branchForm, setBranchForm] = useState({ name: '', phone: '', address: '', description: '' });
 
   // SMS tab state
   const [varsOpen, setVarsOpen] = useState(false);
@@ -310,20 +315,37 @@ export default function SettingsPage() {
       <h1 className="text-xl font-bold text-gray-900">{t('title')}</h1>
 
       {visibleTabs.length > 1 && (
-        <div className="flex border-b border-gray-200">
-          {visibleTabs.map(({ key, label }) => (
+        <div className="flex items-center justify-between border-b border-gray-200">
+          <div className="flex">
+            {visibleTabs.map(({ key, label }) => (
+              <button
+                key={key}
+                onClick={() => setTab(key)}
+                className={`px-4 py-2.5 text-sm font-medium border-b-2 transition-colors ${
+                  tab === key
+                    ? 'border-blue-600 text-blue-600'
+                    : 'border-transparent text-gray-500 hover:text-gray-700'
+                }`}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+          {user?.role === 'boss' && (
             <button
-              key={key}
-              onClick={() => setTab(key)}
-              className={`px-4 py-2.5 text-sm font-medium border-b-2 transition-colors ${
-                tab === key
-                  ? 'border-blue-600 text-blue-600'
-                  : 'border-transparent text-gray-500 hover:text-gray-700'
-              }`}
+              onClick={async () => {
+                setBranchOpen(true);
+                try {
+                  const { data } = await api.get(`/api/v1/companies/?branch_of=${user.company_id}`);
+                  setBranches(data.results ?? data);
+                } catch {}
+              }}
+              className="flex items-center gap-1.5 px-3 py-2 mb-1 bg-white border border-gray-300 text-sm font-medium rounded-lg hover:bg-gray-50"
             >
-              {label}
+              <GitBranch className="w-4 h-4" />
+              Filiallar
             </button>
-          ))}
+          )}
         </div>
       )}
 
@@ -636,6 +658,67 @@ export default function SettingsPage() {
             >
               {common('delete')}
             </button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Filiallar Modal */}
+      <Dialog open={branchOpen} onOpenChange={setBranchOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader><DialogTitle>Filiallar</DialogTitle></DialogHeader>
+
+          {branches.length > 0 ? (
+            <div className="space-y-2 mb-4">
+              {branches.map(b => (
+                <div key={b.id} className="flex items-center justify-between p-3 border border-gray-200 rounded-lg hover:border-blue-400 cursor-pointer">
+                  <div>
+                    <p className="font-medium text-sm text-gray-900">{b.name}</p>
+                    {(b.phone || b.address) && (
+                      <p className="text-xs text-gray-500">{b.phone || b.address}</p>
+                    )}
+                  </div>
+                  <ChevronRight className="w-4 h-4 text-gray-400" />
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="text-sm text-gray-500 text-center py-3">Sizda hali filial yo&apos;q</p>
+          )}
+
+          <div className="border-t pt-4 space-y-3">
+            <p className="text-sm font-medium text-gray-700">+ Yangi filial qo&apos;shish</p>
+            <input type="text" placeholder="Filial nomi *" value={branchForm.name}
+              onChange={e => setBranchForm(f => ({ ...f, name: e.target.value }))}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm" />
+            <input type="text" placeholder="Telefon" value={branchForm.phone}
+              onChange={e => setBranchForm(f => ({ ...f, phone: e.target.value }))}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm" />
+            <input type="text" placeholder="Manzil" value={branchForm.address}
+              onChange={e => setBranchForm(f => ({ ...f, address: e.target.value }))}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm" />
+            <textarea placeholder="Izoh (ixtiyoriy)" rows={2} value={branchForm.description}
+              onChange={e => setBranchForm(f => ({ ...f, description: e.target.value }))}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm resize-none" />
+            <div className="flex gap-3">
+              <button onClick={() => setBranchOpen(false)}
+                className="flex-1 px-4 py-2 border border-gray-300 text-sm font-medium rounded-lg hover:bg-gray-50">
+                Yopish
+              </button>
+              <button
+                onClick={async () => {
+                  if (!branchForm.name.trim()) { toast.error('Filial nomi kerak'); return; }
+                  try {
+                    await api.post('/api/v1/companies/', { ...branchForm, branch_of: user?.company_id });
+                    toast.success("Filial qo'shildi");
+                    setBranchForm({ name: '', phone: '', address: '', description: '' });
+                    const { data } = await api.get(`/api/v1/companies/?branch_of=${user?.company_id}`);
+                    setBranches(data.results ?? data);
+                  } catch { toast.error('Xatolik'); }
+                }}
+                className="flex-1 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700">
+                Qo&apos;shish
+              </button>
+            </div>
           </div>
         </DialogContent>
       </Dialog>

@@ -42,21 +42,23 @@ interface DashboardData {
   debtors_count?: number; total_debtors?: number;
   teachers_count?: number;
 }
-interface StudentNote {
+interface AttendanceNote {
   id: string;
-  author_name?: string;
-  author?: { first_name: string; last_name: string };
-  note?: string;
-  text?: string;
-  created_at: string;
+  student_name: string;
+  teacher_name: string;
+  group_name: string;
+  note: string;
+  date: string;
+  status: string;
 }
+interface GroupItem { id: string; name: string; display_name?: string; }
 interface ChurnStudent {
   id: string;
   first_name: string;
   last_name: string;
   phone: string;
   second_phone?: string | null;
-  last_group?: string;
+  group_name?: string;
   course_name?: string | null;
   archived_at?: string | null;
   archive_reason?: string;
@@ -71,14 +73,6 @@ function resolve(data: DashboardData) {
     debtors: data.debtors_count || data.total_debtors || (data as any).debtors || 0,
     teachers: data.teachers_count || (data as any).teachers || 0,
   };
-}
-
-function timeAgo(dateStr: string, tFn: (key: string, params?: Record<string, number>) => string) {
-  const diff = Math.floor((Date.now() - new Date(dateStr).getTime()) / 1000);
-  if (diff < 60) return tFn('timeAgoNow');
-  if (diff < 3600) return tFn('timeAgoMinutes', { n: Math.floor(diff / 60) });
-  if (diff < 86400) return tFn('timeAgoHours', { n: Math.floor(diff / 3600) });
-  return tFn('timeAgoDays', { n: Math.floor(diff / 86400) });
 }
 
 
@@ -149,8 +143,12 @@ export default function DashboardPage() {
 
   const [leadsCount, setLeadsCount] = useState(0);
 
-  const [notes, setNotes] = useState<StudentNote[]>([]);
+  const [notes, setNotes] = useState<AttendanceNote[]>([]);
   const [notesLoading, setNotesLoading] = useState(true);
+  const [groups, setGroups] = useState<GroupItem[]>([]);
+  const [selectedGroup, setSelectedGroup] = useState('');
+  const [fromDate, setFromDate] = useState('');
+  const [toDate, setToDate] = useState('');
 
   const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
   const [worstStudents, setWorstStudents] = useState<LeaderboardEntry[]>([]);
@@ -188,9 +186,20 @@ export default function DashboardPage() {
   async function fetchNotes() {
     setNotesLoading(true);
     try {
-      const { data: d } = await api.get('/api/v1/student-notes/', { params: { ordering: '-created_at', page_size: 5 } });
-      setNotes(d.results ?? []);
+      const params: Record<string, string> = {};
+      if (fromDate) params.from_date = fromDate;
+      if (toDate) params.to_date = toDate;
+      if (selectedGroup) params.group = selectedGroup;
+      const { data: d } = await api.get('/api/v1/attendance/notes/', { params });
+      setNotes(Array.isArray(d) ? d : (d.results ?? []));
     } catch { setNotes([]); } finally { setNotesLoading(false); }
+  }
+
+  async function fetchGroups() {
+    try {
+      const { data: d } = await api.get('/api/v1/groups/', { params: { status: 'active', page_size: 100 } });
+      setGroups(d.results ?? []);
+    } catch { setGroups([]); }
   }
 
   async function fetchLeaderboard() {
@@ -230,11 +239,10 @@ export default function DashboardPage() {
   async function fetchChurnList() {
     setChurnLoading(true);
     try {
-      const now = new Date();
-      const fromDate = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0];
-      const { data: d } = await api.get('/api/v1/students/', {
-        params: { status: 'archived', archive_reason: 'dropped_out', from_date: fromDate, page_size: 100 },
-      });
+      const params: Record<string, string> = { reason: 'dropped_out', page_size: '100' };
+      if (fromDate) params.from_date = fromDate;
+      if (toDate) params.to_date = toDate;
+      const { data: d } = await api.get('/api/v1/archive/students/', { params });
       setChurnList(d.results ?? []);
     } catch { setChurnList([]); } finally { setChurnLoading(false); }
   }
@@ -254,7 +262,11 @@ export default function DashboardPage() {
     fetchTodayLessons();
     fetchChurnList();
     fetchTeacherStats();
+    fetchGroups();
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => { fetchNotes(); }, [fromDate, toDate, selectedGroup]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { fetchChurnList(); }, [fromDate, toDate]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const d = data ? resolve(data) : null;
 
@@ -480,17 +492,54 @@ export default function DashboardPage() {
         )}
       </div>
 
+      {/* Shared date filter bar for Notes + Churn */}
+      <div className="bg-white rounded-xl border border-gray-100 shadow-sm px-5 py-4">
+        <div className="flex items-center gap-3 flex-wrap">
+          <input
+            type="date"
+            value={fromDate}
+            onChange={e => setFromDate(e.target.value)}
+            className="px-3 py-2 border border-gray-300 rounded-lg text-sm"
+          />
+          <span className="text-gray-400 text-sm">—</span>
+          <input
+            type="date"
+            value={toDate}
+            onChange={e => setToDate(e.target.value)}
+            className="px-3 py-2 border border-gray-300 rounded-lg text-sm"
+          />
+          <button
+            onClick={() => { setFromDate(''); setToDate(''); }}
+            className="text-xs text-gray-400 hover:text-gray-600"
+          >
+            Tozalash
+          </button>
+        </div>
+      </div>
+
       {/* Recent Notes */}
       <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-5">
-        <h2 className="text-sm font-semibold text-gray-900 mb-4 flex items-center gap-2">
-          <MessageSquare className="w-4 h-4 text-gray-400" />
-          {t('recentNotes')}
-        </h2>
+        <div className="flex items-center justify-between mb-4 flex-wrap gap-3">
+          <h2 className="text-sm font-semibold text-gray-900 flex items-center gap-2">
+            <MessageSquare className="w-4 h-4 text-gray-400" />
+            {t('recentNotes')}
+          </h2>
+          <select
+            value={selectedGroup}
+            onChange={e => setSelectedGroup(e.target.value)}
+            className="px-3 py-2 border border-gray-300 rounded-lg text-sm"
+          >
+            <option value="">Barcha guruhlar</option>
+            {groups.map(g => (
+              <option key={g.id} value={g.id}>{g.display_name ?? g.name}</option>
+            ))}
+          </select>
+        </div>
         {notesLoading ? (
           <div className="space-y-4">
             {Array(3).fill(0).map((_, i) => (
               <div key={i} className="flex gap-3">
-                <Skeleton className="w-8 h-8 rounded-full flex-shrink-0" />
+                <Skeleton className="w-7 h-7 rounded-full flex-shrink-0" />
                 <div className="flex-1 space-y-1.5">
                   <Skeleton className="h-3 w-1/3" />
                   <Skeleton className="h-4 w-full" />
@@ -501,29 +550,34 @@ export default function DashboardPage() {
         ) : notes.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-10">
             <MessageSquare className="w-8 h-8 text-gray-200 mb-2" />
-            <p className="text-sm text-gray-400">{t('noNotes')}</p>
+            <p className="text-sm text-gray-400">Izohlar yo&apos;q</p>
           </div>
         ) : (
-          <div className="space-y-4">
-            {notes.map((n) => {
-              const authorName = n.author_name ?? (n.author ? `${n.author.first_name} ${n.author.last_name}` : tc('noData'));
-              const noteText = n.note ?? n.text ?? '';
-              const initials = authorName.split(' ').map((w) => w[0]).join('').slice(0, 2).toUpperCase();
-              return (
-                <div key={n.id} className="flex gap-3">
-                  <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center flex-shrink-0">
-                    <span className="text-xs font-bold text-blue-600">{initials}</span>
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <span className="text-xs font-semibold text-gray-700">{authorName}</span>
-                      <span className="text-xs text-gray-400">{timeAgo(n.created_at, (key, params) => t(key as Parameters<typeof t>[0], params as Parameters<typeof t>[1]))}</span>
-                    </div>
-                    <p className="text-sm text-gray-600 mt-0.5 line-clamp-2">{noteText}</p>
-                  </div>
+          <div>
+            {notes.map((note, idx) => (
+              <div key={note.id} className="flex items-start gap-3 py-3 border-b border-gray-100">
+                <span className="inline-flex items-center justify-center w-7 h-7 rounded-full bg-blue-600 text-white text-xs font-bold shrink-0">
+                  {idx + 1}
+                </span>
+                <div className="flex-1">
+                  <p className="text-xs text-gray-400 mb-0.5">
+                    {note.teacher_name} — {note.group_name} — {note.date}
+                  </p>
+                  <p className="text-sm font-semibold text-gray-900 mb-1">{note.student_name}</p>
+                  <p className="text-sm text-gray-600 bg-gray-50 rounded-lg px-3 py-2 whitespace-pre-wrap">
+                    {note.note}
+                  </p>
                 </div>
-              );
-            })}
+                <span className={cn(
+                  'text-xs px-2 py-0.5 rounded-full font-medium shrink-0',
+                  note.status === 'present' ? 'bg-green-100 text-green-700' :
+                  note.status === 'late' ? 'bg-yellow-100 text-yellow-700' :
+                  'bg-red-100 text-red-700'
+                )}>
+                  {note.status === 'present' ? 'Keldi' : note.status === 'late' ? 'Kechikdi' : 'Kelmadi'}
+                </span>
+              </div>
+            ))}
           </div>
         )}
       </div>
@@ -574,7 +628,7 @@ export default function DashboardPage() {
                         <td className="px-4 py-3 font-semibold text-gray-900">{s.first_name} {s.last_name}</td>
                         <td className="px-4 py-3 text-gray-600">{s.phone || '—'}</td>
                         <td className="px-4 py-3 text-gray-500">{s.second_phone || '—'}</td>
-                        <td className="px-4 py-3 text-gray-600">{s.last_group || '—'}</td>
+                        <td className="px-4 py-3 text-gray-600">{s.group_name || '—'}</td>
                         <td className="px-4 py-3 text-gray-500">{s.course_name || '—'}</td>
                         <td className="px-4 py-3 text-gray-500">{s.archived_at ? s.archived_at.slice(0, 10) : '—'}</td>
                       </tr>

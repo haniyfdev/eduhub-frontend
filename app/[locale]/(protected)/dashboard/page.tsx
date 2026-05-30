@@ -77,6 +77,36 @@ function resolve(data: DashboardData) {
 
 
 
+function parseDMY(val: string): string {
+  const parts = val.split('/');
+  if (parts.length < 3) return '';
+  const [d, m, y] = parts;
+  if (!d || !m || !y || y.length < 4) return '';
+  return `${y}-${m.padStart(2, '0')}-${d.padStart(2, '0')}`;
+}
+
+function daysInMonth(month: number, year: number): number {
+  return new Date(year, month, 0).getDate();
+}
+
+function handleDateInput(val: string, setter: (v: string) => void) {
+  const digits = val.replace(/\D/g, '');
+  let masked = digits;
+  if (digits.length > 2) masked = digits.slice(0, 2) + '/' + digits.slice(2);
+  if (digits.length > 4) masked = digits.slice(0, 2) + '/' + digits.slice(2, 4) + '/' + digits.slice(4, 8);
+
+  if (digits.length >= 8) {
+    const d = parseInt(digits.slice(0, 2));
+    const m = parseInt(digits.slice(2, 4));
+    const y = parseInt(digits.slice(4, 8));
+    const currentYear = new Date().getFullYear();
+    if (m < 1 || m > 12) return;
+    if (d < 1 || d > daysInMonth(m, y)) return;
+    if (y < 2000 || y > currentYear + 10) return;
+  }
+  setter(masked);
+}
+
 function CardSkeleton() { return <Skeleton className="h-28 w-full rounded-xl" />; }
 
 // ── Funnel Widget ──────────────────────────────────────────────────────────
@@ -149,6 +179,7 @@ export default function DashboardPage() {
   const [selectedGroup, setSelectedGroup] = useState('');
   const [fromDate, setFromDate] = useState('');
   const [toDate, setToDate] = useState('');
+  const [activePreset, setActivePreset] = useState('');
 
   const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
   const [worstStudents, setWorstStudents] = useState<LeaderboardEntry[]>([]);
@@ -183,12 +214,12 @@ export default function DashboardPage() {
     }
   }
 
-  async function fetchNotes() {
+  async function fetchNotes(apiFrom: string, apiTo: string) {
     setNotesLoading(true);
     try {
       const params: Record<string, string> = {};
-      if (fromDate) params.from_date = fromDate;
-      if (toDate) params.to_date = toDate;
+      if (apiFrom) params.from_date = apiFrom;
+      if (apiTo) params.to_date = apiTo;
       if (selectedGroup) params.group = selectedGroup;
       const { data: d } = await api.get('/api/v1/attendance/notes/', { params });
       setNotes(Array.isArray(d) ? d : (d.results ?? []));
@@ -236,12 +267,12 @@ export default function DashboardPage() {
     } catch { setTodayLessons([]); } finally { setTodayLoading(false); }
   }
 
-  async function fetchChurnList() {
+  async function fetchChurnList(apiFrom: string, apiTo: string) {
     setChurnLoading(true);
     try {
       const params: Record<string, string> = { reason: 'dropped_out', page_size: '100' };
-      if (fromDate) params.from_date = fromDate;
-      if (toDate) params.to_date = toDate;
+      if (apiFrom) params.from_date = apiFrom;
+      if (apiTo) params.to_date = apiTo;
       const { data: d } = await api.get('/api/v1/archive/students/', { params });
       setChurnList(d.results ?? []);
     } catch { setChurnList([]); } finally { setChurnLoading(false); }
@@ -255,18 +286,21 @@ export default function DashboardPage() {
     } catch { setTeacherStats([]); } finally { setTeacherStatsLoading(false); }
   }
 
+  const apiFrom = parseDMY(fromDate);
+  const apiTo = parseDMY(toDate);
+
   useEffect(() => {
     fetchData();
-    fetchNotes();
+    fetchNotes('', '');
     fetchLeaderboard();
     fetchTodayLessons();
-    fetchChurnList();
+    fetchChurnList('', '');
     fetchTeacherStats();
     fetchGroups();
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  useEffect(() => { fetchNotes(); }, [fromDate, toDate, selectedGroup]); // eslint-disable-line react-hooks/exhaustive-deps
-  useEffect(() => { fetchChurnList(); }, [fromDate, toDate]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { fetchNotes(apiFrom, apiTo); }, [apiFrom, apiTo, selectedGroup]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { fetchChurnList(apiFrom, apiTo); }, [apiFrom, apiTo]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const d = data ? resolve(data) : null;
 
@@ -494,26 +528,51 @@ export default function DashboardPage() {
 
       {/* Shared date filter bar for Notes + Churn */}
       <div className="bg-white rounded-xl border border-gray-100 shadow-sm px-5 py-4">
-        <div className="flex items-center gap-3 flex-wrap">
-          <input
-            type="date"
-            value={fromDate}
-            onChange={e => setFromDate(e.target.value)}
-            className="px-3 py-2 border border-gray-300 rounded-lg text-sm"
-          />
-          <span className="text-gray-400 text-sm">—</span>
-          <input
-            type="date"
-            value={toDate}
-            onChange={e => setToDate(e.target.value)}
-            className="px-3 py-2 border border-gray-300 rounded-lg text-sm"
-          />
+        <div className="flex items-center gap-2 flex-wrap">
           <button
-            onClick={() => { setFromDate(''); setToDate(''); }}
-            className="text-xs text-gray-400 hover:text-gray-600"
+            onClick={() => {
+              const now = new Date();
+              const y = now.getFullYear();
+              const m = String(now.getMonth() + 1).padStart(2, '0');
+              const lastDay = String(daysInMonth(now.getMonth() + 1, y)).padStart(2, '0');
+              setFromDate(`01/${m}/${y}`);
+              setToDate(`${lastDay}/${m}/${y}`);
+              setActivePreset('current_month');
+            }}
+            className={cn(
+              'px-3 py-2 text-sm rounded-lg border transition-colors',
+              activePreset === 'current_month'
+                ? 'bg-blue-600 text-white border-blue-600'
+                : 'bg-white text-gray-600 border-gray-300 hover:bg-gray-50'
+            )}
           >
-            Tozalash
+            Joriy oy
           </button>
+          <input
+            type="text"
+            value={fromDate}
+            onChange={e => { handleDateInput(e.target.value, setFromDate); setActivePreset('custom'); }}
+            placeholder="dd/mm/yyyy"
+            maxLength={10}
+            className="px-3 py-2 border border-gray-300 rounded-lg text-sm w-32"
+          />
+          <span className="text-gray-400">—</span>
+          <input
+            type="text"
+            value={toDate}
+            onChange={e => { handleDateInput(e.target.value, setToDate); setActivePreset('custom'); }}
+            placeholder="dd/mm/yyyy"
+            maxLength={10}
+            className="px-3 py-2 border border-gray-300 rounded-lg text-sm w-32"
+          />
+          {(fromDate || toDate) && (
+            <button
+              onClick={() => { setFromDate(''); setToDate(''); setActivePreset(''); }}
+              className="text-xs text-gray-400 hover:text-gray-600"
+            >
+              Tozalash
+            </button>
+          )}
         </div>
       </div>
 

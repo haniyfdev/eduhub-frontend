@@ -191,6 +191,7 @@ export default function DashboardPage() {
   const [churnList, setChurnList] = useState<ChurnStudent[]>([]);
   const [churnLoading, setChurnLoading] = useState(true);
   const [churnOpen, setChurnOpen] = useState(false);
+  const [notesOpen, setNotesOpen] = useState(false);
 
   const [teacherStats, setTeacherStats] = useState<TopTeacher[]>([]);
   const [teacherStatsLoading, setTeacherStatsLoading] = useState(true);
@@ -565,16 +566,6 @@ export default function DashboardPage() {
             maxLength={10}
             className="px-3 py-2 border border-gray-300 rounded-lg text-sm w-32"
           />
-          <select
-            value={selectedGroup}
-            onChange={e => { setSelectedGroup(e.target.value); setActivePreset('custom'); }}
-            className="px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white text-gray-700"
-          >
-            <option value="">Barcha guruhlar</option>
-            {groups.map(g => (
-              <option key={g.id} value={g.id}>{g.display_name ?? g.name}</option>
-            ))}
-          </select>
           {(fromDate || toDate) && (
             <button
               onClick={() => { setFromDate(''); setToDate(''); setActivePreset(''); }}
@@ -587,54 +578,82 @@ export default function DashboardPage() {
       </div>
 
       {/* Recent Notes */}
-      <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-5">
-        <h2 className="text-sm font-semibold text-gray-900 flex items-center gap-2 mb-4">
-          <MessageSquare className="w-4 h-4 text-gray-400" />
-          {t('recentNotes')}
-        </h2>
-        {notesLoading ? (
-          <div className="space-y-4">
-            {Array(3).fill(0).map((_, i) => (
-              <div key={i} className="flex gap-3">
-                <Skeleton className="w-7 h-7 rounded-full flex-shrink-0" />
-                <div className="flex-1 space-y-1.5">
-                  <Skeleton className="h-3 w-1/3" />
-                  <Skeleton className="h-4 w-full" />
-                </div>
-              </div>
-            ))}
+      <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
+        <div
+          onClick={() => setNotesOpen(o => !o)}
+          className="flex items-center justify-between cursor-pointer px-5 py-4 hover:bg-gray-50 transition-colors"
+        >
+          <div className="flex items-center gap-2">
+            <MessageSquare className="w-4 h-4 text-gray-400" />
+            <h3 className="font-semibold text-gray-900 text-sm">So&apos;ngi izohlar</h3>
+            {!notesLoading && notes.length > 0 && (
+              <span className="bg-blue-100 text-blue-700 text-xs px-2 py-0.5 rounded-full font-medium">
+                {notes.length}
+              </span>
+            )}
           </div>
-        ) : notes.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-10">
-            <MessageSquare className="w-8 h-8 text-gray-200 mb-2" />
-            <p className="text-sm text-gray-400">Izohlar yo&apos;q</p>
-          </div>
-        ) : (
-          <div className="grid grid-cols-2 gap-3">
-            {notes.map((note, idx) => (
-              <div key={note.id} className="flex items-start gap-3 p-3 border border-gray-100 rounded-lg">
-                <span className="inline-flex items-center justify-center w-7 h-7 rounded-full bg-blue-600 text-white text-xs font-bold shrink-0">
-                  {idx + 1}
-                </span>
-                <div className="flex-1">
-                  <p className="text-xs text-gray-400 mb-0.5">
-                    {note.teacher_name} — {note.group_name} — {note.date}
-                  </p>
-                  <p className="text-sm font-semibold text-gray-900 mb-1">{note.student_name}</p>
-                  <p className="text-sm text-gray-600 bg-gray-50 rounded-lg px-3 py-2 whitespace-pre-wrap">
-                    {note.note}
-                  </p>
-                </div>
-                <span className={cn(
-                  'text-xs px-2 py-0.5 rounded-full font-medium shrink-0',
-                  note.status === 'present' ? 'bg-green-100 text-green-700' :
-                  note.status === 'late' ? 'bg-yellow-100 text-yellow-700' :
-                  'bg-red-100 text-red-700'
-                )}>
-                  {note.status === 'present' ? 'Keldi' : note.status === 'late' ? 'Kechikdi' : 'Kelmadi'}
-                </span>
+          <ChevronDown className={cn('w-4 h-4 text-gray-400 transition-transform', notesOpen ? 'rotate-180' : '')} />
+        </div>
+
+        {notesOpen && (
+          <div className="border-t border-gray-100 p-4">
+            <div className="mb-3">
+              <select
+                value={selectedGroup}
+                onChange={e => { setSelectedGroup(e.target.value); setActivePreset('custom'); }}
+                className="px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white text-gray-700"
+              >
+                <option value="">Barcha guruhlar</option>
+                {groups.map(g => (
+                  <option key={g.id} value={g.id}>{g.display_name ?? g.name}</option>
+                ))}
+              </select>
+            </div>
+            {notesLoading ? (
+              <div className="grid grid-cols-2 gap-3">
+                {Array(4).fill(0).map((_, i) => (
+                  <div key={i} className="flex gap-3 p-3 border border-gray-100 rounded-lg">
+                    <Skeleton className="w-7 h-7 rounded-full flex-shrink-0" />
+                    <div className="flex-1 space-y-1.5">
+                      <Skeleton className="h-3 w-1/3" />
+                      <Skeleton className="h-4 w-full" />
+                    </div>
+                  </div>
+                ))}
               </div>
-            ))}
+            ) : notes.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-8">
+                <MessageSquare className="w-8 h-8 text-gray-200 mb-2" />
+                <p className="text-sm text-gray-400">Izohlar yo&apos;q</p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-2 gap-3">
+                {notes.map((note, idx) => (
+                  <div key={note.id} className="flex items-start gap-3 p-3 border border-gray-100 rounded-lg">
+                    <span className="inline-flex items-center justify-center w-7 h-7 rounded-full bg-blue-600 text-white text-xs font-bold shrink-0">
+                      {idx + 1}
+                    </span>
+                    <div className="flex-1">
+                      <p className="text-xs text-gray-400 mb-0.5">
+                        {note.teacher_name} — {note.group_name} — {note.date}
+                      </p>
+                      <p className="text-sm font-semibold text-gray-900 mb-1">{note.student_name}</p>
+                      <p className="text-sm text-gray-600 bg-gray-50 rounded-lg px-3 py-2 whitespace-pre-wrap">
+                        {note.note}
+                      </p>
+                    </div>
+                    <span className={cn(
+                      'text-xs px-2 py-0.5 rounded-full font-medium shrink-0',
+                      note.status === 'present' ? 'bg-green-100 text-green-700' :
+                      note.status === 'late' ? 'bg-yellow-100 text-yellow-700' :
+                      'bg-red-100 text-red-700'
+                    )}>
+                      {note.status === 'present' ? 'Keldi' : note.status === 'late' ? 'Kechikdi' : 'Kelmadi'}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         )}
       </div>

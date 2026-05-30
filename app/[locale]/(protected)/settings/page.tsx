@@ -115,6 +115,17 @@ export default function SettingsPage() {
   const [branches, setBranches] = useState<Array<{ id: string; name: string; phone?: string; address?: string }>>([]);
   const [branchForm, setBranchForm] = useState({ name: '', phone: '', address: '', description: '' });
 
+  useEffect(() => {
+    if (branchOpen && user?.company_id) {
+      api.get(`/api/v1/companies/?branch_of=${user.company_id}`)
+        .then(({ data }) => {
+          const list = data.results ?? data;
+          setBranches(Array.isArray(list) ? list : []);
+        })
+        .catch(() => setBranches([]));
+    }
+  }, [branchOpen]); // eslint-disable-line react-hooks/exhaustive-deps
+
   // SMS tab state
   const [varsOpen, setVarsOpen] = useState(false);
   const [showModal, setShowModal] = useState(false);
@@ -335,14 +346,8 @@ export default function SettingsPage() {
           </div>
           {user?.role === 'boss' && (
             <button
-              onClick={async () => {
-                setBranchOpen(true);
-                try {
-                  const { data } = await api.get(`/api/v1/companies/?branch_of=${user.company_id}`);
-                  setBranches(data.results ?? data);
-                } catch {}
-              }}
-              className="flex items-center gap-1.5 px-3 py-2 mb-1 bg-white border border-gray-300 text-sm font-medium rounded-lg hover:bg-gray-50"
+              onClick={() => setBranchOpen(true)}
+              className="flex items-center gap-1.5 px-3 py-2 mb-1 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700"
             >
               <GitBranch className="w-4 h-4" />
               Filiallar
@@ -716,7 +721,8 @@ export default function SettingsPage() {
                     toast.success("Filial qo'shildi");
                     setBranchForm({ name: '', phone: '', address: '', description: '' });
                     const { data } = await api.get(`/api/v1/companies/?branch_of=${user?.company_id}`);
-                    setBranches(data.results ?? data);
+                    const list = data.results ?? data;
+                    setBranches(Array.isArray(list) ? list : []);
                   } catch { toast.error('Xatolik'); }
                 }}
                 className="flex-1 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700">

@@ -57,10 +57,26 @@ export default function Sidebar() {
   const [companyName, setCompanyName] = useState<string | null>(null);
 
   useEffect(() => {
-    setUser(getUser());
+    const u = getUser();
+    setUser(u);
     try {
-      const cached = localStorage.getItem('company_name');
-      if (cached) setCompanyName(cached);
+      // Derive company name from accessible_companies (most reliable source).
+      // Fall back to company_name in localStorage only if it doesn't look like a UUID.
+      const raw: unknown[] = u?.accessible_companies ?? [];
+      const companies = raw.map((c) =>
+        typeof c === 'string' ? { id: c, name: '' } : (c as { id: string; name: string })
+      );
+      const activeId = localStorage.getItem('active_company_id') ?? u?.company_id;
+      const active = companies.find((c) => c.id === activeId) ?? companies[0];
+      const nameFromCompanies = active?.name?.trim();
+      const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-/.test(nameFromCompanies ?? '');
+      if (nameFromCompanies && !isUUID) {
+        setCompanyName(nameFromCompanies);
+      } else {
+        const cached = localStorage.getItem('company_name') ?? '';
+        const cachedIsUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-/.test(cached);
+        setCompanyName(cachedIsUUID ? null : (cached || null));
+      }
     } catch {}
   }, []);
 

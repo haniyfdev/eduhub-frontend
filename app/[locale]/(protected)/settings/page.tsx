@@ -119,12 +119,12 @@ export default function SettingsPage() {
   useEffect(() => {
     if (!branchOpen) return;
     setBranchLoading(true);
-    const u = getUser();
-    const companyId = u?.company_id || (u as any)?.company;
-    if (!companyId) { setBranchLoading(false); return; }
-    api.get(`/api/v1/companies/?branch_of=${companyId}`)
+    // Fetch ALL accessible companies (main + branches) without branch_of filter.
+    // CompanyViewSet.get_queryset() already scopes this to boss's own companies.
+    api.get('/api/v1/companies/')
       .then(({ data }) => {
-        const list = Array.isArray(data) ? data : (data.results ?? []);
+        const list: Array<{ id: string; name: string; phone?: string; address?: string }> =
+          Array.isArray(data) ? data : (data.results ?? []);
         setBranches(list);
       })
       .catch(() => setBranches([]))
@@ -744,7 +744,7 @@ export default function SettingsPage() {
                     await api.post('/api/v1/companies/', { ...branchForm, branch_of: user?.company_id });
                     toast.success("Filial qo'shildi");
                     setBranchForm({ name: '', phone: '', address: '', description: '' });
-                    const { data: refreshData } = await api.get(`/api/v1/companies/?branch_of=${user?.company_id}`);
+                    const { data: refreshData } = await api.get('/api/v1/companies/');
                     const list = Array.isArray(refreshData) ? refreshData : (refreshData.results ?? []);
                     setBranches(list);
                   } catch { toast.error('Xatolik'); }

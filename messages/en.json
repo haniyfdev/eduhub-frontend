@@ -766,7 +766,12 @@
       "boss": "Boss",
       "manager": "Manager",
       "admin": "Admin",
-      "teacher": "Teacher"
+      "teacher": "Teacher",
+      "accountant": "Accountant",
+      "security": "Security",
+      "cleaner": "Cleaner",
+      "supply": "Supply",
+      "other": "Other"
     }
   }
 }

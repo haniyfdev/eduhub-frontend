@@ -67,10 +67,7 @@ const SALARY_LABELS: Record<string, string> = {
   fixed: 'fixed', percent: 'percent', per_student: 'perStudent',
 };
 
-const ROLE_LABELS: Record<string, string> = {
-  admin: 'Admin', manager: 'Manager', accountant: 'Accountant',
-  security: 'Security', cleaner: 'Cleaner', supply: 'Supply', other: 'Other',
-};
+// ROLE_LABELS is now built inside the component using useTranslations('roles')
 
 
 const EMPTY_FORM: {
@@ -109,6 +106,17 @@ function makeHandleKey(
 export default function TeachersPage() {
   const t = useTranslations('teachers');
   const common = useTranslations('common');
+  const tRoles = useTranslations('roles');
+
+  const ROLE_LABELS: Record<string, string> = {
+    admin:      tRoles('admin'),
+    manager:    tRoles('manager'),
+    accountant: tRoles('accountant'),
+    security:   tRoles('security'),
+    cleaner:    tRoles('cleaner'),
+    supply:     tRoles('supply'),
+    other:      tRoles('other'),
+  };
   const [activeTab, setActiveTab] = useState<'teachers' | 'staff'>('teachers');
 
   // ── Teacher state ─────────────────────────────────────────────────────────

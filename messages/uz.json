@@ -753,9 +753,14 @@
     "roles": {
       "superadmin": "Superadmin",
       "boss": "Boss",
-      "manager": "Manager",
-      "admin": "Admin",
-      "teacher": "O'qituvchi"
+      "manager": "Menejer",
+      "admin": "Administrator",
+      "teacher": "O'qituvchi",
+      "accountant": "Buxgalter",
+      "security": "Qorovul",
+      "cleaner": "Farrosh",
+      "supply": "Zavxoz",
+      "other": "Boshqa"
     }
   },
   "discounts": {

@@ -112,27 +112,23 @@ export default function SettingsPage() {
 
   // Branch state
   const [branchOpen, setBranchOpen] = useState(false);
+  const [branchLoading, setBranchLoading] = useState(false);
   const [branches, setBranches] = useState<Array<{ id: string; name: string; phone?: string; address?: string }>>([]);
   const [branchForm, setBranchForm] = useState({ name: '', phone: '', address: '', description: '' });
 
   useEffect(() => {
-    console.log('user object:', user);
-    if (branchOpen && user?.company_id) {
-      console.log('Fetching branches for:', user.company_id);
-      api.get(`/api/v1/companies/?branch_of=${user.company_id}`)
-        .then(({ data }) => {
-          console.log('Branches response:', data);
-          const list = data.results ?? data;
-          console.log('Branches list:', list);
-          setBranches(Array.isArray(list) ? list : []);
-        })
-        .catch((err) => {
-          console.error('Branches error:', err);
-          setBranches([]);
-        });
-    } else {
-      console.log('branchOpen:', branchOpen, 'company_id:', user?.company_id);
-    }
+    if (!branchOpen) return;
+    setBranchLoading(true);
+    const u = getUser();
+    const companyId = u?.company_id || (u as any)?.company;
+    if (!companyId) { setBranchLoading(false); return; }
+    api.get(`/api/v1/companies/?branch_of=${companyId}`)
+      .then(({ data }) => {
+        const list = Array.isArray(data) ? data : (data.results ?? []);
+        setBranches(list);
+      })
+      .catch(() => setBranches([]))
+      .finally(() => setBranchLoading(false));
   }, [branchOpen]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // SMS tab state
@@ -685,10 +681,14 @@ export default function SettingsPage() {
         <DialogContent className="sm:max-w-md">
           <DialogHeader><DialogTitle>Filiallar</DialogTitle></DialogHeader>
 
-          {branches.length > 0 ? (
+          {branchLoading ? (
+            <p className="text-sm text-gray-400 text-center py-3">Yuklanmoqda...</p>
+          ) : branches.length === 0 ? (
+            <p className="text-sm text-gray-500 text-center py-3">Sizda hali filial yo&apos;q</p>
+          ) : (
             <div className="space-y-2 mb-4">
               {branches.map(b => (
-                <div key={b.id} className="flex items-center justify-between p-3 border border-gray-200 rounded-lg hover:border-blue-400 cursor-pointer">
+                <div key={b.id} className="flex items-center justify-between p-3 border border-gray-200 rounded-lg">
                   <div>
                     <p className="font-medium text-sm text-gray-900">{b.name}</p>
                     {(b.phone || b.address) && (
@@ -699,8 +699,6 @@ export default function SettingsPage() {
                 </div>
               ))}
             </div>
-          ) : (
-            <p className="text-sm text-gray-500 text-center py-3">Sizda hali filial yo&apos;q</p>
           )}
 
           <div className="border-t pt-4 space-y-3">
@@ -729,9 +727,9 @@ export default function SettingsPage() {
                     await api.post('/api/v1/companies/', { ...branchForm, branch_of: user?.company_id });
                     toast.success("Filial qo'shildi");
                     setBranchForm({ name: '', phone: '', address: '', description: '' });
-                    const { data } = await api.get(`/api/v1/companies/?branch_of=${user?.company_id}`);
-                    const list = data.results ?? data;
-                    setBranches(Array.isArray(list) ? list : []);
+                    const { data: refreshData } = await api.get(`/api/v1/companies/?branch_of=${user?.company_id}`);
+                    const list = Array.isArray(refreshData) ? refreshData : (refreshData.results ?? []);
+                    setBranches(list);
                   } catch { toast.error('Xatolik'); }
                 }}
                 className="flex-1 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700">

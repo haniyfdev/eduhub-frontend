@@ -6,8 +6,11 @@ const api = axios.create({
 });
 
 api.interceptors.request.use((config) => {
-  const token = typeof window !== 'undefined' ? localStorage.getItem('access_token') : null;
+  if (typeof window === 'undefined') return config;
+  const token = localStorage.getItem('access_token');
   if (token) config.headers.Authorization = `Bearer ${token}`;
+  const activeCompany = localStorage.getItem('active_company_id');
+  if (activeCompany) config.headers['X-Active-Company'] = activeCompany;
   return config;
 });
 
@@ -18,6 +21,8 @@ api.interceptors.response.use(
       localStorage.removeItem('access_token');
       localStorage.removeItem('refresh_token');
       localStorage.removeItem('user');
+      localStorage.removeItem('active_company_id');
+      localStorage.removeItem('company_name');
       window.location.href = '/uz/login';
     }
     return Promise.reject(error);

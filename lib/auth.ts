@@ -13,6 +13,18 @@ export function logout() {
   localStorage.removeItem('access_token');
   localStorage.removeItem('refresh_token');
   localStorage.removeItem('user');
+  localStorage.removeItem('active_company_id');
+  localStorage.removeItem('company_name');
+}
+
+export function getActiveCompanyId(): string | null {
+  if (typeof window === 'undefined') return null;
+  return localStorage.getItem('active_company_id');
+}
+
+export function setActiveCompany(id: string, name: string) {
+  localStorage.setItem('active_company_id', id);
+  localStorage.setItem('company_name', name);
 }
 
 export function getUser() {

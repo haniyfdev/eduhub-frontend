@@ -179,8 +179,9 @@ export default function SettingsPage() {
       }
 
       try {
-        const saved = localStorage.getItem('company_logo');
-        if (saved) setCompanyLogo(saved);
+        const logoKey = `company_logo_${activeId ?? 'default'}`;
+        const saved = localStorage.getItem(logoKey) || localStorage.getItem('company_logo');
+        setCompanyLogo(saved ?? null);
       } catch {}
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -211,7 +212,11 @@ export default function SettingsPage() {
     reader.onload = (ev) => {
       const b64 = ev.target?.result as string;
       setCompanyLogo(b64);
-      try { localStorage.setItem('company_logo', b64); } catch {}
+      try {
+        const activeId = localStorage.getItem('active_company_id') || user?.company_id;
+        const logoKey = `company_logo_${activeId ?? 'default'}`;
+        localStorage.setItem(logoKey, b64);
+      } catch {}
       toast.success(t('logoSaved'));
     };
     reader.readAsDataURL(file);

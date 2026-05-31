@@ -167,8 +167,10 @@ export default function SettingsPage() {
         .catch(() => {})
         .finally(() => setLoadingSettings(false));
 
-      if (user?.company_id && !companyInfo) {
-        api.get<CompanyInfo>(`/api/v1/companies/${user.company_id}/`)
+      // Use active company ID (branch context) — falls back to user's own company
+      const activeId = localStorage.getItem('active_company_id') || user?.company_id;
+      if (activeId) {
+        api.get<CompanyInfo>(`/api/v1/companies/${activeId}/`)
           .then(({ data }) => {
             setCompanyInfo(data);
             setCompanyForm({ name: data.name ?? '', phone: data.phone ?? '', address: data.address ?? '' });

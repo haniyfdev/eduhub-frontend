@@ -116,13 +116,22 @@ export default function SettingsPage() {
   const [branchForm, setBranchForm] = useState({ name: '', phone: '', address: '', description: '' });
 
   useEffect(() => {
+    console.log('user object:', user);
     if (branchOpen && user?.company_id) {
+      console.log('Fetching branches for:', user.company_id);
       api.get(`/api/v1/companies/?branch_of=${user.company_id}`)
         .then(({ data }) => {
+          console.log('Branches response:', data);
           const list = data.results ?? data;
+          console.log('Branches list:', list);
           setBranches(Array.isArray(list) ? list : []);
         })
-        .catch(() => setBranches([]));
+        .catch((err) => {
+          console.error('Branches error:', err);
+          setBranches([]);
+        });
+    } else {
+      console.log('branchOpen:', branchOpen, 'company_id:', user?.company_id);
     }
   }, [branchOpen]); // eslint-disable-line react-hooks/exhaustive-deps
 

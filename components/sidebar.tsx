@@ -10,10 +10,8 @@ import {
 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { cn } from '@/lib/utils';
-import { getUser, getActiveCompanyId, setActiveCompany } from '@/lib/auth';
+import { getUser } from '@/lib/auth';
 import { User } from '@/types';
-
-interface AccessibleCompany { id: string; name: string; }
 
 const sections = [
   {
@@ -57,26 +55,12 @@ export default function Sidebar() {
   const pathname = usePathname();
   const [user, setUser] = useState<User | null>(null);
   const [companyName, setCompanyName] = useState<string | null>(null);
-  const [accessibleCompanies, setAccessibleCompanies] = useState<AccessibleCompany[]>([]);
-  const [activeCompanyId, setActiveCompanyId] = useState<string | null>(null);
 
   useEffect(() => {
-    const u = getUser();
-    setUser(u);
-    // accessible_companies may be [{id,name}] (new) or string[] (legacy)
-    const raw: unknown[] = u?.accessible_companies ?? [];
-    const companies: AccessibleCompany[] = raw
-      .map((c) => typeof c === 'string' ? { id: c, name: c } : c as AccessibleCompany)
-      .filter(Boolean);
-    setAccessibleCompanies(companies);
-
-    const activeId = getActiveCompanyId() ?? companies[0]?.id ?? null;
-    setActiveCompanyId(activeId);
-
+    setUser(getUser());
     try {
       const cached = localStorage.getItem('company_name');
       if (cached) setCompanyName(cached);
-      else if (companies[0]?.name) setCompanyName(companies[0].name);
     } catch {}
   }, []);
 
@@ -89,43 +73,19 @@ export default function Sidebar() {
     <>
       <aside className="fixed left-0 top-0 h-full w-60 bg-white border-r border-gray-200 flex flex-col z-30 shadow-[2px_0_8px_rgba(0,0,0,0.04)]">
         {/* Logo */}
-        <div className="flex flex-col border-b border-gray-100 flex-shrink-0">
-          <div className="flex items-center px-5 py-4 gap-3">
-            <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center flex-shrink-0">
-              <GraduationCap className="w-5 h-5 text-white" />
-            </div>
-            <div className="min-w-0">
-              <p className="text-sm font-bold text-gray-900 leading-tight">EduHub</p>
-              {companyName && (
-                <p className="text-xs text-blue-600 font-medium truncate max-w-[120px] leading-tight">{companyName}</p>
-              )}
-              <p className="text-xs text-gray-400 truncate max-w-[120px]">
-                {user?.role ? `${user.role.charAt(0).toUpperCase()}${user.role.slice(1)}` : 'CRM Panel'}
-              </p>
-            </div>
+        <div className="flex items-center px-5 py-5 gap-3 border-b border-gray-100 flex-shrink-0">
+          <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center flex-shrink-0">
+            <GraduationCap className="w-5 h-5 text-white" />
           </div>
-
-          {/* Branch switcher — boss only, when multiple companies available */}
-          {user?.role === 'boss' && accessibleCompanies.length > 1 && (
-            <div className="px-3 pb-3">
-              <select
-                value={activeCompanyId ?? ''}
-                onChange={e => {
-                  const selected = accessibleCompanies.find(c => c.id === e.target.value);
-                  if (!selected) return;
-                  setActiveCompany(selected.id, selected.name);
-                  setActiveCompanyId(selected.id);
-                  setCompanyName(selected.name);
-                  window.location.reload();
-                }}
-                className="w-full text-xs border border-gray-200 rounded-lg px-2 py-1.5 bg-gray-50 text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
-              >
-                {accessibleCompanies.map(c => (
-                  <option key={c.id} value={c.id}>{c.name}</option>
-                ))}
-              </select>
-            </div>
-          )}
+          <div className="min-w-0">
+            <p className="text-sm font-bold text-gray-900 leading-tight">EduHub</p>
+            {companyName && (
+              <p className="text-xs text-blue-600 font-medium truncate max-w-[120px] leading-tight">{companyName}</p>
+            )}
+            <p className="text-xs text-gray-400 truncate max-w-[120px]">
+              {user?.role ? `${user.role.charAt(0).toUpperCase()}${user.role.slice(1)}` : 'CRM Panel'}
+            </p>
+          </div>
         </div>
 
         {/* Navigation */}

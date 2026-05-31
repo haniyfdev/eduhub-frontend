@@ -7,7 +7,7 @@ import { ChevronDown, ChevronRight, GitBranch, Pencil, Plus, Trash2 } from 'luci
 import { Skeleton } from '@/components/ui/skeleton';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import api from '@/lib/axios';
-import { getUser } from '@/lib/auth';
+import { getUser, getActiveCompanyId, setActiveCompany } from '@/lib/auth';
 import { cn } from '@/lib/utils';
 import { User } from '@/types';
 
@@ -687,16 +687,34 @@ export default function SettingsPage() {
             <p className="text-sm text-gray-500 text-center py-3">Sizda hali filial yo&apos;q</p>
           ) : (
             <div className="space-y-2 mb-2">
-              {branches.map(b => (
-                <div key={b.id} className="flex items-center justify-between p-3 border border-gray-200 rounded-lg">
-                  <div>
-                    <p className="font-medium text-sm text-gray-900">{b.name}</p>
-                    {(b.phone || b.address) && <p className="text-xs text-gray-500">{b.phone || b.address}</p>}
-                  </div>
-                  <ChevronRight className="w-4 h-4 text-gray-400" />
-                </div>
-              ))}
-              <p className="text-xs text-gray-400 pt-1">Filialga o&apos;tish uchun chap paneldagi menyudan tanlang.</p>
+              {branches.map(b => {
+                const isCurrent = getActiveCompanyId() === b.id || (!getActiveCompanyId() && b.id === user?.company_id);
+                return (
+                  <button
+                    key={b.id}
+                    disabled={isCurrent}
+                    onClick={() => {
+                      setActiveCompany(b.id, b.name);
+                      window.location.reload();
+                    }}
+                    className={cn(
+                      'w-full flex items-center justify-between p-3 border rounded-lg text-left transition-colors',
+                      isCurrent
+                        ? 'border-blue-400 bg-blue-50 cursor-default'
+                        : 'border-gray-200 hover:border-blue-300 hover:bg-gray-50 cursor-pointer'
+                    )}
+                  >
+                    <div>
+                      <p className={cn('font-medium text-sm', isCurrent ? 'text-blue-700' : 'text-gray-900')}>{b.name}</p>
+                      {(b.phone || b.address) && <p className="text-xs text-gray-500">{b.phone || b.address}</p>}
+                      {isCurrent && <p className="text-xs text-blue-500 mt-0.5">Hozir shu filialdasiz</p>}
+                    </div>
+                    {isCurrent
+                      ? <span className="text-xs text-blue-500 font-medium shrink-0">Aktiv</span>
+                      : <ChevronRight className="w-4 h-4 text-gray-400 shrink-0" />}
+                  </button>
+                );
+              })}
             </div>
           )}
 

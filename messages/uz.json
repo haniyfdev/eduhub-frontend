@@ -345,7 +345,11 @@
     "phoneRequired": "To'liq 9 raqam kiriting",
     "role": "Lavozim",
     "monthlySalary": "Oylik miqdor (so'm)",
-    "password": "Parol"
+    "password": "Parol",
+    "frozen": "Muzlatilgan",
+    "freezeSuccess": "Muzlatildi",
+    "unfreezeSuccess": "Faollashtirildi",
+    "hasFrozenGroups": "Faol guruhlari bor, muzlatib bo'lmaydi"
   },
   "courses": {
     "title": "Kurslar",

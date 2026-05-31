@@ -325,7 +325,11 @@
     "phoneRequired": "Enter full 9 digits",
     "role": "Role",
     "monthlySalary": "Monthly salary (UZS)",
-    "password": "Password"
+    "password": "Password",
+    "frozen": "Frozen",
+    "freezeSuccess": "Frozen successfully",
+    "unfreezeSuccess": "Activated successfully",
+    "hasFrozenGroups": "Has active groups, cannot freeze"
   },
   "courses": {
     "title": "Courses",

@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback, useRef } from 'react';
 import { useTranslations } from 'next-intl';
-import { Plus, Search, Minus, Eye, EyeOff, Banknote, Percent, Users } from 'lucide-react';
+import { Plus, Search, Minus, Eye, EyeOff, Banknote, Percent, Users, Snowflake, Play } from 'lucide-react';
 import toast, { Toaster } from 'react-hot-toast';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -26,7 +26,7 @@ interface Teacher {
   salary_percent: number | null;
   per_student_amt: number | null;
   hired_at: string;
-  status: 'active' | 'archived';
+  status: 'active' | 'frozen' | 'archived';
 }
 
 // ── Staff types ──────────────────────────────────────────────────────────────
@@ -41,7 +41,7 @@ interface StaffMember {
   role_display: string;
   salary_amount: number;
   hired_at: string;
-  status: string;
+  status: 'active' | 'frozen' | 'archived';
   archived_at?: string | null;
   updated_at?: string | null;
 }
@@ -285,6 +285,50 @@ export default function TeachersPage() {
     }
   }
 
+  async function handleFreezeTeacher(id: string) {
+    try {
+      await api.post(`/api/v1/teachers/${id}/freeze/`);
+      toast.success(t('freezeSuccess'));
+      fetchTeachers();
+    } catch (err: unknown) {
+      const e = err as { response?: { data?: { error?: string } } };
+      toast.error(e?.response?.data?.error || common('error'));
+    }
+  }
+
+  async function handleUnfreezeTeacher(id: string) {
+    try {
+      await api.post(`/api/v1/teachers/${id}/unfreeze/`);
+      toast.success(t('unfreezeSuccess'));
+      fetchTeachers();
+    } catch (err: unknown) {
+      const e = err as { response?: { data?: { error?: string } } };
+      toast.error(e?.response?.data?.error || common('error'));
+    }
+  }
+
+  async function handleFreezeStaff(id: string) {
+    try {
+      await api.post(`/api/v1/staff/${id}/freeze/`);
+      toast.success(t('freezeSuccess'));
+      fetchStaff();
+    } catch (err: unknown) {
+      const e = err as { response?: { data?: { error?: string } } };
+      toast.error(e?.response?.data?.error || common('error'));
+    }
+  }
+
+  async function handleUnfreezeStaff(id: string) {
+    try {
+      await api.post(`/api/v1/staff/${id}/unfreeze/`);
+      toast.success(t('unfreezeSuccess'));
+      fetchStaff();
+    } catch (err: unknown) {
+      const e = err as { response?: { data?: { error?: string } } };
+      toast.error(e?.response?.data?.error || common('error'));
+    }
+  }
+
   // ── Add staff ─────────────────────────────────────────────────────────────
   async function handleAddStaff(e: React.FormEvent) {
     e.preventDefault();
@@ -424,7 +468,7 @@ export default function TeachersPage() {
                     : teachers.length === 0
                       ? <tr><td colSpan={9} className="px-4 py-16 text-center text-gray-400">{t('noTeachers')}</td></tr>
                       : teachers.map((teacher, idx) => (
-                        <tr key={teacher.id} className={cn('transition-colors', teacher.status === 'archived' ? 'bg-yellow-50 hover:bg-yellow-100' : 'hover:bg-gray-50')}>
+                        <tr key={teacher.id} className={cn('transition-colors', teacher.status === 'archived' ? 'bg-yellow-50 hover:bg-yellow-100' : teacher.status === 'frozen' ? 'bg-cyan-50 hover:bg-cyan-100' : 'hover:bg-gray-50')}>
                           <td className="px-4 py-3 text-gray-400 text-xs">{(page - 1) * pageSize + idx + 1}</td>
                           <td className="px-4 py-3 font-medium text-gray-900">{teacher.first_name} {teacher.last_name}</td>
                           <td className="px-4 py-3 text-gray-500">{formatPhone(teacher.phone)}</td>
@@ -453,18 +497,36 @@ export default function TeachersPage() {
                           <td className="px-4 py-3 text-gray-500 text-xs">{formatDMY(teacher.hired_at)}</td>
                           <td className="px-4 py-3">
                             <span className={cn('inline-flex items-center px-2 py-0.5 text-xs font-medium border rounded',
-                              teacher.status === 'active' ? 'bg-green-50 text-green-700 border-green-200' : 'bg-gray-100 text-gray-600 border-gray-200')}>
-                              {teacher.status === 'active' ? common('active') : common('archived')}
+                              teacher.status === 'active'   ? 'bg-green-50 text-green-700 border-green-200' :
+                              teacher.status === 'frozen'   ? 'bg-cyan-100 text-cyan-700 border-cyan-300' :
+                              'bg-gray-100 text-gray-600 border-gray-200')}>
+                              {teacher.status === 'active' ? common('active') : teacher.status === 'frozen' ? t('frozen') : common('archived')}
                             </span>
                           </td>
                           <td className="px-4 py-3">
-                            {teacher.status === 'active' && (
-                              <button onClick={() => setArchiveTarget({ id: teacher.id, name: `${teacher.first_name} ${teacher.last_name}` })}
-                                className="p-1 rounded text-red-400 hover:bg-red-50 hover:text-red-600 transition-colors"
-                                title={common('archive')}>
-                                <Minus className="w-4 h-4" />
-                              </button>
-                            )}
+                            <div className="flex items-center gap-1">
+                              {teacher.status === 'active' && (
+                                <>
+                                  <button onClick={() => handleFreezeTeacher(teacher.id)}
+                                    className="p-1 rounded text-blue-400 hover:bg-blue-50 hover:text-blue-600 transition-colors"
+                                    title={t('frozen')}>
+                                    <Snowflake className="w-4 h-4" />
+                                  </button>
+                                  <button onClick={() => setArchiveTarget({ id: teacher.id, name: `${teacher.first_name} ${teacher.last_name}` })}
+                                    className="p-1 rounded text-red-400 hover:bg-red-50 hover:text-red-600 transition-colors"
+                                    title={common('archive')}>
+                                    <Minus className="w-4 h-4" />
+                                  </button>
+                                </>
+                              )}
+                              {teacher.status === 'frozen' && (
+                                <button onClick={() => handleUnfreezeTeacher(teacher.id)}
+                                  className="p-1 rounded text-cyan-400 hover:bg-cyan-50 hover:text-cyan-600 transition-colors"
+                                  title={t('unfreezeSuccess')}>
+                                  <Play className="w-4 h-4" />
+                                </button>
+                              )}
+                            </div>
                           </td>
                         </tr>
                       ))
@@ -529,7 +591,7 @@ export default function TeachersPage() {
                   {[...staffList]
                     .sort((a, b) => a.status === b.status ? 0 : a.status === 'active' ? -1 : 1)
                     .map((s, idx) => (
-                      <tr key={s.id} className={cn('transition-colors', s.status === 'archived' ? 'bg-yellow-50 hover:bg-yellow-100' : 'hover:bg-gray-50')}>
+                      <tr key={s.id} className={cn('transition-colors', s.status === 'archived' ? 'bg-yellow-50 hover:bg-yellow-100' : s.status === 'frozen' ? 'bg-cyan-50 hover:bg-cyan-100' : 'hover:bg-gray-50')}>
                         <td className="px-4 py-3 text-gray-400 text-xs">{idx + 1}</td>
                         <td className="px-4 py-3">
                           <p className="font-semibold text-gray-900">{s.full_name}</p>
@@ -540,24 +602,41 @@ export default function TeachersPage() {
                         <td className="px-4 py-3 font-semibold text-gray-900 whitespace-nowrap">{formatCurrency(s.salary_amount)}</td>
                         <td className="px-4 py-3">
                           <span className={cn('inline-flex items-center px-2 py-0.5 text-xs font-medium border rounded',
-                            s.status === 'active' ? 'bg-green-50 text-green-700 border-green-200' : 'bg-gray-100 text-gray-600 border-gray-200')}>
-                            {s.status === 'active' ? common('active') : common('archived')}
+                            s.status === 'active' ? 'bg-green-50 text-green-700 border-green-200' :
+                            s.status === 'frozen' ? 'bg-cyan-100 text-cyan-700 border-cyan-300' :
+                            'bg-gray-100 text-gray-600 border-gray-200')}>
+                            {s.status === 'active' ? common('active') : s.status === 'frozen' ? t('frozen') : common('archived')}
                           </span>
                         </td>
                         <td className="px-4 py-3">
-                          {s.status === 'active' ? (
-                            <button onClick={() => setStaffArchiveTarget(s)}
-                              className="p-1 rounded text-red-400 hover:bg-red-50 hover:text-red-600 transition-colors"
-                              title={common('archive')}>
-                              <Minus className="w-4 h-4" />
-                            </button>
-                          ) : (
-                            <span className="text-gray-400 text-sm">
-                              {(s.archived_at || s.updated_at)
-                                ? formatDMY(s.archived_at || s.updated_at)
-                                : common('archived')}
-                            </span>
-                          )}
+                          <div className="flex items-center gap-1">
+                            {s.status === 'active' && (
+                              <>
+                                <button onClick={() => handleFreezeStaff(s.id)}
+                                  className="p-1 rounded text-blue-400 hover:bg-blue-50 hover:text-blue-600 transition-colors"
+                                  title={t('frozen')}>
+                                  <Snowflake className="w-4 h-4" />
+                                </button>
+                                <button onClick={() => setStaffArchiveTarget(s)}
+                                  className="p-1 rounded text-red-400 hover:bg-red-50 hover:text-red-600 transition-colors"
+                                  title={common('archive')}>
+                                  <Minus className="w-4 h-4" />
+                                </button>
+                              </>
+                            )}
+                            {s.status === 'frozen' && (
+                              <button onClick={() => handleUnfreezeStaff(s.id)}
+                                className="p-1 rounded text-cyan-400 hover:bg-cyan-50 hover:text-cyan-600 transition-colors"
+                                title={t('unfreezeSuccess')}>
+                                <Play className="w-4 h-4" />
+                              </button>
+                            )}
+                            {s.status === 'archived' && (
+                              <span className="text-gray-400 text-xs">
+                                {(s.archived_at || s.updated_at) ? formatDMY(s.archived_at || s.updated_at) : common('archived')}
+                              </span>
+                            )}
+                          </div>
                         </td>
                       </tr>
                     ))

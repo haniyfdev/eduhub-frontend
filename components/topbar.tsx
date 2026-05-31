@@ -90,18 +90,32 @@ export default function Topbar() {
 
     try {
       const cached = localStorage.getItem('company_name');
-      if (cached) setCompanyName(cached);
+      const cachedIsUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-/.test(cached ?? '');
+      if (cached && !cachedIsUUID) setCompanyName(cached);
     } catch {}
 
-    if (u.company_id) {
+    const activeId = localStorage.getItem('active_company_id') || u.company_id;
+    if (activeId) {
       import('@/lib/axios').then(({ default: apiInst }) => {
-        apiInst.get(`/api/v1/companies/${u.company_id}/`)
+        apiInst.get(`/api/v1/companies/${activeId}/`)
           .then(({ data }) => {
             const name = (data as any).name ?? '';
-            setCompanyName(name);
-            try { localStorage.setItem('company_name', name); } catch {}
+            if (name) {
+              setCompanyName(name);
+              try { localStorage.setItem('company_name', name); } catch {}
+            }
           })
-          .catch(() => {});
+          .catch(() => {
+            // fallback: try fetching list and find by id
+            if (activeId !== u.company_id) {
+              apiInst.get(`/api/v1/companies/${u.company_id}/`)
+                .then(({ data }) => {
+                  const name = (data as any).name ?? '';
+                  if (name) { setCompanyName(name); try { localStorage.setItem('company_name', name); } catch {} }
+                })
+                .catch(() => {});
+            }
+          });
       });
     }
   }, []);

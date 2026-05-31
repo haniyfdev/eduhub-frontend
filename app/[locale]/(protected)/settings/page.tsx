@@ -113,8 +113,12 @@ export default function SettingsPage() {
   // Branch state
   const [branchOpen, setBranchOpen] = useState(false);
   const [branchLoading, setBranchLoading] = useState(false);
-  const [branches, setBranches] = useState<Array<{ id: string; name: string; phone?: string; address?: string }>>([]);
+  const [branches, setBranches] = useState<Array<{ id: string; name: string; phone?: string; address?: string; description?: string }>>([]);
   const [branchForm, setBranchForm] = useState({ name: '', phone: '', address: '', description: '' });
+  const [selectedBranch, setSelectedBranch] = useState<{ id: string; name: string; phone?: string; address?: string; description?: string } | null>(null);
+  const [editBranchForm, setEditBranchForm] = useState({ name: '', phone: '', address: '', description: '' });
+  const [savingBranch, setSavingBranch] = useState(false);
+  const [archivingBranch, setArchivingBranch] = useState(false);
 
   useEffect(() => {
     if (!branchOpen) return;
@@ -677,66 +681,138 @@ export default function SettingsPage() {
       </Dialog>
 
       {/* Filiallar Modal */}
-      <Dialog open={branchOpen} onOpenChange={setBranchOpen}>
+      <Dialog open={branchOpen} onOpenChange={open => { setBranchOpen(open); if (!open) setSelectedBranch(null); }}>
         <DialogContent className="sm:max-w-md">
-          <DialogHeader><DialogTitle>Filiallar</DialogTitle></DialogHeader>
 
-          {branchLoading ? (
-            <p className="text-sm text-gray-400 text-center py-3">Yuklanmoqda...</p>
-          ) : branches.length === 0 ? (
-            <p className="text-sm text-gray-500 text-center py-3">Sizda hali filial yo&apos;q</p>
-          ) : (
-            <div className="space-y-2 mb-4">
-              {branches.map(b => (
-                <div key={b.id} className="flex items-center justify-between p-3 border border-gray-200 rounded-lg">
-                  <div>
-                    <p className="font-medium text-sm text-gray-900">{b.name}</p>
-                    {(b.phone || b.address) && (
-                      <p className="text-xs text-gray-500">{b.phone || b.address}</p>
-                    )}
-                  </div>
-                  <ChevronRight className="w-4 h-4 text-gray-400" />
+          {/* ── Edit branch view ── */}
+          {selectedBranch ? (
+            <>
+              <DialogHeader>
+                <div className="flex items-center gap-2">
+                  <button onClick={() => setSelectedBranch(null)} className="p-1 rounded hover:bg-gray-100 text-gray-500">
+                    <ChevronRight className="w-4 h-4 rotate-180" />
+                  </button>
+                  <DialogTitle>{selectedBranch.name}</DialogTitle>
                 </div>
-              ))}
-            </div>
-          )}
+              </DialogHeader>
+              <div className="space-y-3 mt-2">
+                <input type="text" placeholder="Filial nomi *" value={editBranchForm.name}
+                  onChange={e => setEditBranchForm(f => ({ ...f, name: e.target.value }))}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm" />
+                <input type="text" placeholder="Telefon" value={editBranchForm.phone}
+                  onChange={e => setEditBranchForm(f => ({ ...f, phone: e.target.value }))}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm" />
+                <input type="text" placeholder="Manzil" value={editBranchForm.address}
+                  onChange={e => setEditBranchForm(f => ({ ...f, address: e.target.value }))}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm" />
+                <textarea placeholder="Izoh (ixtiyoriy)" rows={2} value={editBranchForm.description}
+                  onChange={e => setEditBranchForm(f => ({ ...f, description: e.target.value }))}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm resize-none" />
+                <div className="flex gap-2 pt-1">
+                  <button
+                    onClick={async () => {
+                      if (!editBranchForm.name.trim()) { toast.error('Filial nomi kerak'); return; }
+                      setSavingBranch(true);
+                      try {
+                        await api.patch(`/api/v1/companies/${selectedBranch.id}/`, editBranchForm);
+                        toast.success('Saqlandi');
+                        const { data: refreshData } = await api.get(`/api/v1/companies/?branch_of=${user?.company_id}`);
+                        const list = Array.isArray(refreshData) ? refreshData : (refreshData.results ?? []);
+                        setBranches(list);
+                        setSelectedBranch(null);
+                      } catch { toast.error('Xatolik'); }
+                      finally { setSavingBranch(false); }
+                    }}
+                    disabled={savingBranch}
+                    className="flex-1 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 disabled:opacity-60">
+                    {savingBranch ? 'Saqlanmoqda...' : 'Saqlash'}
+                  </button>
+                  <button
+                    onClick={async () => {
+                      if (!confirm(`"${selectedBranch.name}" filialini arxivlash?`)) return;
+                      setArchivingBranch(true);
+                      try {
+                        await api.post(`/api/v1/companies/${selectedBranch.id}/archive/`);
+                        toast.success('Arxivlandi');
+                        const { data: refreshData } = await api.get(`/api/v1/companies/?branch_of=${user?.company_id}`);
+                        const list = Array.isArray(refreshData) ? refreshData : (refreshData.results ?? []);
+                        setBranches(list);
+                        setSelectedBranch(null);
+                      } catch { toast.error('Xatolik'); }
+                      finally { setArchivingBranch(false); }
+                    }}
+                    disabled={archivingBranch}
+                    className="px-4 py-2 border border-red-300 text-red-600 text-sm font-medium rounded-lg hover:bg-red-50 disabled:opacity-60">
+                    {archivingBranch ? '...' : 'Arxivlash'}
+                  </button>
+                </div>
+              </div>
+            </>
+          ) : (
+            /* ── Branch list + create view ── */
+            <>
+              <DialogHeader><DialogTitle>Filiallar</DialogTitle></DialogHeader>
 
-          <div className="border-t pt-4 space-y-3">
-            <p className="text-sm font-medium text-gray-700">+ Yangi filial qo&apos;shish</p>
-            <input type="text" placeholder="Filial nomi *" value={branchForm.name}
-              onChange={e => setBranchForm(f => ({ ...f, name: e.target.value }))}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm" />
-            <input type="text" placeholder="Telefon" value={branchForm.phone}
-              onChange={e => setBranchForm(f => ({ ...f, phone: e.target.value }))}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm" />
-            <input type="text" placeholder="Manzil" value={branchForm.address}
-              onChange={e => setBranchForm(f => ({ ...f, address: e.target.value }))}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm" />
-            <textarea placeholder="Izoh (ixtiyoriy)" rows={2} value={branchForm.description}
-              onChange={e => setBranchForm(f => ({ ...f, description: e.target.value }))}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm resize-none" />
-            <div className="flex gap-3">
-              <button onClick={() => setBranchOpen(false)}
-                className="flex-1 px-4 py-2 border border-gray-300 text-sm font-medium rounded-lg hover:bg-gray-50">
-                Yopish
-              </button>
-              <button
-                onClick={async () => {
-                  if (!branchForm.name.trim()) { toast.error('Filial nomi kerak'); return; }
-                  try {
-                    await api.post('/api/v1/companies/', { ...branchForm, branch_of: user?.company_id });
-                    toast.success("Filial qo'shildi");
-                    setBranchForm({ name: '', phone: '', address: '', description: '' });
-                    const { data: refreshData } = await api.get(`/api/v1/companies/?branch_of=${user?.company_id}`);
-                    const list = Array.isArray(refreshData) ? refreshData : (refreshData.results ?? []);
-                    setBranches(list);
-                  } catch { toast.error('Xatolik'); }
-                }}
-                className="flex-1 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700">
-                Qo&apos;shish
-              </button>
-            </div>
-          </div>
+              {branchLoading ? (
+                <p className="text-sm text-gray-400 text-center py-3">Yuklanmoqda...</p>
+              ) : branches.length === 0 ? (
+                <p className="text-sm text-gray-500 text-center py-3">Sizda hali filial yo&apos;q</p>
+              ) : (
+                <div className="space-y-2 mb-4">
+                  {branches.map(b => (
+                    <button key={b.id} onClick={() => {
+                      setSelectedBranch(b);
+                      setEditBranchForm({ name: b.name, phone: b.phone ?? '', address: b.address ?? '', description: b.description ?? '' });
+                    }}
+                      className="w-full flex items-center justify-between p-3 border border-gray-200 rounded-lg hover:border-blue-400 hover:bg-blue-50 transition-colors text-left">
+                      <div>
+                        <p className="font-medium text-sm text-gray-900">{b.name}</p>
+                        {(b.phone || b.address) && <p className="text-xs text-gray-500">{b.phone || b.address}</p>}
+                      </div>
+                      <ChevronRight className="w-4 h-4 text-gray-400" />
+                    </button>
+                  ))}
+                </div>
+              )}
+
+              <div className="border-t pt-4 space-y-3">
+                <p className="text-sm font-medium text-gray-700">+ Yangi filial qo&apos;shish</p>
+                <input type="text" placeholder="Filial nomi *" value={branchForm.name}
+                  onChange={e => setBranchForm(f => ({ ...f, name: e.target.value }))}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm" />
+                <input type="text" placeholder="Telefon" value={branchForm.phone}
+                  onChange={e => setBranchForm(f => ({ ...f, phone: e.target.value }))}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm" />
+                <input type="text" placeholder="Manzil" value={branchForm.address}
+                  onChange={e => setBranchForm(f => ({ ...f, address: e.target.value }))}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm" />
+                <textarea placeholder="Izoh (ixtiyoriy)" rows={2} value={branchForm.description}
+                  onChange={e => setBranchForm(f => ({ ...f, description: e.target.value }))}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm resize-none" />
+                <div className="flex gap-3">
+                  <button onClick={() => setBranchOpen(false)}
+                    className="flex-1 px-4 py-2 border border-gray-300 text-sm font-medium rounded-lg hover:bg-gray-50">
+                    Yopish
+                  </button>
+                  <button
+                    onClick={async () => {
+                      if (!branchForm.name.trim()) { toast.error('Filial nomi kerak'); return; }
+                      try {
+                        await api.post('/api/v1/companies/', { ...branchForm, branch_of: user?.company_id });
+                        toast.success("Filial qo'shildi");
+                        setBranchForm({ name: '', phone: '', address: '', description: '' });
+                        const { data: refreshData } = await api.get(`/api/v1/companies/?branch_of=${user?.company_id}`);
+                        const list = Array.isArray(refreshData) ? refreshData : (refreshData.results ?? []);
+                        setBranches(list);
+                      } catch { toast.error('Xatolik'); }
+                    }}
+                    className="flex-1 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700">
+                    Qo&apos;shish
+                  </button>
+                </div>
+              </div>
+            </>
+          )}
         </DialogContent>
       </Dialog>
     </div>

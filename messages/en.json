@@ -378,7 +378,7 @@
   "debts": {
     "title": "Debtors",
     "subtitle": "Indebted students",
-    "searchPlaceholder": "Name or phone...",
+    "searchPlaceholder": "Name or group...",
     "balance": "Remaining debt",
     "dueDate": "Due date",
     "pay": "Pay",

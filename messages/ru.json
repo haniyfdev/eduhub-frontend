@@ -378,7 +378,7 @@
   "debts": {
     "title": "Должники",
     "subtitle": "Должники",
-    "searchPlaceholder": "Имя или телефон...",
+    "searchPlaceholder": "Имя или группа...",
     "balance": "Остаток долга",
     "dueDate": "Срок оплаты",
     "pay": "Оплатить",

@@ -398,7 +398,7 @@
   "debts": {
     "title": "Qarzdorlar",
     "subtitle": "Qarzdor o'quvchilar",
-    "searchPlaceholder": "Ism yoki telefon...",
+    "searchPlaceholder": "Ism yoki guruh...",
     "balance": "Qoldiq qarz",
     "dueDate": "To'lov muddati",
     "pay": "To'lash",

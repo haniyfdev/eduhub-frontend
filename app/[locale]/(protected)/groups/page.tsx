@@ -9,6 +9,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Pagination } from '@/components/pagination';
 import api from '@/lib/axios';
+import { getUser } from '@/lib/auth';
 import { cn } from '@/lib/utils';
 import { PaginatedResponse } from '@/types';
 
@@ -220,12 +221,14 @@ export default function GroupsPage() {
       <Toaster position="top-right" />
       <div className="flex items-center justify-between">
         <h1 className="text-xl font-bold text-gray-900">{t('title')}</h1>
-        <button
-          onClick={() => setShowAdd(true)}
-          className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded hover:bg-blue-700 transition-colors"
-        >
-          <Plus className="w-4 h-4" /> {t('addGroup')}
-        </button>
+        {getUser()?.role !== 'teacher' && (
+          <button
+            onClick={() => setShowAdd(true)}
+            className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded hover:bg-blue-700 transition-colors"
+          >
+            <Plus className="w-4 h-4" /> {t('addGroup')}
+          </button>
+        )}
       </div>
 
       <div className="flex gap-3 flex-wrap">

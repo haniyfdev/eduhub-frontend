@@ -113,7 +113,7 @@ export default function Sidebar() {
               if (user.role === 'superadmin') return true;
 
               if (user.role === 'teacher') {
-                return item.key === 'dashboard' || item.key === 'groups';
+                return item.key === 'groups';
               }
 
               if (user.role === 'admin') {

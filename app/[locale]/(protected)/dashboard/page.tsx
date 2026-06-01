@@ -1,6 +1,8 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { getUser } from '@/lib/auth';
 import {
   Users, UserPlus, Users2, AlertCircle, GraduationCap,
   MessageSquare, CalendarCheck, TrendingDown, ChevronUp, ChevronDown,
@@ -155,8 +157,16 @@ function FunnelWidget({ locale }: { locale: string }) {
 
 export default function DashboardPage() {
   const locale = useLocale();
+  const router = useRouter();
   const t = useTranslations('dashboard');
   const tc = useTranslations('common');
+
+  useEffect(() => {
+    const u = getUser();
+    if (u?.role === 'teacher') {
+      router.replace(`/${locale}/groups`);
+    }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const [data, setData] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(true);

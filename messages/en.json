@@ -221,6 +221,7 @@
     "pending": "Pending",
     "trial": "Trial",
     "ignored": "Declined",
+    "parentPhone": "Parent phone",
     "referralSource": "Referral source",
     "banner": "Banner",
     "friend": "Friend",

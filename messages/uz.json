@@ -797,5 +797,17 @@
     "cancel": "Bekor qilish",
     "send": "Yuborish",
     "templateError": "Bu shablon leads uchun mos emas"
+  },
+  "roles": {
+    "superadmin": "Superadmin",
+    "boss": "Boss",
+    "manager": "Menejer",
+    "admin": "Administrator",
+    "teacher": "O'qituvchi",
+    "accountant": "Buxgalter",
+    "security": "Qorovul",
+    "cleaner": "Farrosh",
+    "supply": "Zavxoz",
+    "other": "Boshqa"
   }
 }

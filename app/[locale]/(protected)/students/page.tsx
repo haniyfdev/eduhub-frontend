@@ -346,13 +346,15 @@ export default function StudentsPage() {
 
                       <td className="px-4 py-3">
                         {s.status !== 'archived' ? (
-                          <button
-                            onClick={() => setArchiveTarget({ id: s.id, name: `${s.first_name} ${s.last_name}`, status: s.status })}
-                            className="p-1 rounded text-red-400 hover:bg-red-50 hover:text-red-600 transition-colors"
-                            title={tc('archive')}
-                          >
-                            <Minus className="w-4 h-4" />
-                          </button>
+                          ['boss', 'manager'].includes(user?.role ?? '') && (
+                            <button
+                              onClick={() => setArchiveTarget({ id: s.id, name: `${s.first_name} ${s.last_name}`, status: s.status })}
+                              className="p-1 rounded text-red-400 hover:bg-red-50 hover:text-red-600 transition-colors"
+                              title={tc('archive')}
+                            >
+                              <Minus className="w-4 h-4" />
+                            </button>
+                          )
                         ) : (
                           <span className="text-xs text-gray-400">
                             {s.archived_at ? formatDMY(s.archived_at) : '—'}

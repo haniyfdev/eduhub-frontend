@@ -12,6 +12,7 @@ import {
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Button } from '@/components/ui/button';
 import api from '@/lib/axios';
+import { getUser } from '@/lib/auth';
 import { cn, formatPhone, formatDMY, formatCurrency } from '@/lib/utils';
 import { PaginatedResponse } from '@/types';
 
@@ -130,6 +131,9 @@ export default function ArchivePage() {
     { key: 'groups',   label: t('tabs.groups') },
     { key: 'courses',  label: t('tabs.courses') },
   ];
+
+  const user = getUser();
+  const canRestore = ['boss', 'manager'].includes(user?.role ?? '');
 
   const [tab, setTab] = useState<Tab>('students');
   const [search, setSearch] = useState('');
@@ -256,6 +260,7 @@ export default function ArchivePage() {
   }
 
   function RestoreButton({ id, source, name }: { id: string; source: ConfirmState['source']; name: string }) {
+    if (!canRestore) return null;
     return (
       <button
         onClick={() => setConfirm({ id, source, name })}

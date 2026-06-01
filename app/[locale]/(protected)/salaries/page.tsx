@@ -704,10 +704,30 @@ export default function SalariesPage() {
                     td.salary_type === 'percent' ? t('salaryPercent', { pct: td.salary_percent ?? 0 }) :
                     t('salaryPerStudent')
                   } />
-                  <Row label={t('groups')} value={`${td.groups.length}ta (${td.groups.map(g => g.group_name).filter(Boolean).join(', ')})`} />
+                  <Row label={t('groups')} value={
+                    td.groups.length > 0
+                      ? `${td.groups.length}ta (${td.groups.map(g => g.group_name).filter(Boolean).join(', ')})`
+                      : '—'
+                  } />
                 </div>
 
-                {td.groups.filter(g => g.student_count > 0 || g.course_price > 0).length === 0 ? (
+                {td.salary_type === 'fixed' ? (
+                  <>
+                    <hr className="border-gray-100" />
+                    <Row label={t('fixedMonthly')} value={formatCurrency(td.fixed_amount ?? 0)} />
+                    {td.groups.map(g => (
+                      <div key={g.group_id ?? g.salary_id}>
+                        <hr className="border-gray-100" />
+                        <div className="space-y-1 mt-2">
+                          <p className="text-xs font-semibold text-gray-700 mb-1">
+                            ({g.group_name ?? '?'}) — {g.course_name ?? '—'}
+                          </p>
+                          <Row label={t('studentsCount')} value={`${g.student_count} ta`} />
+                        </div>
+                      </div>
+                    ))}
+                  </>
+                ) : td.groups.filter(g => g.student_count > 0 || g.course_price > 0).length === 0 ? (
                   <div className="py-3 text-sm text-gray-400 text-center">{t('noCalcData')}</div>
                 ) : td.groups.filter(g => g.student_count > 0 || g.course_price > 0).map((g, i) => (
                   <div key={g.salary_id}>
@@ -716,9 +736,6 @@ export default function SalariesPage() {
                       <p className="text-xs font-semibold text-gray-700 mb-1">
                         ({g.group_name ?? '?'}) — {g.course_name ?? '—'}
                       </p>
-                      {td.salary_type === 'fixed' && (
-                        <Row label={t('fixedMonthly')} value={formatCurrency(g.calculated_amount - g.kpi_amount)} />
-                      )}
                       {td.salary_type === 'percent' && (() => {
                         const perStudent = g.course_price * (td.salary_percent ?? 0) / 100;
                         return (<>

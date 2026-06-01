@@ -31,8 +31,18 @@ export default function LoginPage() {
       setUser(data.user);
       setAuthenticated(true);
       router.push(`/${locale}/dashboard`);
-    } catch {
-      setError(t('error'));
+    } catch (err: unknown) {
+      const e = err as { response?: { data?: Record<string, unknown> } };
+      const d = e?.response?.data;
+      if (d?.phone) {
+        setError(String(Array.isArray(d.phone) ? d.phone[0] : d.phone));
+      } else if (d?.non_field_errors) {
+        setError(String(Array.isArray(d.non_field_errors) ? d.non_field_errors[0] : d.non_field_errors));
+      } else if (d?.detail) {
+        setError(String(d.detail));
+      } else {
+        setError(t('error'));
+      }
     } finally {
       setLoading(false);
     }

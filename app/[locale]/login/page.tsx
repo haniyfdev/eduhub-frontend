@@ -138,6 +138,15 @@ export default function LoginPage() {
           >
             RU
           </a>
+          <a
+            href="/en/login"
+            className={cn(
+              'text-sm px-3 py-1 rounded',
+              locale === 'en' ? 'bg-blue-600 text-white' : 'text-gray-500 hover:text-gray-700'
+            )}
+          >
+            EN
+          </a>
         </div>
       </div>
     </div>

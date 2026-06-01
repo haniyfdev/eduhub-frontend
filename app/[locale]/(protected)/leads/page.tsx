@@ -408,7 +408,7 @@ export default function LeadsPage() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">{t('referralSource')}</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">{t('parentPhone')}</label>
               <div className="flex">
                 <span className="inline-flex items-center px-3 border border-r-0 border-gray-300 bg-gray-50 text-gray-500 text-sm rounded-l">+998</span>
                 <input ref={phone2Ref} type="tel" value={form.second_phone}

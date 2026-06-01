@@ -345,7 +345,7 @@ export default function GroupDetailPage() {
             <Snowflake className="w-4 h-4 flex-shrink-0" />
             <span className="text-sm font-medium">{t('frozenBanner')}</span>
           </div>
-          {canEdit && (
+          {['boss', 'manager'].includes(user?.role ?? '') && (
             <button
               onClick={async () => {
                 try {

@@ -108,6 +108,10 @@ export default function TeachersPage() {
   const common = useTranslations('common');
   const tRoles = useTranslations('roles');
 
+  const _userRole = getUser()?.role ?? '';
+  const canArchive = ['boss', 'manager', 'admin'].includes(_userRole);
+  const canRestore = ['boss', 'manager'].includes(_userRole);
+
   const ROLE_LABELS: Record<string, string> = {
     admin:      tRoles('admin'),
     manager:    tRoles('manager'),
@@ -505,7 +509,7 @@ export default function TeachersPage() {
                           </td>
                           <td className="px-4 py-3">
                             <div className="flex items-center gap-1">
-                              {teacher.status === 'active' && (
+                              {teacher.status === 'active' && canArchive && (
                                 <>
                                   <button onClick={() => handleFreezeTeacher(teacher.id)}
                                     className="p-1 rounded text-blue-400 hover:bg-blue-50 hover:text-blue-600 transition-colors"
@@ -519,7 +523,7 @@ export default function TeachersPage() {
                                   </button>
                                 </>
                               )}
-                              {teacher.status === 'frozen' && (
+                              {teacher.status === 'frozen' && canRestore && (
                                 <button onClick={() => handleUnfreezeTeacher(teacher.id)}
                                   className="p-1 rounded text-cyan-400 hover:bg-cyan-50 hover:text-cyan-600 transition-colors"
                                   title={t('unfreezeSuccess')}>
@@ -610,7 +614,7 @@ export default function TeachersPage() {
                         </td>
                         <td className="px-4 py-3">
                           <div className="flex items-center gap-1">
-                            {s.status === 'active' && (
+                            {s.status === 'active' && canArchive && (
                               <>
                                 <button onClick={() => handleFreezeStaff(s.id)}
                                   className="p-1 rounded text-blue-400 hover:bg-blue-50 hover:text-blue-600 transition-colors"
@@ -624,7 +628,7 @@ export default function TeachersPage() {
                                 </button>
                               </>
                             )}
-                            {s.status === 'frozen' && (
+                            {s.status === 'frozen' && canRestore && (
                               <button onClick={() => handleUnfreezeStaff(s.id)}
                                 className="p-1 rounded text-cyan-400 hover:bg-cyan-50 hover:text-cyan-600 transition-colors"
                                 title={t('unfreezeSuccess')}>

@@ -155,8 +155,8 @@ export default function SettingsPage() {
     setUser(u);
   }, []);
 
-  const canEditCompany = ['boss', 'manager', 'superadmin'].includes(user?.role ?? '');
-  const canSaveCompany = ['boss', 'superadmin'].includes(user?.role ?? '');
+  const canEditCompany = ['boss', 'manager', 'admin', 'superadmin'].includes(user?.role ?? '');
+  const canSaveCompany = ['boss', 'manager', 'admin', 'superadmin'].includes(user?.role ?? '');
   const canEditSms = ['boss', 'manager', 'admin', 'superadmin'].includes(user?.role ?? '');
 
   useEffect(() => {
@@ -188,14 +188,14 @@ export default function SettingsPage() {
   }, [tab, canEditCompany]);
 
   useEffect(() => {
-    if (tab === 'sms' && canEditCompany) {
+    if (tab === 'sms' && canEditSms) {
       setLoadingSms(true);
       api.get('/api/v1/sms-templates/')
         .then(({ data }) => setSmsTemplates(data.results ?? data))
         .catch(() => {})
         .finally(() => setLoadingSms(false));
     }
-  }, [tab, canEditCompany]);
+  }, [tab, canEditSms]);
 
   function handleCompanyLogoChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];

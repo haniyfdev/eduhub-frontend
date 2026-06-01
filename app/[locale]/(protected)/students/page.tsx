@@ -47,7 +47,7 @@ export default function StudentsPage() {
   const [showSmsConfirm, setShowSmsConfirm] = useState(false);
   const [selectedIds, setSelectedIds]       = useState<Set<string>>(new Set());
   const [discountOpen, setDiscountOpen]     = useState(false);
-  const [user, setUser]                     = useState<User | null>(null);
+  const [user, setUser]                     = useState<User | null>(() => getUser());
 
   useEffect(() => { setUser(getUser()); }, []);
 
@@ -175,7 +175,7 @@ export default function StudentsPage() {
     return recs;
   });
 
-  const canDiscount = ['boss', 'manager'].includes(user?.role ?? '');
+  const canDiscount = ['boss', 'manager', 'admin'].includes(user?.role ?? '');
 
   function toggleSelect(id: string) {
     setSelectedIds(prev => {

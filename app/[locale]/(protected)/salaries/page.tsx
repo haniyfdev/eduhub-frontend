@@ -263,7 +263,11 @@ export default function SalariesPage() {
   function openTeacherPayModal(teacher: TeacherSalaryGrouped, selId: string) {
     setTeacherPay({ teacher, selectionId: selId });
     const amounts: Record<string, string> = {};
-    if (selId === 'all') {
+    if (teacher.salary_type === 'fixed') {
+      const fixedId = teacher.groups[0]?.salary_id ?? selId;
+      const rem = Math.max(teacher.total_owed - teacher.total_paid, 0);
+      if (rem > 0 && fixedId) amounts[fixedId] = formatAmount(String(Math.round(rem)));
+    } else if (selId === 'all') {
       teacher.groups.forEach(g => {
         const rem = Math.max(g.total_owed - g.paid_amount, 0);
         if (rem > 0) amounts[g.salary_id] = formatAmount(String(Math.round(rem)));
@@ -812,6 +816,62 @@ export default function SalariesPage() {
           </DialogHeader>
           {teacherPay && (() => {
             const { teacher, selectionId } = teacherPay;
+
+            // ── Fixed salary: staff-style single payment ──
+            if (teacher.salary_type === 'fixed') {
+              const fixedId = teacher.groups[0]?.salary_id ?? selectionId;
+              const rem = Math.max(teacher.total_owed - teacher.total_paid, 0);
+              const amt = parseAmount(bulkAmounts[fixedId] || '0');
+              const preview = amt >= rem && rem > 0 ? 'paid' : amt >= 10000 ? 'partial' : null;
+              return (
+                <div className="mt-2 space-y-4">
+                  <div className="flex justify-between text-sm">
+                    <span className="text-gray-500">{t('calculated')}</span>
+                    <span className="font-semibold text-gray-900">{formatCurrency(teacher.total_calculated)}</span>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-gray-500">{t('remaining')}</span>
+                    <span className="font-semibold text-red-600">{formatCurrency(rem)}</span>
+                  </div>
+                  <div className="space-y-1.5">
+                    <label className="block text-sm font-medium text-gray-700">{t('payAmount')} (so&apos;m)</label>
+                    <input
+                      type="text" inputMode="numeric"
+                      value={bulkAmounts[fixedId] ?? ''}
+                      onChange={e => setBulkAmounts({ [fixedId]: formatAmount(e.target.value) })}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+                      placeholder="0"
+                    />
+                    <p className="text-xs text-gray-400">Min: 10,000 | Max: {formatCurrency(rem)} so&apos;m</p>
+                    {preview === 'paid' && <p className="text-xs text-green-600">✓ {t('fullPay')}</p>}
+                    {preview === 'partial' && <p className="text-xs text-yellow-600">~ {t('partialPay')}</p>}
+                  </div>
+                  <div className="flex gap-3 pt-1">
+                    <button onClick={() => { setTeacherPay(null); setBulkAmounts({}); }}
+                      className="flex-1 px-4 py-2 border border-gray-300 text-sm font-medium rounded-lg hover:bg-gray-50">
+                      {common('cancel')}
+                    </button>
+                    <button disabled={bulkPaying || amt < 10000 || amt > rem}
+                      onClick={async () => {
+                        setBulkPaying(true);
+                        try {
+                          await api.post(`/api/v1/teacher-salaries/${fixedId}/pay/`, { amount: amt });
+                          setTeacherPay(null); setBulkAmounts({});
+                          loadSalaries();
+                        } catch (e: unknown) {
+                          const err = e as { response?: { data?: { error?: string } } };
+                          toast.error(err?.response?.data?.error || common('error'));
+                        } finally { setBulkPaying(false); }
+                      }}
+                      className="flex-1 px-4 py-2 bg-emerald-600 text-white text-sm font-medium rounded-lg hover:bg-emerald-700 disabled:opacity-60">
+                      {bulkPaying ? common('loading') : common('confirm')}
+                    </button>
+                  </div>
+                </div>
+              );
+            }
+
+            // ── Percent / per_student: per-group payment ──
             const isAll = selectionId === 'all';
             const payableGroups = isAll
               ? teacher.groups.filter(g => g.status !== 'paid')
@@ -840,14 +900,12 @@ export default function SalariesPage() {
                     </div>
                   );
                 })}
-
                 {isAll && payableGroups.length > 1 && (
                   <div className="flex justify-between items-center pt-1 border-t border-gray-200">
                     <span className="text-sm font-semibold text-gray-700">{t('totalPayment')}</span>
                     <span className="text-sm font-bold text-gray-900">{formatCurrency(totalAmt)}</span>
                   </div>
                 )}
-
                 <div className="flex gap-3 pt-1">
                   <button onClick={() => { setTeacherPay(null); setBulkAmounts({}); }}
                     className="flex-1 px-4 py-2 border border-gray-300 text-sm font-medium rounded-lg hover:bg-gray-50 transition-colors">

@@ -322,7 +322,7 @@ export default function GroupsPage() {
                       </td>
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-1">
-                          {g.status === 'active' && (
+                          {g.status === 'active' && ['boss', 'manager', 'admin'].includes(getUser()?.role ?? '') && (
                             <>
                               <button
                                 onClick={(e) => { e.stopPropagation(); setFreezeTarget({ id: g.id, name: g.name }); }}
@@ -340,7 +340,7 @@ export default function GroupsPage() {
                               </button>
                             </>
                           )}
-                          {g.status === 'frozen' && (
+                          {g.status === 'frozen' && ['boss', 'manager'].includes(getUser()?.role ?? '') && (
                             <button
                               onClick={(e) => { e.stopPropagation(); setUnfreezeTarget({ id: g.id, name: g.name }); }}
                               className="p-1 rounded text-green-500 hover:bg-green-50 hover:text-green-700 transition-colors"

@@ -220,6 +220,8 @@
     "group": "Guruh",
     "status": "Holat",
     "actions": "Amallar",
+    "freezeSuccess": "O'quvchi muzlatildi",
+    "unfreezeSuccess": "O'quvchi faollashtirildi",
     "empty": "O'quvchilar topilmadi",
     "statusPending": "Kutilmoqda",
     "statusActive": "Faol",

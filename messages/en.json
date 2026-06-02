@@ -208,6 +208,8 @@
     "trial": "Trial",
     "noStudents": "No students",
     "archiveConfirm": "archive",
+    "freezeSuccess": "Student frozen",
+    "unfreezeSuccess": "Student activated",
     "graduated": "Graduated",
     "droppedOut": "Dropped out",
     "graduatedDesc": "Completed the full curriculum",

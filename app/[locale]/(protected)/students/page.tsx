@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState, useCallback, useRef } from 'react';
-import { Search, Send, Minus, Snowflake, Tag } from 'lucide-react';
+import { Search, Send, Minus, Snowflake, Tag, Play } from 'lucide-react';
 import toast, { Toaster } from 'react-hot-toast';
 import { useTranslations } from 'next-intl';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -176,6 +176,7 @@ export default function StudentsPage() {
   });
 
   const canDiscount = ['boss', 'manager', 'admin'].includes(user?.role ?? '');
+  const canFreeze = ['boss', 'manager', 'admin'].includes(user?.role ?? '');
 
   function toggleSelect(id: string) {
     setSelectedIds(prev => {
@@ -207,6 +208,28 @@ export default function StudentsPage() {
       fetchStudents();
     } catch {
       toast.error(tc('error'));
+    }
+  }
+
+  async function handleFreeze(id: string) {
+    try {
+      await api.post(`/api/v1/students/${id}/freeze/`);
+      toast.success("O'quvchi muzlatildi");
+      fetchStudents();
+    } catch (err: unknown) {
+      const e = err as { response?: { data?: { error?: string } } };
+      toast.error(e?.response?.data?.error || tc('error'));
+    }
+  }
+
+  async function handleUnfreeze(id: string) {
+    try {
+      await api.post(`/api/v1/students/${id}/unfreeze/`);
+      toast.success("O'quvchi faollashtirildi");
+      fetchStudents();
+    } catch (err: unknown) {
+      const e = err as { response?: { data?: { error?: string } } };
+      toast.error(e?.response?.data?.error || tc('error'));
     }
   }
 
@@ -345,20 +368,40 @@ export default function StudentsPage() {
                       </td>
 
                       <td className="px-4 py-3">
-                        {s.status !== 'archived' ? (
-                          ['boss', 'manager'].includes(user?.role ?? '') && (
-                            <button
-                              onClick={() => setArchiveTarget({ id: s.id, name: `${s.first_name} ${s.last_name}`, status: s.status })}
-                              className="p-1 rounded text-red-400 hover:bg-red-50 hover:text-red-600 transition-colors"
-                              title={tc('archive')}
-                            >
-                              <Minus className="w-4 h-4" />
-                            </button>
-                          )
-                        ) : (
+                        {s.status === 'archived' ? (
                           <span className="text-xs text-gray-400">
                             {s.archived_at ? formatDMY(s.archived_at) : '—'}
                           </span>
+                        ) : (
+                          <div className="flex items-center gap-1">
+                            {canFreeze && s.status === 'active' && (
+                              <button
+                                onClick={() => handleFreeze(s.id)}
+                                className="p-1 rounded text-cyan-400 hover:bg-cyan-50 hover:text-cyan-600 transition-colors"
+                                title="Muzlatish"
+                              >
+                                <Snowflake className="w-4 h-4" />
+                              </button>
+                            )}
+                            {canFreeze && s.status === 'frozen' && (
+                              <button
+                                onClick={() => handleUnfreeze(s.id)}
+                                className="p-1 rounded text-blue-400 hover:bg-blue-50 hover:text-blue-600 transition-colors"
+                                title="Faollashtirish"
+                              >
+                                <Play className="w-4 h-4" />
+                              </button>
+                            )}
+                            {['boss', 'manager'].includes(user?.role ?? '') && s.status !== 'frozen' && (
+                              <button
+                                onClick={() => setArchiveTarget({ id: s.id, name: `${s.first_name} ${s.last_name}`, status: s.status })}
+                                className="p-1 rounded text-red-400 hover:bg-red-50 hover:text-red-600 transition-colors"
+                                title={tc('archive')}
+                              >
+                                <Minus className="w-4 h-4" />
+                              </button>
+                            )}
+                          </div>
                         )}
                       </td>
                     </tr>

@@ -208,6 +208,8 @@
     "trial": "Пробный",
     "noStudents": "Нет учеников",
     "archiveConfirm": "архивировать",
+    "freezeSuccess": "Ученик заморожен",
+    "unfreezeSuccess": "Ученик активирован",
     "graduated": "Завершил курс",
     "droppedOut": "Бросил курс",
     "graduatedDesc": "Учебный план полностью завершён",

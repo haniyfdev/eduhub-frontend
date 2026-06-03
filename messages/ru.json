@@ -771,6 +771,7 @@
     "announcementSent": "Сообщение отправлено",
     "dataSaved": "Данные сохранены",
     "passwordMismatch": "Новые пароли не совпадают",
+    "passwordTooShort": "Пароль должен содержать не менее 8 символов",
     "avatarFormatError": "Только формат JPG или PNG",
     "avatarSizeError": "Размер файла не должен превышать 1МБ",
     "profileButton": "Настройки профиля",
@@ -799,5 +800,14 @@
     "cleaner": "Уборщик",
     "supply": "Завхоз",
     "other": "Другое"
+  },
+  "auth": {
+    "passwordPlaceholder": "Минимум 8 символов",
+    "passwordTooShort": "Пароль должен содержать не менее 8 символов",
+    "oldPassword": "Старый пароль",
+    "newPassword": "Новый пароль",
+    "confirmPassword": "Подтвердите новый пароль",
+    "passwordMismatch": "Пароли не совпадают",
+    "passwordChanged": "Пароль успешно изменён"
   }
 }

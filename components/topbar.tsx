@@ -246,6 +246,10 @@ export default function Topbar() {
     if (!user) return;
 
     const pwFilled = password.old_password || password.new_password || password.confirm;
+    if (pwFilled && password.new_password.length > 0 && password.new_password.length < 8) {
+      toast.error(t('passwordTooShort'));
+      return;
+    }
     if (pwFilled && password.new_password !== password.confirm) {
       toast.error(t('passwordMismatch'));
       return;

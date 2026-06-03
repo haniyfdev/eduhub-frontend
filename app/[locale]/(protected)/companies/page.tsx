@@ -295,7 +295,7 @@ export default function CompaniesPage() {
               <label className={labelCls}>Parol <span className="text-red-500">*</span></label>
               <input type="password" value={bossForm.password}
                 onChange={(e) => setBossForm((f) => ({ ...f, password: e.target.value }))}
-                className={inputCls} required minLength={6} />
+                className={inputCls} required minLength={8} placeholder="Kamida 8 ta belgi" />
             </div>
             <div className="px-3 py-2 bg-blue-50 rounded text-xs text-blue-700">
               Rol: <span className="font-semibold">Boss</span>

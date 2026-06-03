@@ -760,6 +760,7 @@
     "announcementSent": "Xabar yuborildi",
     "dataSaved": "Ma'lumotlar saqlandi",
     "passwordMismatch": "Yangi parollar mos kelmaydi",
+    "passwordTooShort": "Parol kamida 8 ta belgidan iborat bo'lishi kerak",
     "avatarFormatError": "Faqat JPG yoki PNG formatida",
     "avatarSizeError": "Fayl hajmi 1MB dan oshmasligi kerak",
     "profileButton": "Profil sozlamalari",
@@ -819,5 +820,14 @@
     "cleaner": "Farrosh",
     "supply": "Zavxoz",
     "other": "Boshqa"
+  },
+  "auth": {
+    "passwordPlaceholder": "Kamida 8 ta belgi",
+    "passwordTooShort": "Parol kamida 8 ta belgidan iborat bo'lishi kerak",
+    "oldPassword": "Eski parol",
+    "newPassword": "Yangi parol",
+    "confirmPassword": "Yangi parolni tasdiqlang",
+    "passwordMismatch": "Parollar mos kelmaydi",
+    "passwordChanged": "Parol muvaffaqiyatli o'zgartirildi"
   }
 }

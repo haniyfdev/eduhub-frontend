@@ -771,6 +771,7 @@
     "announcementSent": "Announcement sent",
     "dataSaved": "Data saved",
     "passwordMismatch": "New passwords do not match",
+    "passwordTooShort": "Password must be at least 8 characters",
     "avatarFormatError": "Only JPG or PNG format allowed",
     "avatarSizeError": "File size must not exceed 1MB",
     "profileButton": "Profile settings",
@@ -799,5 +800,14 @@
     "cleaner": "Cleaner",
     "supply": "Supply",
     "other": "Other"
+  },
+  "auth": {
+    "passwordPlaceholder": "At least 8 characters",
+    "passwordTooShort": "Password must be at least 8 characters",
+    "oldPassword": "Old password",
+    "newPassword": "New password",
+    "confirmPassword": "Confirm new password",
+    "passwordMismatch": "Passwords do not match",
+    "passwordChanged": "Password changed successfully"
   }
 }

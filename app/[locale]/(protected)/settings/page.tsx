@@ -138,7 +138,12 @@ export default function SettingsPage() {
   const [modalData, setModalData] = useState({ name: '', body: '', trigger: 'custom', is_active: true });
   const [savingModal, setSavingModal] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<SmsTemplate | null>(null);
-  const bodyRef = useRef<HTMLTextAreaElement>(null);
+  const bodyRef            = useRef<HTMLTextAreaElement>(null);
+  const companyNameRef     = useRef<HTMLInputElement>(null);
+  const companyPhoneRef    = useRef<HTMLInputElement>(null);
+  const companyAddressRef  = useRef<HTMLInputElement>(null);
+  const companySubmitRef   = useRef<HTMLButtonElement>(null);
+  const templateNameRef    = useRef<HTMLInputElement>(null);
 
   // Trigger choices built from translation keys
   const TRIGGER_CHOICES: [string, string][] = [
@@ -327,6 +332,40 @@ export default function SettingsPage() {
     }
   }
 
+  function handleKeyDown(
+    e: React.KeyboardEvent<HTMLInputElement>,
+    nextRef?: React.RefObject<HTMLInputElement>,
+    submitFn?: () => void,
+  ) {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      if (nextRef?.current) nextRef.current.focus();
+      else submitFn?.();
+    }
+    if (e.key === 'Escape') {
+      e.preventDefault();
+      (e.target as HTMLInputElement).blur();
+    }
+  }
+
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) { if (e.key === 'Escape') setShowModal(false); }
+    if (showModal) window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [showModal]);
+
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) { if (e.key === 'Escape') setDeleteTarget(null); }
+    if (deleteTarget) window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [deleteTarget]);
+
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) { if (e.key === 'Escape') setBranchOpen(false); }
+    if (branchOpen) window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [branchOpen]);
+
   const tabs: Array<{ key: Tab; label: string; show: boolean }> = [
     { key: 'company', label: t('tabs.company'), show: canEditCompany },
     { key: 'sms', label: t('tabs.sms'), show: canEditSms },
@@ -395,21 +434,33 @@ export default function SettingsPage() {
               <form onSubmit={handleCompanyInfoSave} className="space-y-4">
                 <div>
                   <label className={labelCls}>{t('companyName')}</label>
-                  <input value={companyForm.name} onChange={(e) => setCompanyForm((f) => ({ ...f, name: e.target.value }))}
+                  <input
+                    ref={companyNameRef}
+                    value={companyForm.name}
+                    onChange={(e) => setCompanyForm((f) => ({ ...f, name: e.target.value }))}
+                    onKeyDown={(e) => handleKeyDown(e, companyPhoneRef)}
                     className={inputCls} required />
                 </div>
                 <div>
                   <label className={labelCls}>{t('phone')}</label>
-                  <input value={companyForm.phone} onChange={(e) => setCompanyForm((f) => ({ ...f, phone: e.target.value }))}
+                  <input
+                    ref={companyPhoneRef}
+                    value={companyForm.phone}
+                    onChange={(e) => setCompanyForm((f) => ({ ...f, phone: e.target.value }))}
+                    onKeyDown={(e) => handleKeyDown(e, companyAddressRef)}
                     className={inputCls} />
                 </div>
                 <div>
                   <label className={labelCls}>{t('address')}</label>
-                  <input value={companyForm.address} onChange={(e) => setCompanyForm((f) => ({ ...f, address: e.target.value }))}
+                  <input
+                    ref={companyAddressRef}
+                    value={companyForm.address}
+                    onChange={(e) => setCompanyForm((f) => ({ ...f, address: e.target.value }))}
+                    onKeyDown={(e) => handleKeyDown(e, undefined, () => companySubmitRef.current?.click())}
                     className={inputCls} />
                 </div>
                 {canSaveCompany && (
-                  <button type="submit" disabled={savingCompanyInfo}
+                  <button ref={companySubmitRef} type="submit" disabled={savingCompanyInfo}
                     className="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded hover:bg-blue-700 disabled:opacity-60">
                     {savingCompanyInfo ? t('saving') : t('save')}
                   </button>
@@ -581,10 +632,16 @@ export default function SettingsPage() {
             <div>
               <label className={labelCls}>{t('templateName')}</label>
               <input
+                ref={templateNameRef}
                 value={modalData.name}
                 onChange={(e) => setModalData((d) => ({ ...d, name: e.target.value }))}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') { e.preventDefault(); bodyRef.current?.focus(); }
+                  if (e.key === 'Escape') { e.preventDefault(); setShowModal(false); }
+                }}
                 className={inputCls}
                 placeholder={t('templateNamePlaceholder')}
+                autoFocus
               />
             </div>
             <div>

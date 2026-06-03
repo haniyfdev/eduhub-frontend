@@ -74,10 +74,10 @@ const SALARY_LABELS: Record<string, string> = {
 const EMPTY_FORM: {
   first_name: string; last_name: string; phone: string; password: string;
   subject: string; birth_date: string;
-  salary_type: 'fixed' | 'percent' | 'per_student'; salary_amount: string;
+  salary_type: 'fixed' | 'percent' | 'per_student'; salary_amount: string; salary_amount_display: string;
 } = {
   first_name: '', last_name: '', phone: '', password: '',
-  subject: '', birth_date: '', salary_type: 'fixed', salary_amount: '',
+  subject: '', birth_date: '', salary_type: 'fixed', salary_amount: '', salary_amount_display: '',
 };
 
 const formatAmount = (val: string) =>
@@ -775,7 +775,7 @@ export default function TeachersPage() {
                   <button
                     key={type}
                     type="button"
-                    onClick={() => setForm((f) => ({ ...f, salary_type: type, salary_amount: '' }))}
+                    onClick={() => setForm((f) => ({ ...f, salary_type: type, salary_amount: '', salary_amount_display: '' }))}
                     className={cn('flex-1 py-2 text-xs font-medium border rounded transition-colors',
                       form.salary_type === type ? 'border-blue-500 bg-blue-50 text-blue-700' : 'border-gray-300 text-gray-600 hover:bg-gray-50')}
                   >
@@ -791,11 +791,21 @@ export default function TeachersPage() {
               </label>
               <input
                 ref={salaryAmtRef}
-                type="number"
-                value={form.salary_amount}
-                onChange={(e) => setForm((f) => ({ ...f, salary_amount: e.target.value }))}
+                type={form.salary_type === 'percent' ? 'number' : 'text'}
+                inputMode="numeric"
+                value={form.salary_type === 'percent' ? form.salary_amount : (form.salary_amount_display ?? '')}
+                onChange={(e) => {
+                  if (form.salary_type === 'percent') {
+                    setForm((f) => ({ ...f, salary_amount: e.target.value }));
+                  } else {
+                    const raw = e.target.value.replace(/\D/g, '');
+                    const formatted = raw ? Number(raw).toLocaleString('en-US') : '';
+                    setForm((f) => ({ ...f, salary_amount: raw, salary_amount_display: formatted }));
+                  }
+                }}
                 onBlur={() => touch('salary_amount')}
                 onKeyDown={makeHandleKey(saveRef, birthDateRef, closeModal)}
+                placeholder="0"
                 className={cn('w-full px-3 py-2 border rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500', showErr('salary_amount') ? 'border-red-400' : 'border-gray-300')}
                 required
               />

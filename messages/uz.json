@@ -233,7 +233,12 @@
     "firstName": "Ism",
     "lastName": "Familiya",
     "save": "Saqlash",
-    "cancel": "Bekor qilish"
+    "cancel": "Bekor qilish",
+    "addToGroup": "Guruhga qo'shish",
+    "selectGroup": "Guruhni tanlang",
+    "addedToGroup": "Guruhga qo'shildi",
+    "alreadyInGroup": "O'quvchi bu guruhda allaqachon bor",
+    "multipleGroups": "Bir nechta guruh"
   },
   "leads": {
     "title": "Leadlar",
@@ -395,7 +400,8 @@
     "card": "Karta",
     "transfer": "O'tkazma",
     "noPayments": "To'lovlar yo'q",
-    "allTypes": "Barcha turlar"
+    "allTypes": "Barcha turlar",
+    "selectGroupStudent": "Guruhni tanlang"
   },
   "debts": {
     "title": "Qarzdorlar",
@@ -418,7 +424,8 @@
     "partialRemaining": "Qisman — {rem} qoladi",
     "totalDebt": "Jami qarz",
     "debtorCount": "{count} ta qarzdor",
-    "paymentNote": "To'lovlar o'chirilmaydi va tahrirlanmaydi"
+    "paymentNote": "To'lovlar o'chirilmaydi va tahrirlanmaydi",
+    "groupDebt": "Guruh qarzi"
   },
   "attendance": {
     "title": "Davomat",

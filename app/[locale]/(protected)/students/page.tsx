@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState, useCallback, useRef } from 'react';
-import { Search, Send, Minus, Snowflake, Tag, Play } from 'lucide-react';
+import { Search, Send, Minus, Snowflake, Tag, Play, UserPlus } from 'lucide-react';
 import toast, { Toaster } from 'react-hot-toast';
 import { useTranslations } from 'next-intl';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -12,7 +12,7 @@ import { DiscountModal, type DiscountStudent } from '@/components/discount-modal
 import api from '@/lib/axios';
 import { cn, formatPhone, formatDMY } from '@/lib/utils';
 import { getUser } from '@/lib/auth';
-import { Student, PaginatedResponse, User } from '@/types';
+import { PaginatedResponse, User } from '@/types';
 
 const STATUS_STYLES: Record<string, string> = {
   pending:  'bg-yellow-50 text-yellow-700 border-yellow-200',
@@ -21,6 +21,37 @@ const STATUS_STYLES: Record<string, string> = {
   archived: 'bg-gray-100 text-gray-600 border-gray-200',
   frozen:   'bg-cyan-100 text-cyan-700 border-cyan-300',
 };
+
+interface GroupMembership {
+  group_student_id: string;
+  group_id: string;
+  group_name: string;
+  course_name: string;
+  course_id: string;
+  joined_at: string;
+  left_at: string | null;
+}
+
+interface Student {
+  id: string;
+  first_name: string;
+  last_name: string;
+  phone: string;
+  second_phone?: string;
+  birth_date?: string;
+  status: string;
+  archive_reason?: string;
+  archived_at?: string;
+  created_at: string;
+  group_memberships_data: GroupMembership[];
+}
+
+interface StudentRow extends Student {
+  current_group: string;
+  current_group_id: string | null;
+  course_name: string;
+  group_student_id: string | null;
+}
 
 interface Course { id: string; name: string; }
 
@@ -48,13 +79,18 @@ export default function StudentsPage() {
   const [selectedIds, setSelectedIds]       = useState<Set<string>>(new Set());
   const [discountOpen, setDiscountOpen]     = useState(false);
   const [user, setUser]                     = useState<User | null>(() => getUser());
+  const [showAddToGroup, setShowAddToGroup] = useState(false);
+  const [addToGroupStudent, setAddToGroupStudent] = useState<Student | null>(null);
+  const [availableGroups, setAvailableGroups] = useState<{id: string; name: string; course_name: string}[]>([]);
 
   useEffect(() => { setUser(getUser()); }, []);
 
   useEffect(() => {
-    api.get<PaginatedResponse<{ student: string }>>('/api/v1/debts/?status=overdue&page_size=200')
+    api.get<PaginatedResponse<any>>('/api/v1/debts/?status=overdue&page_size=200')
       .then(({ data }) => {
-        overdueIdsRef.current = new Set<string>(data.results.map((d) => d.student).filter(Boolean));
+        overdueIdsRef.current = new Set<string>(
+          data.results.map((d: any) => d.student_id).filter(Boolean)
+        );
       })
       .catch(() => {});
   }, []);
@@ -91,6 +127,26 @@ export default function StudentsPage() {
       .catch(() => {});
   }, []);
 
+  const studentRows: StudentRow[] = students.flatMap(s => {
+    const memberships = s.group_memberships_data ?? [];
+    if (memberships.length === 0) {
+      return [{
+        ...s,
+        current_group: '—',
+        current_group_id: null,
+        course_name: '—',
+        group_student_id: null,
+      }];
+    }
+    return memberships.map(m => ({
+      ...s,
+      current_group: m.group_name,
+      current_group_id: m.group_id,
+      course_name: m.course_name,
+      group_student_id: m.group_student_id,
+    }));
+  });
+
   function togglePhone(id: string, key: 'phone1' | 'phone2') {
     setPhoneSelection((prev) => ({
       ...prev,
@@ -125,7 +181,6 @@ export default function StudentsPage() {
           room_number: r.room_number || '',
         })),
       });
-
       toast.success(`${recipients.length} ta SMS yuborildi`);
     } catch {
       toast.error(tc('error'));
@@ -141,9 +196,7 @@ export default function StudentsPage() {
   async function openSmsModal() {
     if (selectedStudentIds.length === 0) return;
     try {
-      const { data } = await api.post('/api/v1/sms-variables/', {
-        student_ids: selectedStudentIds,
-      });
+      const { data } = await api.post('/api/v1/sms-variables/', { student_ids: selectedStudentIds });
       setSmsVariables(data);
     } catch {
       setSmsVariables({});
@@ -155,14 +208,15 @@ export default function StudentsPage() {
     const sel = phoneSelection[s.id];
     const vars = smsVariables[s.id] ?? {};
     const recs: SmsRecipient[] = [];
+    const firstMembership = s.group_memberships_data?.[0];
     const base = {
       name: `${s.first_name} ${s.last_name}`,
       type: 'student' as const,
       amount: vars.amount || '',
       balance: vars.balance || '',
       due_date: vars.due_date || '',
-      course_name: vars.course_name || s.course_name || '',
-      group_name: vars.group_name || s.current_group || '',
+      course_name: vars.course_name || firstMembership?.course_name || '',
+      group_name: vars.group_name || firstMembership?.group_name || '',
       teacher_name: vars.teacher_name || '',
       company_name: vars.company_name || '',
       lesson_time: vars.lesson_time || '',
@@ -176,7 +230,8 @@ export default function StudentsPage() {
   });
 
   const canDiscount = ['boss', 'manager', 'admin'].includes(user?.role ?? '');
-  const canFreeze = ['boss', 'manager', 'admin'].includes(user?.role ?? '');
+  const canFreeze   = ['boss', 'manager', 'admin'].includes(user?.role ?? '');
+  const canEdit     = user?.role === 'boss' || user?.role === 'manager' || user?.role === 'admin';
 
   function toggleSelect(id: string) {
     setSelectedIds(prev => {
@@ -188,15 +243,20 @@ export default function StudentsPage() {
 
   const selectedStudents = students.filter(s => selectedIds.has(s.id));
   const allSameCourse = selectedStudents.length > 0 &&
-    selectedStudents.every(s => s.course === selectedStudents[0].course);
+    selectedStudents.every(s =>
+      s.group_memberships_data?.[0]?.course_id === selectedStudents[0].group_memberships_data?.[0]?.course_id
+    );
 
-  const discountStudents: DiscountStudent[] = selectedStudents.map(s => ({
-    id: s.id,
-    name: `${s.first_name} ${s.last_name}`,
-    course_id: s.course || '',
-    course_name: s.course_name || '',
-    course_price: s.course_price || 0,
-  }));
+  const discountStudents: DiscountStudent[] = selectedStudents.map(s => {
+    const m = s.group_memberships_data?.[0];
+    return {
+      id: s.id,
+      name: `${s.first_name} ${s.last_name}`,
+      course_id: m?.course_id || '',
+      course_name: m?.course_name || '',
+      course_price: 0,
+    };
+  });
 
   async function confirmArchive() {
     if (!archiveTarget || !archiveReason) return;
@@ -233,10 +293,37 @@ export default function StudentsPage() {
     }
   }
 
+  function openAddToGroup(student: Student) {
+    setAddToGroupStudent(student);
+    setShowAddToGroup(true);
+    api.get('/api/v1/groups/', { params: { status: 'active', page_size: 100 } })
+      .then(({ data }) => setAvailableGroups(
+        (data.results ?? []).map((g: any) => ({
+          id: g.id,
+          name: g.display_name ?? `${g.number}${(g.gender_type || '').toUpperCase()}`,
+          course_name: g.course?.name ?? '—',
+        }))
+      ));
+  }
+
+  async function handleAddToGroup(groupId: string) {
+    if (!addToGroupStudent) return;
+    try {
+      await api.post(`/api/v1/groups/${groupId}/add-student/`, {
+        student_id: addToGroupStudent.id,
+      });
+      toast.success(t('addedToGroup'));
+      setShowAddToGroup(false);
+      fetchStudents();
+    } catch (err: any) {
+      toast.error(err?.response?.data?.error || err?.response?.data?.detail || tc('error'));
+    }
+  }
+
   function rowBg(s: Student): string {
-    if (s.status === 'frozen')                return 'bg-[#F0F9FF]';
-    if (s.status === 'archived')              return 'bg-[#FFFBEB]';
-    if (overdueIdsRef.current.has(s.id))     return 'bg-[#FEF2F2]';
+    if (s.status === 'frozen')            return 'bg-[#F0F9FF]';
+    if (s.status === 'archived')          return 'bg-[#FFFBEB]';
+    if (overdueIdsRef.current.has(s.id)) return 'bg-[#FEF2F2]';
     return '';
   }
 
@@ -320,11 +407,11 @@ export default function StudentsPage() {
                     <td key={j} className="px-4 py-3"><Skeleton className="h-4 w-full" /></td>
                   ))}</tr>
                 ))
-                : students.length === 0
+                : studentRows.length === 0
                   ? <tr><td colSpan={10} className="px-4 py-16 text-center text-gray-400">{t('noStudents')}</td></tr>
-                  : students.map((s, idx) => (
-                    <tr key={s.id} className={cn('transition-colors hover:brightness-95', rowBg(s))}>
-                      <td className="px-4 py-3 text-gray-400 text-xs">{(page - 1) * pageSize + idx + 1}</td>
+                  : studentRows.map((s, idx) => (
+                    <tr key={`${s.id}-${s.group_student_id ?? idx}`} className={cn('transition-colors hover:brightness-95', rowBg(s))}>
+                      <td className="px-4 py-3 text-gray-400 text-xs">{idx + 1}</td>
 
                       {canDiscount && (
                         <td className="px-3 py-3">
@@ -374,6 +461,15 @@ export default function StudentsPage() {
                           </span>
                         ) : (
                           <div className="flex items-center gap-1">
+                            {s.status === 'active' && canEdit && (
+                              <button
+                                onClick={(e) => { e.stopPropagation(); openAddToGroup(s); }}
+                                className="p-1 rounded text-blue-400 hover:bg-blue-50 hover:text-blue-600 transition-colors"
+                                title={t('addToGroup')}
+                              >
+                                <UserPlus className="w-4 h-4" />
+                              </button>
+                            )}
                             {canFreeze && s.status === 'active' && (
                               <button
                                 onClick={() => handleFreeze(s.id)}
@@ -458,6 +554,26 @@ export default function StudentsPage() {
               className="flex-1 px-4 py-2 bg-red-600 text-white text-sm font-medium rounded hover:bg-red-700 disabled:opacity-50">
               {tc('archive')}
             </button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={showAddToGroup} onOpenChange={setShowAddToGroup}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>{t('addToGroup')}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-2 mt-2 max-h-80 overflow-y-auto">
+            {availableGroups.map(g => (
+              <button
+                key={g.id}
+                onClick={() => handleAddToGroup(g.id)}
+                className="w-full text-left px-4 py-3 rounded-lg border border-gray-200 hover:bg-blue-50 hover:border-blue-300 transition-colors"
+              >
+                <span className="font-semibold text-gray-800">{g.name}</span>
+                <span className="text-xs text-gray-500 ml-2">{g.course_name}</span>
+              </button>
+            ))}
           </div>
         </DialogContent>
       </Dialog>

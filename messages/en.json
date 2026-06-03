@@ -213,7 +213,12 @@
     "graduated": "Graduated",
     "droppedOut": "Dropped out",
     "graduatedDesc": "Completed the full curriculum",
-    "droppedOutDesc": "Left before course completion"
+    "droppedOutDesc": "Left before course completion",
+    "addToGroup": "Add to group",
+    "selectGroup": "Select group",
+    "addedToGroup": "Added to group",
+    "alreadyInGroup": "Student already in this group",
+    "multipleGroups": "Multiple groups"
   },
   "leads": {
     "title": "Leads",
@@ -375,7 +380,8 @@
     "card": "Card",
     "transfer": "Transfer",
     "noPayments": "No payments",
-    "allTypes": "All types"
+    "allTypes": "All types",
+    "selectGroupStudent": "Select group"
   },
   "debts": {
     "title": "Debtors",
@@ -398,7 +404,8 @@
     "partialRemaining": "Partial — {rem} remaining",
     "totalDebt": "Total debt",
     "debtorCount": "{count} debtors",
-    "paymentNote": "Payments cannot be deleted or edited"
+    "paymentNote": "Payments cannot be deleted or edited",
+    "groupDebt": "Group debt"
   },
   "attendance": {
     "title": "Attendance",

@@ -213,7 +213,12 @@
     "graduated": "Завершил курс",
     "droppedOut": "Бросил курс",
     "graduatedDesc": "Учебный план полностью завершён",
-    "droppedOutDesc": "Вышел до окончания курса"
+    "droppedOutDesc": "Вышел до окончания курса",
+    "addToGroup": "Добавить в группу",
+    "selectGroup": "Выберите группу",
+    "addedToGroup": "Добавлен в группу",
+    "alreadyInGroup": "Ученик уже в этой группе",
+    "multipleGroups": "Несколько групп"
   },
   "leads": {
     "title": "Лиды",
@@ -375,7 +380,8 @@
     "card": "Карта",
     "transfer": "Перевод",
     "noPayments": "Нет платежей",
-    "allTypes": "Все типы"
+    "allTypes": "Все типы",
+    "selectGroupStudent": "Выберите группу"
   },
   "debts": {
     "title": "Должники",
@@ -398,7 +404,8 @@
     "partialRemaining": "Частично — осталось {rem}",
     "totalDebt": "Общий долг",
     "debtorCount": "{count} должников",
-    "paymentNote": "Платежи не удаляются и не редактируются"
+    "paymentNote": "Платежи не удаляются и не редактируются",
+    "groupDebt": "Долг по группе"
   },
   "attendance": {
     "title": "Посещаемость",

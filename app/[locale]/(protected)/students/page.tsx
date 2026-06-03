@@ -127,26 +127,27 @@ export default function StudentsPage() {
       .catch(() => {});
   }, []);
 
-  const studentRows: StudentRow[] = students.flatMap(s => {
-    const memberships = s.group_memberships_data ?? [];
-    if (memberships.length === 0) {
-      return [{
-        ...s,
-        current_group: '—',
-        current_group_id: null,
-        course_name: '—',
-        group_student_id: null,
-      }];
-    }
-    return memberships.map(m => ({
+const studentRows: StudentRow[] = students.flatMap(s => {
+  const memberships = s.group_memberships_data ?? [];
+  
+  if (memberships.length === 0) {
+    return [{
       ...s,
-      current_group: m.group_name,
-      current_group_id: m.group_id,
-      course_name: m.course_name,
-      group_student_id: m.group_student_id,
-    }));
-  });
-
+      current_group: '—',
+      current_group_id: '', //  TO'G'RI: null o'rniga bo'sh satr
+      course_name: '—',
+      group_student_id: '', //  TO'G'RI: null o'rniga bo'sh satr
+    }];
+  }
+  
+  return memberships.map(m => ({
+    ...s,
+    current_group: m.group_name,
+    current_group_id: String(m.group_id),         //  Xavfsizlik uchun string'ga o'giramiz
+    course_name: m.course_name,
+    group_student_id: String(m.group_student_id), //  Xavfsizlik uchun string'ga o'giramiz
+  }));
+});
   function togglePhone(id: string, key: 'phone1' | 'phone2') {
     setPhoneSelection((prev) => ({
       ...prev,

@@ -27,7 +27,7 @@ interface Course {
 interface Teacher { id: string; first_name: string; last_name: string; }
 
 const EMPTY_FORM = {
-  name: '', description: '', price: '', duration_months: '', duration_hours: '',
+  name: '', description: '', price: '', price_display: '', duration_months: '', duration_hours: '',
   teacher_ids: [] as string[], status: 'active' as 'active' | 'archived',
 };
 
@@ -109,7 +109,8 @@ export default function CoursesPage() {
     setForm({
       name:             c.name,
       description:      c.description || '',
-      price:            String(c.price),
+      price:            String(c.price || ''),
+      price_display:    c.price ? Number(c.price).toLocaleString('en-US') : '',
       duration_months:  String(c.duration_months),
       duration_hours:   String(c.duration_hours),
       teacher_ids:      c.teachers ?? [],
@@ -349,12 +350,17 @@ export default function CoursesPage() {
               <label className="block text-sm font-medium text-gray-700 mb-1">{t('priceLabel')} <span className="text-red-500">*</span></label>
               <input
                 ref={priceRef}
-                type="number"
-                value={form.price}
-                onChange={(e) => setForm((f) => ({ ...f, price: e.target.value }))}
+                type="text"
+                inputMode="numeric"
+                value={form.price_display ?? ''}
+                onChange={(e) => {
+                  const raw = e.target.value.replace(/\D/g, '');
+                  const formatted = raw ? Number(raw).toLocaleString('en-US') : '';
+                  setForm((f) => ({ ...f, price: raw, price_display: formatted }));
+                }}
                 onBlur={() => touch('price')}
                 onKeyDown={makeHandleKey(monthsRef, descRef, closeModal)}
-                min="1000" step="1000"
+                placeholder="0"
                 className={cn('w-full px-3 py-2 border rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500', showErr('price') ? 'border-red-400' : 'border-gray-300')}
               />
               {showErr('price') && <p className="text-xs text-red-500 mt-0.5">{showErr('price')}</p>}

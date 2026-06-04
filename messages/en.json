@@ -218,7 +218,13 @@
     "selectGroup": "Select group",
     "addedToGroup": "Added to group",
     "alreadyInGroup": "Student already in this group",
-    "multipleGroups": "Multiple groups"
+    "multipleGroups": "Multiple groups",
+    "discountCoursePrice": "Course price",
+    "discountAmount": "Discount",
+    "discountFinal": "To pay",
+    "discountMonthly": "Monthly payment",
+    "discountTotal": "month total",
+    "discountStarts": "Starts from"
   },
   "leads": {
     "title": "Leads",

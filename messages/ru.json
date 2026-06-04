@@ -218,7 +218,13 @@
     "selectGroup": "Выберите группу",
     "addedToGroup": "Добавлен в группу",
     "alreadyInGroup": "Ученик уже в этой группе",
-    "multipleGroups": "Несколько групп"
+    "multipleGroups": "Несколько групп",
+    "discountCoursePrice": "Цена курса",
+    "discountAmount": "Скидка",
+    "discountFinal": "К оплате",
+    "discountMonthly": "Ежемесячно",
+    "discountTotal": "мес. итого",
+    "discountStarts": "Начинается"
   },
   "leads": {
     "title": "Лиды",

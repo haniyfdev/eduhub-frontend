@@ -28,6 +28,7 @@ interface GroupMembership {
   group_name: string;
   course_name: string;
   course_id: string;
+  course_price?: number;
   joined_at: string;
   left_at: string | null;
 }
@@ -257,7 +258,7 @@ const studentRows: StudentRow[] = students.flatMap(s => {
       name: `${s.first_name} ${s.last_name}`,
       course_id: m?.course_id || '',
       course_name: m?.course_name || '',
-      course_price: 0,
+      course_price: m?.course_price ? Number(m.course_price) : 0,
     };
   });
 

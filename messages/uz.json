@@ -238,7 +238,13 @@
     "selectGroup": "Guruhni tanlang",
     "addedToGroup": "Guruhga qo'shildi",
     "alreadyInGroup": "O'quvchi bu guruhda allaqachon bor",
-    "multipleGroups": "Bir nechta guruh"
+    "multipleGroups": "Bir nechta guruh",
+    "discountCoursePrice": "Kurs narxi",
+    "discountAmount": "Chegirma",
+    "discountFinal": "To'lanajak",
+    "discountMonthly": "Oylik to'lov",
+    "discountTotal": "oylik jami",
+    "discountStarts": "Boshlanadi"
   },
   "leads": {
     "title": "Leadlar",

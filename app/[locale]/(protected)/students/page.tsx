@@ -244,6 +244,8 @@ const studentRows: StudentRow[] = students.flatMap(s => {
 
   const selectedStudents = students.filter(s => selectedIds.has(s.id));
   const allSameCourse = selectedStudents.length > 0 &&
+    selectedStudents.every(s => s.status !== 'archived') &&
+    !!selectedStudents[0].group_memberships_data?.[0]?.course_id &&
     selectedStudents.every(s =>
       s.group_memberships_data?.[0]?.course_id === selectedStudents[0].group_memberships_data?.[0]?.course_id
     );
@@ -396,7 +398,7 @@ const studentRows: StudentRow[] = students.flatMap(s => {
           <table className="w-full text-sm">
             <thead>
               <tr className="bg-gray-50 border-b border-gray-200">
-                {['№', '', tc('name'), tc('phone'), 'Ota-ona tel', tc('group'), tc('course'), tc('birthDate'), tc('status'), tc('actions')].map((h) => (
+                {['№', '', tc('name'), tc('phone'), 'Ota-ona tel', tc('birthDate'), tc('status'), tc('actions')].map((h) => (
                   <th key={h} className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">{h}</th>
                 ))}
               </tr>
@@ -404,24 +406,23 @@ const studentRows: StudentRow[] = students.flatMap(s => {
             <tbody className="divide-y divide-gray-100">
               {loading
                 ? Array(8).fill(0).map((_, i) => (
-                  <tr key={i}>{Array(9).fill(0).map((_, j) => (
+                  <tr key={i}>{Array(7).fill(0).map((_, j) => (
                     <td key={j} className="px-4 py-3"><Skeleton className="h-4 w-full" /></td>
                   ))}</tr>
                 ))
                 : studentRows.length === 0
-                  ? <tr><td colSpan={10} className="px-4 py-16 text-center text-gray-400">{t('noStudents')}</td></tr>
+                  ? <tr><td colSpan={8} className="px-4 py-16 text-center text-gray-400">{t('noStudents')}</td></tr>
                   : studentRows.map((s, idx) => (
                     <tr key={`${s.id}-${s.group_student_id ?? idx}`} className={cn('transition-colors hover:brightness-95', rowBg(s))}>
                       <td className="px-4 py-3 text-gray-400 text-xs">{idx + 1}</td>
 
-                      {canDiscount && (
+                      {canDiscount && s.status !== 'archived' ? (
                         <td className="px-3 py-3">
                           <input type="checkbox" checked={selectedIds.has(s.id)}
                             onChange={() => toggleSelect(s.id)}
                             className="rounded border-gray-300" />
                         </td>
-                      )}
-                      {!canDiscount && <td />}
+                      ) : <td />}
 
                       <td className="px-4 py-3 font-medium text-gray-900">{s.first_name} {s.last_name}</td>
 
@@ -443,8 +444,6 @@ const studentRows: StudentRow[] = students.flatMap(s => {
                         ) : <span className="text-gray-400">—</span>}
                       </td>
 
-                      <td className="px-4 py-3 font-medium text-gray-700">{s.current_group || '—'}</td>
-                      <td className="px-4 py-3 text-gray-600">{s.course_name || '—'}</td>
                       <td className="px-4 py-3 text-gray-600">{formatDMY(s.birth_date)}</td>
 
                       <td className="px-4 py-3">

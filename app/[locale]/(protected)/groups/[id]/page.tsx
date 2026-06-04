@@ -215,7 +215,10 @@ export default function GroupDetailPage() {
   async function handleArchiveStudent() {
     if (!archiveTarget || !archiveReason) return;
     try {
-      await api.post(`/api/v1/students/${archiveTarget.studentId}/archive/`, { reason: archiveReason });
+      await api.post(`/api/v1/groups/${id}/remove-student/`, {
+        student_id: archiveTarget.studentId,
+        reason: archiveReason,
+      });
       toast.success(common('success'));
       setArchiveTarget(null);
       setArchiveReason('');

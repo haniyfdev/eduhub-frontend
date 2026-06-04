@@ -257,7 +257,8 @@ export default function SalariesPage() {
     const anyOverdue = teacher.groups.some(
       g => g.status !== 'paid' && g.due_date && g.due_date < today,
     );
-    return anyOverdue ? 'bg-[#FEF2F2]' : 'bg-[#FFFBEB]';
+    if (anyOverdue) return 'bg-[#FEF2F2]';
+    return teacher.overall_status === 'partial' ? 'bg-yellow-50' : 'bg-yellow-100';
   }
 
   function openTeacherPayModal(teacher: TeacherSalaryGrouped, selId: string) {
@@ -560,7 +561,7 @@ export default function SalariesPage() {
                       const today   = new Date().toISOString().slice(0, 10);
                       const qoldiq  = Math.max(row.totalOwed, 0);
                       const overdue = row.status !== 'paid' && !!row.dueDate && row.dueDate < today;
-                      const rowBg   = row.status === 'paid' ? 'bg-white' : overdue ? 'bg-[#FEF2F2]' : 'bg-[#FFFBEB]';
+                      const rowBg   = row.status === 'paid' ? 'bg-white' : overdue ? 'bg-[#FEF2F2]' : row.status === 'partial' ? 'bg-yellow-50' : 'bg-yellow-100';
                       return (
                         <tr key={row.id} className={cn('transition-colors group', rowBg)}>
                           <td className="px-4 py-3 text-gray-400 text-xs">{idx + 1}</td>

@@ -69,6 +69,7 @@ export default function StudentsPage() {
   const [courses, setCourses]           = useState<Course[]>([]);
   const [loading, setLoading]           = useState(true);
   const [error, setError]               = useState(false);
+  const [searchInput, setSearchInput]   = useState('');
   const [search, setSearch]             = useState('');
   const [statusFilter, setStatusFilter] = useState('');
   const [courseFilter, setCourseFilter] = useState('');
@@ -121,6 +122,11 @@ export default function StudentsPage() {
       setLoading(false);
     }
   }, [page, pageSize, search, statusFilter, courseFilter, tc]);
+
+  useEffect(() => {
+    const timer = setTimeout(() => setSearch(searchInput), 350);
+    return () => clearTimeout(timer);
+  }, [searchInput]);
 
   useEffect(() => { fetchStudents(); }, [fetchStudents]);
   useEffect(() => { setPage(1); }, [search, statusFilter, courseFilter]);
@@ -378,7 +384,7 @@ const studentRows: StudentRow[] = students.flatMap(s => {
         <div className="relative flex-1 max-w-xs">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
           <input
-            type="text" value={search} onChange={(e) => setSearch(e.target.value)}
+            type="text" value={searchInput} onChange={(e) => setSearchInput(e.target.value)}
             placeholder={t('searchPlaceholder')}
             className="w-full pl-9 pr-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
@@ -434,13 +440,13 @@ const studentRows: StudentRow[] = students.flatMap(s => {
                         </td>
                       ) : <td />}
 
-                      <td className="px-4 py-3 font-medium text-gray-900">{s.first_name} {s.last_name}</td>
+                      <td className="px-4 py-3 font-medium text-gray-900 whitespace-nowrap">{s.first_name} {s.last_name}</td>
 
                       <td className="px-4 py-3">
                         <label className="flex items-center gap-2 cursor-pointer select-none">
                           <input type="checkbox" checked={phoneSelection[s.id]?.phone1 ?? false}
                             onChange={() => togglePhone(s.id, 'phone1')} className="rounded border-gray-300 flex-shrink-0" />
-                          <span className="text-gray-500">{formatPhone(s.phone)}</span>
+                          <span className="text-gray-500 whitespace-nowrap">{formatPhone(s.phone)}</span>
                         </label>
                       </td>
 
@@ -449,7 +455,7 @@ const studentRows: StudentRow[] = students.flatMap(s => {
                           <label className="flex items-center gap-2 cursor-pointer select-none">
                             <input type="checkbox" checked={phoneSelection[s.id]?.phone2 ?? false}
                              onChange={() => togglePhone(s.id, 'phone2')} className="rounded border-gray-300 flex-shrink-0" />
-                            <span className="text-gray-500">{formatPhone(s.second_phone)}</span>
+                            <span className="text-gray-500 whitespace-nowrap">{formatPhone(s.second_phone)}</span>
                           </label>
                         ) : <span className="text-gray-400">—</span>}
                       </td>

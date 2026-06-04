@@ -239,12 +239,21 @@
     "addedToGroup": "Guruhga qo'shildi",
     "alreadyInGroup": "O'quvchi bu guruhda allaqachon bor",
     "multipleGroups": "Bir nechta guruh",
+    "discountTitle": "Chegirma berish",
+    "discountPercent": "Chegirma foizi",
     "discountCoursePrice": "Kurs narxi",
     "discountAmount": "Chegirma",
     "discountFinal": "To'lanajak",
+    "discountMonths": "Necha oy",
     "discountMonthly": "Oylik to'lov",
     "discountTotal": "oylik jami",
-    "discountStarts": "Boshlanadi"
+    "discountStarts": "Boshlanadi",
+    "discountNote": "Izoh (ixtiyoriy)",
+    "discountReasonPlaceholder": "Chegirma sababi...",
+    "discountConfirmTitle": "Chegirmani tasdiqlash",
+    "discountSaving": "Saqlanmoqda...",
+    "discountSaved": "Chegirma saqlandi",
+    "selectedStudents": "ta talaba"
   },
   "leads": {
     "title": "Leadlar",

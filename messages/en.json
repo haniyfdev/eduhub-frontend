@@ -219,12 +219,21 @@
     "addedToGroup": "Added to group",
     "alreadyInGroup": "Student already in this group",
     "multipleGroups": "Multiple groups",
+    "discountTitle": "Give discount",
+    "discountPercent": "Discount percent",
     "discountCoursePrice": "Course price",
     "discountAmount": "Discount",
     "discountFinal": "To pay",
+    "discountMonths": "Number of months",
     "discountMonthly": "Monthly payment",
     "discountTotal": "month total",
-    "discountStarts": "Starts from"
+    "discountStarts": "Starts from",
+    "discountNote": "Note (optional)",
+    "discountReasonPlaceholder": "Reason for discount...",
+    "discountConfirmTitle": "Confirm discount",
+    "discountSaving": "Saving...",
+    "discountSaved": "Discount saved",
+    "selectedStudents": "student(s)"
   },
   "leads": {
     "title": "Leads",

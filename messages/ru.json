@@ -219,12 +219,21 @@
     "addedToGroup": "Добавлен в группу",
     "alreadyInGroup": "Ученик уже в этой группе",
     "multipleGroups": "Несколько групп",
+    "discountTitle": "Дать скидку",
+    "discountPercent": "Процент скидки",
     "discountCoursePrice": "Цена курса",
     "discountAmount": "Скидка",
     "discountFinal": "К оплате",
+    "discountMonths": "Количество месяцев",
     "discountMonthly": "Ежемесячно",
     "discountTotal": "мес. итого",
-    "discountStarts": "Начинается"
+    "discountStarts": "Начинается",
+    "discountNote": "Примечание (необязательно)",
+    "discountReasonPlaceholder": "Причина скидки...",
+    "discountConfirmTitle": "Подтвердить скидку",
+    "discountSaving": "Сохранение...",
+    "discountSaved": "Скидка сохранена",
+    "selectedStudents": "учеников"
   },
   "leads": {
     "title": "Лиды",

@@ -15,6 +15,7 @@ import { PaginatedResponse } from '@/types';
 interface Debt {
   id: string;
   student: string;
+  group_student: string;
   student_name: string;
   student_phone: string;
   student_second_phone: string;
@@ -209,9 +210,7 @@ export default function DebtsPage() {
     setPaymentSaving(true);
     try {
       await api.post('/api/v1/payments/', {
-        student_id:       paymentTarget.student,
-        group_id:         paymentTarget.group_id,
-        course_id:        paymentTarget.course_id,
+        group_student_id: paymentTarget.group_student,
         requested_amount: amt,
         payment_type:     paymentForm.payment_type,
         note:             paymentForm.note || '',

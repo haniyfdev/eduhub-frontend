@@ -29,6 +29,7 @@ interface GroupMembership {
   course_name: string;
   course_id: string;
   course_price?: number;
+  status?: string;
   joined_at: string;
   left_at: string | null;
 }
@@ -51,7 +52,9 @@ interface StudentRow extends Student {
   current_group: string;
   current_group_id: string | null;
   course_name: string;
+  course_id: string;
   group_student_id: string | null;
+  gs_status: string;
 }
 
 interface Course { id: string; name: string; }
@@ -135,18 +138,22 @@ const studentRows: StudentRow[] = students.flatMap(s => {
     return [{
       ...s,
       current_group: '—',
-      current_group_id: '', //  TO'G'RI: null o'rniga bo'sh satr
+      current_group_id: '',
       course_name: '—',
-      group_student_id: '', //  TO'G'RI: null o'rniga bo'sh satr
+      course_id: '',
+      group_student_id: '',
+      gs_status: s.status,
     }];
   }
-  
+
   return memberships.map(m => ({
     ...s,
     current_group: m.group_name,
-    current_group_id: String(m.group_id),         //  Xavfsizlik uchun string'ga o'giramiz
+    current_group_id: String(m.group_id),
     course_name: m.course_name,
-    group_student_id: String(m.group_student_id), //  Xavfsizlik uchun string'ga o'giramiz
+    course_id: m.course_id || '',
+    group_student_id: String(m.group_student_id),
+    gs_status: m.status || s.status,
   }));
 });
   function togglePhone(id: string, key: 'phone1' | 'phone2') {
@@ -243,21 +250,22 @@ const studentRows: StudentRow[] = students.flatMap(s => {
     });
   }
 
-  const selectedStudents = students.filter(s => selectedIds.has(s.id));
-  const allSameCourse = selectedStudents.length > 0 &&
-    selectedStudents.every(s => s.status === 'active') &&
-    !!selectedStudents[0].group_memberships_data?.[0]?.course_id &&
-    selectedStudents.every(s =>
-      s.group_memberships_data?.[0]?.course_id === selectedStudents[0].group_memberships_data?.[0]?.course_id
-    );
+  // Selection is per-row (group_student_id), not per-student.
+  // This lets Zafar's row in group 9 and his row in group 5C be checked independently.
+  const selectedRows = studentRows.filter(s => selectedIds.has(s.group_student_id || s.id));
 
-  const discountStudents: DiscountStudent[] = selectedStudents.map(s => {
-    const m = s.group_memberships_data?.[0];
+  const allSameCourse = selectedRows.length > 0 &&
+    selectedRows.every(s => s.gs_status === 'active') &&
+    !!selectedRows[0].course_id &&
+    selectedRows.every(s => s.course_id === selectedRows[0].course_id);
+
+  const discountStudents: DiscountStudent[] = selectedRows.map(s => {
+    const m = s.group_memberships_data?.find(m => String(m.group_student_id) === s.group_student_id);
     return {
       id: s.id,
       name: `${s.first_name} ${s.last_name}`,
-      course_id: m?.course_id || '',
-      course_name: m?.course_name || '',
+      course_id: s.course_id || '',
+      course_name: s.course_name || '',
       course_price: m?.course_price ? Number(m.course_price) : 0,
     };
   });
@@ -356,11 +364,11 @@ const studentRows: StudentRow[] = students.flatMap(s => {
               SMS ({selectedSmsCount})
             </button>
           )}
-          {selectedIds.size > 0 && allSameCourse && canDiscount && (
+          {selectedRows.length > 0 && allSameCourse && canDiscount && (
             <button onClick={() => setDiscountOpen(true)}
               className="flex items-center gap-2 px-4 py-2 bg-amber-500 text-white text-sm font-medium rounded hover:bg-amber-600 transition-colors">
               <Tag className="w-4 h-4" />
-              Chegirma ({selectedIds.size})
+              Chegirma ({selectedRows.length})
             </button>
           )}
         </div>
@@ -417,10 +425,11 @@ const studentRows: StudentRow[] = students.flatMap(s => {
                     <tr key={`${s.id}-${s.group_student_id ?? idx}`} className={cn('transition-colors hover:brightness-95', rowBg(s))}>
                       <td className="px-4 py-3 text-gray-400 text-xs">{idx + 1}</td>
 
-                      {canDiscount && s.status === 'active' ? (
+                      {canDiscount && s.gs_status === 'active' ? (
                         <td className="px-3 py-3">
-                          <input type="checkbox" checked={selectedIds.has(s.id)}
-                            onChange={() => toggleSelect(s.id)}
+                          <input type="checkbox"
+                            checked={selectedIds.has(s.group_student_id || s.id)}
+                            onChange={() => toggleSelect(s.group_student_id || s.id)}
                             className="rounded border-gray-300" />
                         </td>
                       ) : <td />}
@@ -450,11 +459,16 @@ const studentRows: StudentRow[] = students.flatMap(s => {
                       <td className="px-4 py-3 text-gray-600">{formatDMY(s.birth_date)}</td>
 
                       <td className="px-4 py-3">
-                        <span className={cn('inline-flex items-center gap-1 px-2 py-0.5 text-xs font-medium border rounded',
-                          STATUS_STYLES[s.status] ?? 'bg-gray-100 text-gray-600 border-gray-200')}>
-                          {s.status === 'frozen' && <Snowflake className="w-3 h-3 flex-shrink-0" />}
-                          {statusLabel(s.status)}
-                        </span>
+                        {(() => {
+                          const badge = s.status === 'archived' ? 'archived' : (s.gs_status || s.status);
+                          return (
+                            <span className={cn('inline-flex items-center gap-1 px-2 py-0.5 text-xs font-medium border rounded',
+                              STATUS_STYLES[badge] ?? 'bg-gray-100 text-gray-600 border-gray-200')}>
+                              {badge === 'frozen' && <Snowflake className="w-3 h-3 flex-shrink-0" />}
+                              {statusLabel(badge)}
+                            </span>
+                          );
+                        })()}
                       </td>
 
                       <td className="px-4 py-3">
@@ -464,7 +478,7 @@ const studentRows: StudentRow[] = students.flatMap(s => {
                           </span>
                         ) : (
                           <div className="flex items-center gap-1">
-                            {selectedIds.has(s.id) && s.status === 'active' && canEdit && (
+                            {selectedIds.has(s.group_student_id || s.id) && s.status === 'active' && canEdit && (
                               <button
                                 onClick={(e) => { e.stopPropagation(); openAddToGroup(s); }}
                                 className="p-1 rounded text-blue-400 hover:bg-blue-50 hover:text-blue-600 transition-colors"

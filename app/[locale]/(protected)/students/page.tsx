@@ -463,7 +463,7 @@ const studentRows: StudentRow[] = students.flatMap(s => {
                           </span>
                         ) : (
                           <div className="flex items-center gap-1">
-                            {s.status === 'active' && canEdit && (
+                            {selectedIds.has(s.id) && s.status === 'active' && canEdit && (
                               <button
                                 onClick={(e) => { e.stopPropagation(); openAddToGroup(s); }}
                                 className="p-1 rounded text-blue-400 hover:bg-blue-50 hover:text-blue-600 transition-colors"

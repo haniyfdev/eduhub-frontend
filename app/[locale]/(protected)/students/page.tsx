@@ -374,7 +374,7 @@ const studentRows: StudentRow[] = students.flatMap(s => {
             <button onClick={() => setDiscountOpen(true)}
               className="flex items-center gap-2 px-4 py-2 bg-amber-500 text-white text-sm font-medium rounded hover:bg-amber-600 transition-colors">
               <Tag className="w-4 h-4" />
-              Chegirma ({selectedRows.length})
+              {t('discountButton')} ({selectedRows.length})
             </button>
           )}
         </div>

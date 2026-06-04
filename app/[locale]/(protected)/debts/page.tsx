@@ -290,43 +290,54 @@ export default function DebtsPage() {
             <button onClick={fetchDebts} className="text-sm text-blue-600 underline">{common('retry')}</button>
           </div>
         ) : (
-          <table className="w-full text-sm">
+          <div className="overflow-x-auto">
+          <table className="w-full text-sm min-w-[900px]">
             <thead>
               <tr className="bg-gray-50 border-b border-gray-200">
-                {['№', common('student'), common('group'), common('phone'), t('parentPhone'), t('balance'), t('dueDate'), common('status'), common('actions')].map((h) => (
-                  <th key={h} className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">{h}</th>
-                ))}
+                <th className="text-left px-3 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide w-10">№</th>
+                <th className="text-left px-3 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide w-44">{common('student')}</th>
+                <th className="text-left px-3 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide w-16">{common('group')}</th>
+                <th className="text-left px-3 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide w-36">{common('phone')}</th>
+                <th className="text-left px-3 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide w-36">{t('parentPhone')}</th>
+                <th className="text-left px-3 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide w-32">{t('balance')}</th>
+                <th className="text-left px-3 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide w-28">{t('dueDate')}</th>
+                <th className="text-left px-3 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide w-24">{common('status')}</th>
+                <th className="text-left px-3 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide w-16">{common('actions')}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
               {loading
                 ? Array(8).fill(0).map((_, i) => (
                   <tr key={i}>{Array(9).fill(0).map((_, j) => (
-                    <td key={j} className="px-4 py-3"><Skeleton className="h-4 w-full" /></td>
+                    <td key={j} className="px-3 py-3"><Skeleton className="h-4 w-full" /></td>
                   ))}</tr>
                 ))
                 : debts.length === 0
-                  ? <tr><td colSpan={9} className="px-4 py-16 text-center text-gray-400">{t('noDebts')}</td></tr>
+                  ? <tr><td colSpan={9} className="px-3 py-16 text-center text-gray-400">{t('noDebts')}</td></tr>
                   : debts.map((d, idx) => {
                     const sel = phoneSelection[d.id] ?? { phone1: false, phone2: false };
                     const canSms = d.status !== 'paid';
                     return (
                       <tr key={d.id} className={cn('transition-colors hover:brightness-95', rowBg(d.status, d.student_status, d.due_date))}>
-                        <td className="px-4 py-3 text-gray-500">{(page - 1) * pageSize + idx + 1}</td>
-                        <td className="px-4 py-3 font-medium text-gray-900">
-                          <span className="flex items-center gap-2 flex-wrap">
-                            {d.student_name}
+                        <td className="px-3 py-3 text-gray-400 text-xs w-10">{(page - 1) * pageSize + idx + 1}</td>
+
+                        <td className="px-3 py-3 w-44">
+                          <div className="flex flex-col">
+                            <span className="font-medium text-gray-900 truncate max-w-[160px]">{d.student_name}</span>
                             {d.student_status === 'frozen' && (
-                              <span className="inline-flex items-center gap-1 px-1.5 py-0.5 bg-cyan-100 text-cyan-700 border border-cyan-300 rounded text-xs font-medium">
+                              <span className="inline-flex items-center gap-1 text-xs text-cyan-600 mt-0.5">
                                 <Snowflake className="w-3 h-3" /> {common('frozen')}
                               </span>
                             )}
-                          </span>
+                          </div>
                         </td>
-                        <td className="px-4 py-3 text-gray-600">{d.group_name || '—'}</td>
 
-                        <td className="px-4 py-3">
-                          <label className={cn('flex items-center gap-2 cursor-pointer select-none', !canSms && 'cursor-default')}>
+                        <td className="px-3 py-3 w-16">
+                          <span className="text-gray-600 text-xs whitespace-nowrap">{d.group_name || '—'}</span>
+                        </td>
+
+                        <td className="px-3 py-3 w-36">
+                          <label className={cn('flex items-center gap-1.5 cursor-pointer select-none', !canSms && 'cursor-default')}>
                             {canSms && (
                               <input
                                 type="checkbox"
@@ -335,13 +346,13 @@ export default function DebtsPage() {
                                 className="rounded border-gray-300 flex-shrink-0"
                               />
                             )}
-                            <span className="text-gray-600">{formatPhone(d.student_phone) || '—'}</span>
+                            <span className="text-gray-600 text-xs whitespace-nowrap">{formatPhone(d.student_phone) || '—'}</span>
                           </label>
                         </td>
 
-                        <td className="px-4 py-3">
+                        <td className="px-3 py-3 w-36">
                           {d.student_second_phone ? (
-                            <label className={cn('flex items-center gap-2 cursor-pointer select-none', !canSms && 'cursor-default')}>
+                            <label className={cn('flex items-center gap-1.5 cursor-pointer select-none', !canSms && 'cursor-default')}>
                               {canSms && (
                                 <input
                                   type="checkbox"
@@ -350,23 +361,30 @@ export default function DebtsPage() {
                                   className="rounded border-gray-300 flex-shrink-0"
                                 />
                               )}
-                              <span className="text-gray-600">{formatPhone(d.student_second_phone)}</span>
+                              <span className="text-gray-600 text-xs whitespace-nowrap">{formatPhone(d.student_second_phone)}</span>
                             </label>
                           ) : (
                             <span className="text-gray-400">—</span>
                           )}
                         </td>
 
-                        <td className="px-4 py-3 font-semibold text-red-600">-{formatCurrency(d.amount)}</td>
-                        <td className="px-4 py-3 text-gray-600">
-                          {new Date(d.due_date).toLocaleDateString('uz-UZ', { day: '2-digit', month: '2-digit', year: 'numeric' })}
+                        <td className="px-3 py-3 w-32">
+                          <span className="font-semibold text-red-600 whitespace-nowrap">-{formatCurrency(d.amount)}</span>
                         </td>
-                        <td className="px-4 py-3">
-                          <span className={cn('inline-flex items-center px-2 py-0.5 text-xs font-medium border rounded', STATUS_BADGE[d.status])}>
+
+                        <td className="px-3 py-3 w-28">
+                          <span className="text-gray-600 text-xs whitespace-nowrap">
+                            {new Date(d.due_date).toLocaleDateString('uz-UZ', { day: '2-digit', month: '2-digit', year: 'numeric' })}
+                          </span>
+                        </td>
+
+                        <td className="px-3 py-3 w-24">
+                          <span className={cn('inline-flex items-center px-2 py-0.5 text-xs font-medium border rounded whitespace-nowrap', STATUS_BADGE[d.status])}>
                             {d.status === 'overdue' ? t('overdue') : common(d.status as Parameters<typeof common>[0])}
                           </span>
                         </td>
-                        <td className="px-4 py-3">
+
+                        <td className="px-3 py-3 w-16">
                           {d.status !== 'paid' && (
                             <button
                               onClick={() => openPayment(d)}
@@ -383,6 +401,7 @@ export default function DebtsPage() {
               }
             </tbody>
           </table>
+          </div>
         )}
       </div>
 

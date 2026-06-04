@@ -38,6 +38,7 @@ interface Student {
   birth_date?: string | null;
   course_name?: string;
   status: string;
+  gs_status?: string;
   joined_at?: string;
   created_at?: string;
   left_at?: string | null;
@@ -442,18 +443,18 @@ export default function GroupDetailPage() {
                           <td className={cn('px-4 py-3', isLeft ? 'text-gray-400' : 'text-gray-600')}>{s.second_phone ? formatPhone(s.second_phone) : '—'}</td>
                           <td className={cn('px-4 py-3', isLeft ? 'text-gray-400' : 'text-gray-600')}>{formatDMY(s.birth_date) || '—'}</td>
                           <td className="px-4 py-3">
-                            {/* Student still in this group */}
-                            {!s.left_at && s.status === 'active' && (
+                            {/* Student still in this group — use gs_status for per-group accuracy */}
+                            {!s.left_at && (s.gs_status ?? s.status) === 'active' && (
                               <span className="px-2 py-0.5 bg-green-100 text-green-700 rounded-full text-xs font-medium">
                                 {common('active')}
                               </span>
                             )}
-                            {!s.left_at && s.status === 'trial' && (
+                            {!s.left_at && (s.gs_status ?? s.status) === 'trial' && (
                               <span className="px-2 py-0.5 bg-orange-100 text-orange-700 rounded-full text-xs font-medium">
                                 {t('trial')}
                               </span>
                             )}
-                            {!s.left_at && s.status === 'frozen' && (
+                            {!s.left_at && (s.gs_status ?? s.status) === 'frozen' && (
                               <span className="px-2 py-0.5 bg-sky-100 text-sky-700 rounded-full text-xs font-medium">
                                 {common('frozen')}
                               </span>

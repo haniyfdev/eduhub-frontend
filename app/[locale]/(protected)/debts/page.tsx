@@ -123,11 +123,6 @@ export default function DebtsPage() {
     try {
       const { data } = await api.get<SobiqAttendance>(`/api/v1/debts/${debt.id}/last-month-attendance/`);
       setSobiqAttendance(data);
-      if (data.billing_type !== 'manual' && data.calculated_amount !== null) {
-        setDebts(prev => prev.map(d =>
-          d.id === debt.id ? { ...d, amount: data.calculated_amount! } : d
-        ));
-      }
     } catch {
       setSobiqAttendance(null);
     } finally {

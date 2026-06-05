@@ -387,7 +387,7 @@ export default function DebtsPage() {
                         className={cn(
                           'transition-colors',
                           d.group_student_status === 'left'
-                            ? 'bg-green-50 hover:bg-green-100 cursor-pointer'
+                            ? 'bg-green-100 hover:bg-green-200 cursor-pointer'
                             : cn('hover:brightness-95', rowBg(d.status, d.student_status, d.due_date))
                         )}
                         onClick={() => { if (d.group_student_status === 'left') openSobiqModal(d); }}

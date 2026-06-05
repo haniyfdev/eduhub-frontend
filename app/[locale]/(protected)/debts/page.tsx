@@ -111,22 +111,22 @@ export default function DebtsPage() {
   const [paymentSaving, setPaymentSaving] = useState(false);
 
   // Sobiq modal
-  const [showSobiqModal,     setShowSobiqModal]     = useState(false);
-  const [sobiqDebt,          setSobiqDebt]          = useState<Debt | null>(null);
-  const [sobiqAttendance,    setSobiqAttendance]    = useState<SobiqAttendance | null>(null);
-  const [sobiqLoading,       setSobiqLoading]       = useState(false);
-  const [sobiqDebtWasUpdated, setSobiqDebtWasUpdated] = useState(false);
+  const [showSobiqModal,  setShowSobiqModal]  = useState(false);
+  const [sobiqDebt,       setSobiqDebt]       = useState<Debt | null>(null);
+  const [sobiqAttendance, setSobiqAttendance] = useState<SobiqAttendance | null>(null);
+  const [sobiqLoading,    setSobiqLoading]    = useState(false);
 
   async function openSobiqModal(debt: Debt) {
     setSobiqDebt(debt);
-    setSobiqDebtWasUpdated(false);
     setShowSobiqModal(true);
     setSobiqLoading(true);
     try {
       const { data } = await api.get<SobiqAttendance>(`/api/v1/debts/${debt.id}/last-month-attendance/`);
       setSobiqAttendance(data);
       if (data.billing_type !== 'manual' && data.calculated_amount !== null) {
-        setSobiqDebtWasUpdated(true);
+        setDebts(prev => prev.map(d =>
+          d.id === debt.id ? { ...d, amount: data.calculated_amount! } : d
+        ));
       }
     } catch {
       setSobiqAttendance(null);
@@ -139,7 +139,11 @@ export default function DebtsPage() {
     setLoading(true);
     setError(false);
     try {
-      const params: Record<string, string | number> = { page, page_size: pageSize };
+      const params: Record<string, string | number> = {
+        page,
+        page_size: pageSize,
+        ordering: 'due_date,-amount,group_student__student__first_name',
+      };
       if (search)       params.search = search;
       if (statusFilter) params.status = statusFilter;
       const { data } = await api.get<PaginatedResponse<Debt> & { total_amount?: number }>(
@@ -400,7 +404,7 @@ export default function DebtsPage() {
                                 className="rounded border-gray-300 flex-shrink-0"
                               />
                             )}
-                            <span className="text-gray-600 text-xs whitespace-nowrap">{formatPhone(d.student_phone) || '—'}</span>
+                            <span className="text-sm font-medium text-gray-900 whitespace-nowrap">{formatPhone(d.student_phone) || '—'}</span>
                           </label>
                         </td>
 
@@ -415,7 +419,7 @@ export default function DebtsPage() {
                                   className="rounded border-gray-300 flex-shrink-0"
                                 />
                               )}
-                              <span className="text-gray-600 text-xs whitespace-nowrap">{formatPhone(d.student_second_phone)}</span>
+                              <span className="text-sm font-medium text-gray-900 whitespace-nowrap">{formatPhone(d.student_second_phone)}</span>
                             </label>
                           ) : (
                             <span className="text-gray-400">—</span>
@@ -427,7 +431,7 @@ export default function DebtsPage() {
                         </td>
 
                         <td className="px-3 py-3 w-28">
-                          <span className="text-gray-600 text-xs whitespace-nowrap">
+                          <span className="text-sm font-medium text-gray-900 whitespace-nowrap">
                             {new Date(d.due_date).toLocaleDateString('uz-UZ', { day: '2-digit', month: '2-digit', year: 'numeric' })}
                           </span>
                         </td>
@@ -481,10 +485,6 @@ export default function DebtsPage() {
         setShowSobiqModal(v);
         if (!v) {
           setSobiqAttendance(null);
-          if (sobiqDebtWasUpdated) {
-            fetchDebts();
-            setSobiqDebtWasUpdated(false);
-          }
         }
       }}>
         <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">

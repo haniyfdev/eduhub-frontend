@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useCallback, useRef } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useTranslations } from 'next-intl';
 import { Search, AlertCircle, Send, Banknote, Snowflake } from 'lucide-react';
 import toast, { Toaster } from 'react-hot-toast';
@@ -474,7 +474,7 @@ export default function DebtsPage() {
       {/* ══ Sobiq Modal ══ */}
       <Dialog open={showSobiqModal} onOpenChange={(v) => {
         setShowSobiqModal(v);
-        if (!v) { setSobiqAttendance(null); setShowSobiqConfirm(false); }
+        if (!v) { setSobiqAttendance(null); }
       }}>
         <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
           <DialogHeader>

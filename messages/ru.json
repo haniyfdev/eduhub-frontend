@@ -443,7 +443,7 @@
     "daysInGroup": "Дней в группе",
     "attendedLessons": "Посещённые уроки",
     "calculatedDebt": "Расчётный долг",
-    "roundedDebt": "Округлённый долг",
+    "roundedDebt": "Сумма долга",
     "days": "дней",
     "lessons": "уроков",
     "manualDebtSaved": "Сохранённый долг (администратором)",

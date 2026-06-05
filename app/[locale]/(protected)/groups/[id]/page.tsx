@@ -260,7 +260,14 @@ export default function GroupDetailPage() {
       setLessonForm({ topic: '' });
       fetchLessons();
     } catch (err: any) {
-      toast.error(err?.response?.data?.detail ?? common('error'));
+      const errorMsg = err?.response?.data?.date?.[0] ||
+                       err?.response?.data?.detail ||
+                       err?.response?.data?.error || '';
+      if (errorMsg.includes('allaqachon') || err?.response?.status === 400) {
+        toast.error(t('lessonAlreadyExists'));
+      } else {
+        toast.error(common('error'));
+      }
     } finally {
       setSavingLesson(false);
     }

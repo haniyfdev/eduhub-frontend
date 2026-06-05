@@ -288,6 +288,7 @@
     "genderC": "Aralash",
     "addStudent": "Talaba qo'shish",
     "newLesson": "Yangi dars",
+    "lessonAlreadyExists": "Bu sanada dars allaqachon o'tkazilgan",
     "transferStudent": "Guruh o'zgartirish",
     "frozenBanner": "Bu guruh hozir muzlatilgan. Oylik qarz hisoblanmaydi.",
     "tabs": {

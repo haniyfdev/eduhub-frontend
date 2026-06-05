@@ -111,18 +111,23 @@ export default function DebtsPage() {
   const [paymentSaving, setPaymentSaving] = useState(false);
 
   // Sobiq modal
-  const [showSobiqModal,  setShowSobiqModal]  = useState(false);
-  const [sobiqDebt,       setSobiqDebt]       = useState<Debt | null>(null);
-  const [sobiqAttendance, setSobiqAttendance] = useState<SobiqAttendance | null>(null);
-  const [sobiqLoading,    setSobiqLoading]    = useState(false);
+  const [showSobiqModal,     setShowSobiqModal]     = useState(false);
+  const [sobiqDebt,          setSobiqDebt]          = useState<Debt | null>(null);
+  const [sobiqAttendance,    setSobiqAttendance]    = useState<SobiqAttendance | null>(null);
+  const [sobiqLoading,       setSobiqLoading]       = useState(false);
+  const [sobiqDebtWasUpdated, setSobiqDebtWasUpdated] = useState(false);
 
   async function openSobiqModal(debt: Debt) {
     setSobiqDebt(debt);
+    setSobiqDebtWasUpdated(false);
     setShowSobiqModal(true);
     setSobiqLoading(true);
     try {
       const { data } = await api.get<SobiqAttendance>(`/api/v1/debts/${debt.id}/last-month-attendance/`);
       setSobiqAttendance(data);
+      if (data.billing_type !== 'manual' && data.calculated_amount !== null) {
+        setSobiqDebtWasUpdated(true);
+      }
     } catch {
       setSobiqAttendance(null);
     } finally {
@@ -474,7 +479,13 @@ export default function DebtsPage() {
       {/* ══ Sobiq Modal ══ */}
       <Dialog open={showSobiqModal} onOpenChange={(v) => {
         setShowSobiqModal(v);
-        if (!v) { setSobiqAttendance(null); fetchDebts(); }
+        if (!v) {
+          setSobiqAttendance(null);
+          if (sobiqDebtWasUpdated) {
+            fetchDebts();
+            setSobiqDebtWasUpdated(false);
+          }
+        }
       }}>
         <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
           <DialogHeader>

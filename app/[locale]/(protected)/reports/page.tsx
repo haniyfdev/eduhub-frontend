@@ -199,7 +199,7 @@ export default function ReportsPage() {
     if (refR.status    === 'fulfilled') setReferral(refR.value.data);
 
     setLoading(false);
-  }, [fromDate, toDate]);
+  }, [fromDate, toDate, daysDiff]);
 
   useEffect(() => { loadData(); }, [loadData]);
 

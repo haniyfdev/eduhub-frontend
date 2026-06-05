@@ -111,21 +111,15 @@ export default function DebtsPage() {
   const [paymentSaving, setPaymentSaving] = useState(false);
 
   // Sobiq modal
-  const [showSobiqModal,   setShowSobiqModal]   = useState(false);
-  const [sobiqDebt,        setSobiqDebt]         = useState<Debt | null>(null);
-  const [sobiqAttendance,  setSobiqAttendance]   = useState<SobiqAttendance | null>(null);
-  const [sobiqLoading,     setSobiqLoading]      = useState(false);
-  const [newDebtDisplay,   setNewDebtDisplay]    = useState('');
-  const [newDebtAmount,    setNewDebtAmount]     = useState('');
-  const [showSobiqConfirm, setShowSobiqConfirm] = useState(false);
-  const newDebtRef = useRef<HTMLInputElement>(null);
+  const [showSobiqModal,  setShowSobiqModal]  = useState(false);
+  const [sobiqDebt,       setSobiqDebt]       = useState<Debt | null>(null);
+  const [sobiqAttendance, setSobiqAttendance] = useState<SobiqAttendance | null>(null);
+  const [sobiqLoading,    setSobiqLoading]    = useState(false);
 
   async function openSobiqModal(debt: Debt) {
     setSobiqDebt(debt);
     setShowSobiqModal(true);
     setSobiqLoading(true);
-    setNewDebtDisplay(Number(debt.amount).toLocaleString('en-US'));
-    setNewDebtAmount(String(debt.amount));
     try {
       const { data } = await api.get<SobiqAttendance>(`/api/v1/debts/${debt.id}/last-month-attendance/`);
       setSobiqAttendance(data);
@@ -133,32 +127,6 @@ export default function DebtsPage() {
       setSobiqAttendance(null);
     } finally {
       setSobiqLoading(false);
-    }
-  }
-
-  function handleSobiqSave() {
-    const amount = Number(newDebtAmount);
-    if (!sobiqDebt || !newDebtAmount || amount < 5000) {
-      toast.error(t('minDebtError'));
-      return;
-    }
-    if (sobiqAttendance && amount > sobiqAttendance.course_price) {
-      toast.error(t('maxDebtError'));
-      return;
-    }
-    setShowSobiqConfirm(true);
-  }
-
-  async function handleSobiqConfirm() {
-    if (!sobiqDebt) return;
-    try {
-      await api.patch(`/api/v1/debts/${sobiqDebt.id}/`, { amount: Number(newDebtAmount) });
-      toast.success(t('debtUpdated'));
-      setShowSobiqConfirm(false);
-      setShowSobiqModal(false);
-      fetchDebts();
-    } catch (err: any) {
-      toast.error(err?.response?.data?.detail || common('error'));
     }
   }
 
@@ -647,29 +615,6 @@ export default function DebtsPage() {
               </div>
             </div>
           )}
-        </DialogContent>
-      </Dialog>
-
-      {/* ══ Sobiq Confirm ══ */}
-      <Dialog open={showSobiqConfirm} onOpenChange={setShowSobiqConfirm}>
-        <DialogContent className="sm:max-w-sm">
-          <DialogHeader>
-            <DialogTitle>{t('confirmDebtChange')}</DialogTitle>
-          </DialogHeader>
-          <p className="text-sm text-gray-600 mt-2">
-            {t('confirmDebtChangeMsg')}:{' '}
-            <span className="font-bold text-blue-600">{formatCurrency(Number(newDebtAmount))}</span>
-          </p>
-          <div className="flex gap-3 mt-4">
-            <button onClick={() => setShowSobiqConfirm(false)}
-              className="flex-1 px-4 py-2 border border-gray-300 text-sm font-medium rounded hover:bg-gray-50">
-              {t('no')}
-            </button>
-            <button onClick={handleSobiqConfirm}
-              className="flex-1 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded hover:bg-blue-700">
-              {t('yes')}
-            </button>
-          </div>
         </DialogContent>
       </Dialog>
 

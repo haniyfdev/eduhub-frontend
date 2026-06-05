@@ -445,7 +445,9 @@
     "calculatedDebt": "Расчётный долг",
     "roundedDebt": "Округлённый долг",
     "days": "дней",
-    "lessons": "уроков"
+    "lessons": "уроков",
+    "manualDebtSaved": "Сохранённый долг (администратором)",
+    "manualDebtLocked": "Редактирование недоступно — метод расчёта изменён"
   },
   "attendance": {
     "title": "Посещаемость",

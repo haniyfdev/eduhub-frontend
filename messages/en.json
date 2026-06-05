@@ -445,7 +445,9 @@
     "calculatedDebt": "Calculated debt",
     "roundedDebt": "Rounded debt",
     "days": "days",
-    "lessons": "lessons"
+    "lessons": "lessons",
+    "manualDebtSaved": "Saved debt (by admin)",
+    "manualDebtLocked": "Cannot edit — billing method has been changed"
   },
   "attendance": {
     "title": "Attendance",

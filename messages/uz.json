@@ -465,7 +465,9 @@
     "calculatedDebt": "Hisoblangan qarz",
     "roundedDebt": "Yaxlitlangan qarz",
     "days": "kun",
-    "lessons": "dars"
+    "lessons": "dars",
+    "manualDebtSaved": "Saqlangan qarz (admin tomonidan)",
+    "manualDebtLocked": "Hozirgi hisoblash usuli o'zgartirilgani uchun tahrirlash mumkin emas"
   },
   "attendance": {
     "title": "Davomat",

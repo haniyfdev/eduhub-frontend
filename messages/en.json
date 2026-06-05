@@ -421,7 +421,22 @@
     "totalDebt": "Total debt",
     "debtorCount": "{count} debtors",
     "paymentNote": "Payments cannot be deleted or edited",
-    "groupDebt": "Group debt"
+    "groupDebt": "Group debt",
+    "sobiqModalTitle": "Former student attendance",
+    "originalPrice": "Original course price",
+    "wantToChange": "— would you like to change it?",
+    "minDebtError": "Minimum amount is 5,000",
+    "maxDebtError": "Amount exceeds course price",
+    "debtUpdated": "Debt updated",
+    "confirmDebtChange": "Confirm debt change",
+    "confirmDebtChangeMsg": "New debt amount",
+    "date": "Date",
+    "attendanceStatus": "Status",
+    "present": "Present",
+    "late": "Late",
+    "absent": "Absent",
+    "yes": "Yes",
+    "no": "No"
   },
   "attendance": {
     "title": "Attendance",

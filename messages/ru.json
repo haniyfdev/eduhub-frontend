@@ -421,7 +421,22 @@
     "totalDebt": "Общий долг",
     "debtorCount": "{count} должников",
     "paymentNote": "Платежи не удаляются и не редактируются",
-    "groupDebt": "Долг по группе"
+    "groupDebt": "Долг по группе",
+    "sobiqModalTitle": "Посещаемость бывшего ученика",
+    "originalPrice": "Исходная цена курса",
+    "wantToChange": "— хотите изменить?",
+    "minDebtError": "Минимальная сумма 5,000",
+    "maxDebtError": "Сумма превышает цену курса",
+    "debtUpdated": "Долг обновлён",
+    "confirmDebtChange": "Подтверждение изменения долга",
+    "confirmDebtChangeMsg": "Новая сумма долга",
+    "date": "Дата",
+    "attendanceStatus": "Статус",
+    "present": "Присутствовал",
+    "late": "Опоздал",
+    "absent": "Отсутствовал",
+    "yes": "Да",
+    "no": "Нет"
   },
   "attendance": {
     "title": "Посещаемость",

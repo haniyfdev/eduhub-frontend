@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import { useTranslations } from 'next-intl';
 import { Search, AlertCircle, Send, Banknote, Snowflake } from 'lucide-react';
 import toast, { Toaster } from 'react-hot-toast';
@@ -28,6 +28,18 @@ interface Debt {
   paid_amount: number;
   due_date: string;
   status: 'unpaid' | 'partial' | 'overdue' | 'paid';
+  group_student_status?: string;
+  group_student_left_at?: string | null;
+}
+
+interface SobiqAttendance {
+  lessons: { lesson_id: string; date: string; status: string }[];
+  month_start: string;
+  left_at: string;
+  course_price: number;
+  course_name: string;
+  group_name: string;
+  student_name: string;
 }
 
 interface PaymentForm {
@@ -89,6 +101,58 @@ export default function DebtsPage() {
   const [paymentTarget, setPaymentTarget] = useState<Debt | null>(null);
   const [paymentForm, setPaymentForm]     = useState<PaymentForm>({ amount: '', payment_type: 'cash', note: '' });
   const [paymentSaving, setPaymentSaving] = useState(false);
+
+  // Sobiq modal
+  const [showSobiqModal,   setShowSobiqModal]   = useState(false);
+  const [sobiqDebt,        setSobiqDebt]         = useState<Debt | null>(null);
+  const [sobiqAttendance,  setSobiqAttendance]   = useState<SobiqAttendance | null>(null);
+  const [sobiqLoading,     setSobiqLoading]      = useState(false);
+  const [newDebtDisplay,   setNewDebtDisplay]    = useState('');
+  const [newDebtAmount,    setNewDebtAmount]     = useState('');
+  const [showSobiqConfirm, setShowSobiqConfirm] = useState(false);
+  const newDebtRef = useRef<HTMLInputElement>(null);
+
+  async function openSobiqModal(debt: Debt) {
+    setSobiqDebt(debt);
+    setShowSobiqModal(true);
+    setSobiqLoading(true);
+    setNewDebtDisplay(Number(debt.amount).toLocaleString('en-US'));
+    setNewDebtAmount(String(debt.amount));
+    try {
+      const { data } = await api.get<SobiqAttendance>(`/api/v1/debts/${debt.id}/last-month-attendance/`);
+      setSobiqAttendance(data);
+    } catch {
+      setSobiqAttendance(null);
+    } finally {
+      setSobiqLoading(false);
+    }
+  }
+
+  function handleSobiqSave() {
+    const amount = Number(newDebtAmount);
+    if (!sobiqDebt || !newDebtAmount || amount < 5000) {
+      toast.error(t('minDebtError'));
+      return;
+    }
+    if (sobiqAttendance && amount > sobiqAttendance.course_price) {
+      toast.error(t('maxDebtError'));
+      return;
+    }
+    setShowSobiqConfirm(true);
+  }
+
+  async function handleSobiqConfirm() {
+    if (!sobiqDebt) return;
+    try {
+      await api.patch(`/api/v1/debts/${sobiqDebt.id}/`, { amount: Number(newDebtAmount) });
+      toast.success(t('debtUpdated'));
+      setShowSobiqConfirm(false);
+      setShowSobiqModal(false);
+      fetchDebts();
+    } catch (err: any) {
+      toast.error(err?.response?.data?.detail || common('error'));
+    }
+  }
 
   const fetchDebts = useCallback(async () => {
     setLoading(true);
@@ -318,7 +382,16 @@ export default function DebtsPage() {
                     const sel = phoneSelection[d.id] ?? { phone1: false, phone2: false };
                     const canSms = d.status !== 'paid';
                     return (
-                      <tr key={d.id} className={cn('transition-colors hover:brightness-95', rowBg(d.status, d.student_status, d.due_date))}>
+                      <tr
+                        key={d.id}
+                        className={cn(
+                          'transition-colors',
+                          d.group_student_status === 'left'
+                            ? 'bg-green-50 hover:bg-green-100 cursor-pointer'
+                            : cn('hover:brightness-95', rowBg(d.status, d.student_status, d.due_date))
+                        )}
+                        onClick={() => { if (d.group_student_status === 'left') openSobiqModal(d); }}
+                      >
                         <td className="px-3 py-3 text-gray-400 text-xs w-10">{(page - 1) * pageSize + idx + 1}</td>
 
                         <td className="px-3 py-3 w-44">
@@ -387,7 +460,7 @@ export default function DebtsPage() {
                         <td className="px-3 py-3 w-16">
                           {d.status !== 'paid' && (
                             <button
-                              onClick={() => openPayment(d)}
+                              onClick={(e) => { e.stopPropagation(); openPayment(d); }}
                               className="p-1 rounded text-blue-500 hover:bg-blue-50 hover:text-blue-700 transition-colors"
                               title={t('payDebt')}
                             >
@@ -421,6 +494,131 @@ export default function DebtsPage() {
         recipients={smsRecipients}
         onSend={handleSend}
       />
+
+      {/* ══ Sobiq Modal ══ */}
+      <Dialog open={showSobiqModal} onOpenChange={(v) => {
+        setShowSobiqModal(v);
+        if (!v) { setSobiqAttendance(null); setShowSobiqConfirm(false); }
+      }}>
+        <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>{sobiqAttendance?.student_name} — {sobiqAttendance?.group_name}</DialogTitle>
+            <p className="text-xs text-gray-500 mt-0.5">{sobiqAttendance?.course_name}</p>
+          </DialogHeader>
+
+          {sobiqLoading ? (
+            <div className="space-y-2 mt-4">
+              {Array(5).fill(0).map((_, i) => <Skeleton key={i} className="h-8 w-full" />)}
+            </div>
+          ) : sobiqAttendance && (
+            <div className="mt-2 space-y-4">
+              <div className="text-xs text-gray-500 bg-gray-50 px-3 py-2 rounded">
+                {sobiqAttendance.month_start} — {sobiqAttendance.left_at}
+              </div>
+
+              <div className="border border-gray-100 rounded-lg overflow-hidden">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="bg-gray-50 border-b border-gray-100">
+                      <th className="text-left px-3 py-2 text-xs font-semibold text-gray-500">{t('date')}</th>
+                      <th className="text-left px-3 py-2 text-xs font-semibold text-gray-500">{t('attendanceStatus')}</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-50">
+                    {sobiqAttendance.lessons.map((lesson) => (
+                      <tr key={lesson.lesson_id} className={cn(
+                        lesson.status === 'present' ? 'bg-green-50' :
+                        lesson.status === 'late'    ? 'bg-yellow-50' : 'bg-red-50'
+                      )}>
+                        <td className="px-3 py-2 text-xs font-medium text-gray-700">{lesson.date}</td>
+                        <td className="px-3 py-2">
+                          <span className={cn(
+                            'text-xs font-medium px-2 py-0.5 rounded-full',
+                            lesson.status === 'present' ? 'bg-green-100 text-green-700' :
+                            lesson.status === 'late'    ? 'bg-yellow-100 text-yellow-700' :
+                                                          'bg-red-100 text-red-700'
+                          )}>
+                            {lesson.status === 'present' ? t('present') :
+                             lesson.status === 'late'    ? t('late') : t('absent')}
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
+                    {sobiqAttendance.lessons.length === 0 && (
+                      <tr>
+                        <td colSpan={2} className="px-3 py-4 text-center text-xs text-gray-400">{t('noDebts')}</td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+
+              <div className="border-t border-gray-100 pt-4">
+                <p className="text-sm text-gray-600 mb-3">
+                  {t('originalPrice')}: <span className="font-semibold">{formatCurrency(sobiqAttendance.course_price)}</span>
+                  {' '}{t('wantToChange')}
+                </p>
+                <input
+                  ref={newDebtRef}
+                  type="text"
+                  inputMode="numeric"
+                  value={newDebtDisplay}
+                  onChange={(e) => {
+                    const raw = e.target.value.replace(/\D/g, '');
+                    const formatted = raw ? Number(raw).toLocaleString('en-US') : '';
+                    setNewDebtDisplay(formatted);
+                    setNewDebtAmount(raw);
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter')  { e.preventDefault(); handleSobiqSave(); }
+                    if (e.key === 'Escape') { e.preventDefault(); setShowSobiqModal(false); }
+                  }}
+                  className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="5,000"
+                />
+                {newDebtAmount && Number(newDebtAmount) < 5000 && (
+                  <p className="text-xs text-red-500 mt-1">{t('minDebtError')}</p>
+                )}
+              </div>
+
+              <div className="flex gap-3 pt-2">
+                <button type="button" onClick={() => setShowSobiqModal(false)}
+                  className="flex-1 px-4 py-2 border border-gray-300 text-sm font-medium rounded hover:bg-gray-50">
+                  {common('cancel')}
+                </button>
+                <button type="button" onClick={handleSobiqSave}
+                  disabled={!newDebtAmount || Number(newDebtAmount) < 5000}
+                  className="flex-1 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded hover:bg-blue-700 disabled:opacity-60">
+                  {common('save')}
+                </button>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* ══ Sobiq Confirm ══ */}
+      <Dialog open={showSobiqConfirm} onOpenChange={setShowSobiqConfirm}>
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle>{t('confirmDebtChange')}</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-gray-600 mt-2">
+            {t('confirmDebtChangeMsg')}:{' '}
+            <span className="font-bold text-blue-600">{formatCurrency(Number(newDebtAmount))}</span>
+          </p>
+          <div className="flex gap-3 mt-4">
+            <button onClick={() => setShowSobiqConfirm(false)}
+              className="flex-1 px-4 py-2 border border-gray-300 text-sm font-medium rounded hover:bg-gray-50">
+              {t('no')}
+            </button>
+            <button onClick={handleSobiqConfirm}
+              className="flex-1 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded hover:bg-blue-700">
+              {t('yes')}
+            </button>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* ══ Payment Modal ══ */}
       <Dialog open={!!paymentTarget} onOpenChange={(open) => { if (!open) setPaymentTarget(null); }}>

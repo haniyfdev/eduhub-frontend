@@ -441,7 +441,22 @@
     "totalDebt": "Jami qarz",
     "debtorCount": "{count} ta qarzdor",
     "paymentNote": "To'lovlar o'chirilmaydi va tahrirlanmaydi",
-    "groupDebt": "Guruh qarzi"
+    "groupDebt": "Guruh qarzi",
+    "sobiqModalTitle": "Sobiq o'quvchi davomati",
+    "originalPrice": "Asl kurs narxi",
+    "wantToChange": "— o'zgartirmoqchimisiz?",
+    "minDebtError": "Minimal summa 5,000 so'm",
+    "maxDebtError": "Summa kurs narxidan oshib ketdi",
+    "debtUpdated": "Qarz yangilandi",
+    "confirmDebtChange": "Qarzni tasdiqlash",
+    "confirmDebtChangeMsg": "Yangi qarz summasi",
+    "date": "Sana",
+    "attendanceStatus": "Holat",
+    "present": "Keldi",
+    "late": "Kechikdi",
+    "absent": "Kelmadi",
+    "yes": "Ha",
+    "no": "Yo'q"
   },
   "attendance": {
     "title": "Davomat",

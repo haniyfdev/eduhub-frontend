@@ -474,7 +474,7 @@ export default function DebtsPage() {
       {/* ══ Sobiq Modal ══ */}
       <Dialog open={showSobiqModal} onOpenChange={(v) => {
         setShowSobiqModal(v);
-        if (!v) { setSobiqAttendance(null); }
+        if (!v) { setSobiqAttendance(null); fetchDebts(); }
       }}>
         <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
           <DialogHeader>

@@ -447,7 +447,11 @@
     "days": "days",
     "lessons": "lessons",
     "manualDebtSaved": "Saved debt (by admin)",
-    "manualDebtLocked": "Cannot edit — billing method has been changed"
+    "manualDebtLocked": "Cannot edit — billing method has been changed",
+    "billingTypeLabel": "Debt calculation method",
+    "billingManual": "By admin",
+    "billingPerDay": "Per day",
+    "billingPerLesson": "Per lesson"
   },
   "attendance": {
     "title": "Attendance",

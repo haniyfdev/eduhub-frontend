@@ -467,7 +467,11 @@
     "days": "kun",
     "lessons": "dars",
     "manualDebtSaved": "Saqlangan qarz (admin tomonidan)",
-    "manualDebtLocked": "Hozirgi hisoblash usuli o'zgartirilgani uchun tahrirlash mumkin emas"
+    "manualDebtLocked": "Hozirgi hisoblash usuli o'zgartirilgani uchun tahrirlash mumkin emas",
+    "billingTypeLabel": "Qarz hisoblash uslubi",
+    "billingManual": "Admin tomonidan",
+    "billingPerDay": "Kunbay",
+    "billingPerLesson": "Darsbay"
   },
   "attendance": {
     "title": "Davomat",

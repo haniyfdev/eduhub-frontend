@@ -118,7 +118,6 @@ export default function DebtsPage() {
   const [newDebtDisplay,   setNewDebtDisplay]    = useState('');
   const [newDebtAmount,    setNewDebtAmount]     = useState('');
   const [showSobiqConfirm, setShowSobiqConfirm] = useState(false);
-  const [companyBillingType, setCompanyBillingType] = useState<string>('manual');
   const newDebtRef = useRef<HTMLInputElement>(null);
 
   async function openSobiqModal(debt: Debt) {
@@ -189,12 +188,6 @@ export default function DebtsPage() {
 
   useEffect(() => { fetchDebts(); }, [fetchDebts]);
   useEffect(() => { setPage(1); }, [search, statusFilter]);
-
-  useEffect(() => {
-    api.get('/api/v1/company-settings/my/').then(({ data }) => {
-      setCompanyBillingType(data.archive_billing_type || 'manual');
-    }).catch(() => {});
-  }, []);
 
   function togglePhone(debtId: string, key: 'phone1' | 'phone2') {
     setPhoneSelection((prev) => ({
@@ -531,6 +524,20 @@ export default function DebtsPage() {
                 {sobiqAttendance.period_start} — {sobiqAttendance.left_at}
               </div>
 
+              <div className={cn(
+                'inline-flex items-center gap-2 px-3 py-1.5 rounded-lg border text-xs font-semibold',
+                sobiqAttendance.billing_type === 'manual'
+                  ? 'bg-gray-50 border-gray-200 text-gray-600'
+                  : 'bg-blue-50 border-blue-200 text-blue-700'
+              )}>
+                <span className="w-2 h-2 rounded-full bg-current opacity-60" />
+                {t('billingTypeLabel')}: {
+                  sobiqAttendance.billing_type === 'manual'  ? t('billingManual') :
+                  sobiqAttendance.billing_type === 'per_day' ? t('billingPerDay') :
+                  t('billingPerLesson')
+                }
+              </div>
+
               <div className="border border-gray-100 rounded-lg overflow-hidden">
                 <table className="w-full text-sm">
                   <thead>
@@ -568,122 +575,76 @@ export default function DebtsPage() {
                 </table>
               </div>
 
-              {(() => {
-                const canEditDebt =
-                  sobiqAttendance.billing_type === 'manual' &&
-                  companyBillingType === 'manual';
-                return (
-                  <div className="border-t border-gray-100 pt-4 space-y-3">
-                    {/* manual + manual → editable input */}
-                    {canEditDebt && (
-                      <>
-                        <p className="text-sm text-gray-600">
-                          {t('originalPrice')}: <span className="font-semibold">{formatCurrency(sobiqAttendance.course_price)}</span>
-                          {' '}{t('wantToChange')}
-                        </p>
-                        <input
-                          ref={newDebtRef}
-                          type="text"
-                          inputMode="numeric"
-                          value={newDebtDisplay}
-                          onChange={(e) => {
-                            const raw = e.target.value.replace(/\D/g, '');
-                            const formatted = raw ? Number(raw).toLocaleString('en-US') : '';
-                            setNewDebtDisplay(formatted);
-                            setNewDebtAmount(raw);
-                          }}
-                          onKeyDown={(e) => {
-                            if (e.key === 'Enter')  { e.preventDefault(); handleSobiqSave(); }
-                            if (e.key === 'Escape') { e.preventDefault(); setShowSobiqModal(false); }
-                          }}
-                          className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                          placeholder="5,000"
-                        />
-                        {newDebtAmount && Number(newDebtAmount) < 5000 && (
-                          <p className="text-xs text-red-500">{t('minDebtError')}</p>
-                        )}
-                      </>
-                    )}
-
-                    {/* manual saved but company is now per_day/per_lesson → locked */}
-                    {sobiqAttendance.billing_type === 'manual' && companyBillingType !== 'manual' && (
-                      <div className="bg-gray-50 rounded-lg p-4">
-                        <div className="flex justify-between text-sm">
-                          <span className="text-gray-500">{t('manualDebtSaved')}</span>
-                          <span className="font-bold text-blue-600">{formatCurrency(sobiqDebt?.amount ?? 0)}</span>
-                        </div>
-                        <p className="text-xs text-gray-400 mt-2">{t('manualDebtLocked')}</p>
-                      </div>
-                    )}
-
-                    {/* PER_DAY — read-only */}
-                    {sobiqAttendance.billing_type === 'per_day' && sobiqAttendance.per_unit !== null && (
-                      <div className="bg-gray-50 rounded-lg p-4 space-y-2">
-                        <div className="flex justify-between text-sm">
-                          <span className="text-gray-500">{t('coursePriceLabel')}</span>
-                          <span className="font-semibold">{formatCurrency(sobiqAttendance.course_price)}</span>
-                        </div>
-                        <div className="flex justify-between text-sm">
-                          <span className="text-gray-500">{t('perDayPrice')}</span>
-                          <span className="font-semibold">{formatCurrency(sobiqAttendance.per_unit)}</span>
-                        </div>
-                        <div className="flex justify-between text-sm">
-                          <span className="text-gray-500">{t('daysInGroup')}</span>
-                          <span className="font-semibold">{sobiqAttendance.units_count} {t('days')}</span>
-                        </div>
-                        <div className="border-t border-gray-200 pt-2 flex justify-between text-sm">
-                          <span className="text-gray-500">{t('calculatedDebt')}</span>
-                          <span className="font-medium text-gray-700">{formatCurrency(sobiqAttendance.raw_amount ?? 0)}</span>
-                        </div>
-                        <div className="flex justify-between text-sm">
-                          <span className="text-gray-700 font-medium">{t('roundedDebt')}</span>
-                          <span className="font-bold text-blue-600">{formatCurrency(sobiqAttendance.calculated_amount ?? 0)}</span>
-                        </div>
-                      </div>
-                    )}
-
-                    {/* PER_LESSON — read-only */}
-                    {sobiqAttendance.billing_type === 'per_lesson' && sobiqAttendance.per_unit !== null && (
-                      <div className="bg-gray-50 rounded-lg p-4 space-y-2">
-                        <div className="flex justify-between text-sm">
-                          <span className="text-gray-500">{t('coursePriceLabel')}</span>
-                          <span className="font-semibold">{formatCurrency(sobiqAttendance.course_price)}</span>
-                        </div>
-                        <div className="flex justify-between text-sm">
-                          <span className="text-gray-500">{t('perLessonPrice')}</span>
-                          <span className="font-semibold">{formatCurrency(sobiqAttendance.per_unit)}</span>
-                        </div>
-                        <div className="flex justify-between text-sm">
-                          <span className="text-gray-500">{t('attendedLessons')}</span>
-                          <span className="font-semibold">{sobiqAttendance.units_count} / {sobiqAttendance.total_units} {t('lessons')}</span>
-                        </div>
-                        <div className="border-t border-gray-200 pt-2 flex justify-between text-sm">
-                          <span className="text-gray-500">{t('calculatedDebt')}</span>
-                          <span className="font-medium text-gray-700">{formatCurrency(sobiqAttendance.raw_amount ?? 0)}</span>
-                        </div>
-                        <div className="flex justify-between text-sm">
-                          <span className="text-gray-700 font-medium">{t('roundedDebt')}</span>
-                          <span className="font-bold text-blue-600">{formatCurrency(sobiqAttendance.calculated_amount ?? 0)}</span>
-                        </div>
-                      </div>
-                    )}
-
-                    <div className="flex gap-3 pt-2">
-                      <button type="button" onClick={() => setShowSobiqModal(false)}
-                        className="flex-1 px-4 py-2 border border-gray-300 text-sm font-medium rounded hover:bg-gray-50">
-                        {common('cancel')}
-                      </button>
-                      {canEditDebt && (
-                        <button type="button" onClick={handleSobiqSave}
-                          disabled={!newDebtAmount || Number(newDebtAmount) < 5000}
-                          className="flex-1 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded hover:bg-blue-700 disabled:opacity-60">
-                          {common('save')}
-                        </button>
-                      )}
+              <div className="border-t border-gray-100 pt-4 space-y-3">
+                {/* MANUAL — read-only saved amount */}
+                {sobiqAttendance.billing_type === 'manual' && (
+                  <div className="bg-gray-50 rounded-lg p-4">
+                    <div className="flex justify-between text-sm">
+                      <span className="text-gray-500">{t('manualDebtSaved')}</span>
+                      <span className="font-bold text-blue-600">{formatCurrency(sobiqDebt?.amount ?? 0)}</span>
                     </div>
                   </div>
-                );
-              })()}
+                )}
+
+                {/* PER_DAY — read-only */}
+                {sobiqAttendance.billing_type === 'per_day' && sobiqAttendance.per_unit !== null && (
+                  <div className="bg-gray-50 rounded-lg p-4 space-y-2">
+                    <div className="flex justify-between text-sm">
+                      <span className="text-gray-500">{t('coursePriceLabel')}</span>
+                      <span className="font-semibold">{formatCurrency(sobiqAttendance.course_price)}</span>
+                    </div>
+                    <div className="flex justify-between text-sm">
+                      <span className="text-gray-500">{t('perDayPrice')}</span>
+                      <span className="font-semibold">{formatCurrency(sobiqAttendance.per_unit)}</span>
+                    </div>
+                    <div className="flex justify-between text-sm">
+                      <span className="text-gray-500">{t('daysInGroup')}</span>
+                      <span className="font-semibold">{sobiqAttendance.units_count} {t('days')}</span>
+                    </div>
+                    <div className="border-t border-gray-200 pt-2 flex justify-between text-sm">
+                      <span className="text-gray-500">{t('calculatedDebt')}</span>
+                      <span className="font-medium text-gray-700">{formatCurrency(sobiqAttendance.raw_amount ?? 0)}</span>
+                    </div>
+                    <div className="flex justify-between text-sm">
+                      <span className="text-gray-700 font-medium">{t('roundedDebt')}</span>
+                      <span className="font-bold text-blue-600">{formatCurrency(sobiqAttendance.calculated_amount ?? 0)}</span>
+                    </div>
+                  </div>
+                )}
+
+                {/* PER_LESSON — read-only */}
+                {sobiqAttendance.billing_type === 'per_lesson' && sobiqAttendance.per_unit !== null && (
+                  <div className="bg-gray-50 rounded-lg p-4 space-y-2">
+                    <div className="flex justify-between text-sm">
+                      <span className="text-gray-500">{t('coursePriceLabel')}</span>
+                      <span className="font-semibold">{formatCurrency(sobiqAttendance.course_price)}</span>
+                    </div>
+                    <div className="flex justify-between text-sm">
+                      <span className="text-gray-500">{t('perLessonPrice')}</span>
+                      <span className="font-semibold">{formatCurrency(sobiqAttendance.per_unit)}</span>
+                    </div>
+                    <div className="flex justify-between text-sm">
+                      <span className="text-gray-500">{t('attendedLessons')}</span>
+                      <span className="font-semibold">{sobiqAttendance.units_count} / {sobiqAttendance.total_units} {t('lessons')}</span>
+                    </div>
+                    <div className="border-t border-gray-200 pt-2 flex justify-between text-sm">
+                      <span className="text-gray-500">{t('calculatedDebt')}</span>
+                      <span className="font-medium text-gray-700">{formatCurrency(sobiqAttendance.raw_amount ?? 0)}</span>
+                    </div>
+                    <div className="flex justify-between text-sm">
+                      <span className="text-gray-700 font-medium">{t('roundedDebt')}</span>
+                      <span className="font-bold text-blue-600">{formatCurrency(sobiqAttendance.calculated_amount ?? 0)}</span>
+                    </div>
+                  </div>
+                )}
+
+                <div className="pt-2">
+                  <button type="button" onClick={() => setShowSobiqModal(false)}
+                    className="w-full px-4 py-2 border border-gray-300 text-sm font-medium rounded hover:bg-gray-50">
+                    {common('close')}
+                  </button>
+                </div>
+              </div>
             </div>
           )}
         </DialogContent>

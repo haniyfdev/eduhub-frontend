@@ -447,7 +447,11 @@
     "days": "дней",
     "lessons": "уроков",
     "manualDebtSaved": "Сохранённый долг (администратором)",
-    "manualDebtLocked": "Редактирование недоступно — метод расчёта изменён"
+    "manualDebtLocked": "Редактирование недоступно — метод расчёта изменён",
+    "billingTypeLabel": "Метод расчёта долга",
+    "billingManual": "Администратором",
+    "billingPerDay": "Подённо",
+    "billingPerLesson": "Поурочно"
   },
   "attendance": {
     "title": "Посещаемость",

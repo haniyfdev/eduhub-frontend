@@ -456,7 +456,16 @@
     "late": "Kechikdi",
     "absent": "Kelmadi",
     "yes": "Ha",
-    "no": "Yo'q"
+    "no": "Yo'q",
+    "coursePriceLabel": "Kurs asl narxi",
+    "perDayPrice": "Bir kunlik narx",
+    "perLessonPrice": "Bir darslik narx",
+    "daysInGroup": "Guruhda o'qigan kunlar",
+    "attendedLessons": "Qatnashgan darslar",
+    "calculatedDebt": "Hisoblangan qarz",
+    "roundedDebt": "Yaxlitlangan qarz",
+    "days": "kun",
+    "lessons": "dars"
   },
   "attendance": {
     "title": "Davomat",

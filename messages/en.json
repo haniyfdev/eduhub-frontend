@@ -436,7 +436,16 @@
     "late": "Late",
     "absent": "Absent",
     "yes": "Yes",
-    "no": "No"
+    "no": "No",
+    "coursePriceLabel": "Original course price",
+    "perDayPrice": "Price per day",
+    "perLessonPrice": "Price per lesson",
+    "daysInGroup": "Days in group",
+    "attendedLessons": "Attended lessons",
+    "calculatedDebt": "Calculated debt",
+    "roundedDebt": "Rounded debt",
+    "days": "days",
+    "lessons": "lessons"
   },
   "attendance": {
     "title": "Attendance",

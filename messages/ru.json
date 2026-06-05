@@ -436,7 +436,16 @@
     "late": "Опоздал",
     "absent": "Отсутствовал",
     "yes": "Да",
-    "no": "Нет"
+    "no": "Нет",
+    "coursePriceLabel": "Исходная цена курса",
+    "perDayPrice": "Цена за день",
+    "perLessonPrice": "Цена за урок",
+    "daysInGroup": "Дней в группе",
+    "attendedLessons": "Посещённые уроки",
+    "calculatedDebt": "Расчётный долг",
+    "roundedDebt": "Округлённый долг",
+    "days": "дней",
+    "lessons": "уроков"
   },
   "attendance": {
     "title": "Посещаемость",

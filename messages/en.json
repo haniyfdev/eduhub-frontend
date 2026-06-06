@@ -269,6 +269,10 @@
     "addStudent": "Add student",
     "newLesson": "New lesson",
     "lessonAlreadyExists": "A lesson already exists for this date",
+    "changeTeacher": "Change teacher",
+    "selectTeacherPlaceholder": "Select a teacher",
+    "teacherChanged": "Teacher changed successfully",
+    "archivedTeacherBanner": "{name} is archived — please assign a new teacher",
     "transferStudent": "Transfer student",
     "frozenBanner": "This group is frozen. Monthly debt is not calculated.",
     "tabs": {

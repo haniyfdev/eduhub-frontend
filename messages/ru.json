@@ -269,6 +269,10 @@
     "addStudent": "Добавить студента",
     "newLesson": "Новый урок",
     "lessonAlreadyExists": "Урок на эту дату уже существует",
+    "changeTeacher": "Сменить учителя",
+    "selectTeacherPlaceholder": "Выберите учителя",
+    "teacherChanged": "Учитель успешно изменён",
+    "archivedTeacherBanner": "{name} архивирован — назначьте нового учителя",
     "transferStudent": "Сменить группу",
     "frozenBanner": "Эта группа заморожена. Ежемесячный долг не начисляется.",
     "tabs": {

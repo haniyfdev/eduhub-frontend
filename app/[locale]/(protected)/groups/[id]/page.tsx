@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useLocale, useTranslations } from 'next-intl';
-import { ArrowLeft, Plus, Search, Minus, ArrowLeftRight, Snowflake, Play } from 'lucide-react';
+import { ArrowLeft, Plus, Search, Minus, ArrowLeftRight, Snowflake, Play, Pencil } from 'lucide-react';
 import toast, { Toaster } from 'react-hot-toast';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -18,7 +18,7 @@ interface GroupDetail {
   number: number;
   gender_type: 'a' | 'b' | 'c';
   course: { id: string; name: string };
-  teacher: { id: string; first_name: string; last_name: string };
+  teacher: { id: string; first_name: string; last_name: string; status?: string } | null;
   students_count: number;
   schedule: string;
   room_name?: string | null;
@@ -58,6 +58,12 @@ interface Lesson {
 interface GroupOption {
   id: string;
   name: string;
+}
+
+interface TeacherOption {
+  id: string;
+  first_name: string;
+  last_name: string;
 }
 
 const GENDER_LABELS_KEYS: Record<string, string> = { a: 'genderA', b: 'genderB', c: 'genderC' };
@@ -111,6 +117,13 @@ export default function GroupDetailPage() {
   const [groupOptions, setGroupOptions] = useState<GroupOption[]>([]);
   const [newGroupId, setNewGroupId] = useState('');
   const [changingGroup, setChangingGroup] = useState(false);
+
+  // Change teacher
+  const [showChangeTeacher, setShowChangeTeacher] = useState(false);
+  const [teacherOptions, setTeacherOptions] = useState<TeacherOption[]>([]);
+  const [changeTeacherId, setChangeTeacherId] = useState('');
+  const [changingTeacher, setChangingTeacher] = useState(false);
+  const [loadingTeachers, setLoadingTeachers] = useState(false);
 
   // Lessons
   const [lessons, setLessons] = useState<Lesson[]>([]);
@@ -246,6 +259,34 @@ export default function GroupDetailPage() {
     }
   }
 
+  async function fetchTeachers() {
+    setLoadingTeachers(true);
+    try {
+      const { data } = await api.get<{ results?: TeacherOption[] }>('/api/v1/teachers/?status=active&page_size=100');
+      setTeacherOptions(data.results ?? []);
+    } catch {
+      setTeacherOptions([]);
+    } finally {
+      setLoadingTeachers(false);
+    }
+  }
+
+  async function handleChangeTeacher() {
+    if (!changeTeacherId) return;
+    setChangingTeacher(true);
+    try {
+      const { data } = await api.post<GroupDetail>(`/api/v1/groups/${id}/change-teacher/`, { teacher_id: changeTeacherId });
+      setGroup(data);
+      setShowChangeTeacher(false);
+      setChangeTeacherId('');
+      toast.success(t('teacherChanged'));
+    } catch {
+      toast.error(common('error'));
+    } finally {
+      setChangingTeacher(false);
+    }
+  }
+
   async function handleAddLesson(e: React.FormEvent) {
     e.preventDefault();
     setSavingLesson(true);
@@ -328,11 +369,29 @@ export default function GroupDetailPage() {
                 {group.status === 'active' ? common('active') : group.status === 'frozen' ? common('frozen') : common('archived')}
               </span>
             </div>
-            <p className="text-sm text-gray-500 mt-0.5">
+            <p className="text-sm text-gray-500 mt-0.5 flex items-center flex-wrap gap-x-0.5">
               {group.course?.name}
-              {group.teacher && <> &middot; {group.teacher.first_name} {group.teacher.last_name}</>}
-              {group.schedule && <> &middot; {group.schedule}</>}
-              {group.room_name && <> &middot; {group.room_name}</>}
+              {group.teacher && (
+                <>
+                  &nbsp;&middot;&nbsp;{group.teacher.first_name} {group.teacher.last_name}
+                  {canEdit && (group.status === 'active' || group.teacher?.status === 'archived') && (
+                    <button
+                      onClick={() => { setChangeTeacherId(group.teacher!.id); fetchTeachers(); setShowChangeTeacher(true); }}
+                      className={cn(
+                        'ml-1 p-0.5 rounded transition-colors',
+                        group.teacher?.status === 'archived'
+                          ? 'text-amber-500 hover:bg-amber-100 hover:text-amber-700'
+                          : 'text-gray-400 hover:bg-gray-200 hover:text-gray-600',
+                      )}
+                      title={t('changeTeacher')}
+                    >
+                      <Pencil className="w-3 h-3" />
+                    </button>
+                  )}
+                </>
+              )}
+              {group.schedule && <>&nbsp;&middot;&nbsp;{group.schedule}</>}
+              {group.room_name && <>&nbsp;&middot;&nbsp;{group.room_name}</>}
             </p>
           </div>
         </div>
@@ -348,6 +407,25 @@ export default function GroupDetailPage() {
           )}
         </div>
     </div>
+
+      {/* Archived teacher banner */}
+      {group.teacher?.status === 'archived' && (
+        <div className="flex items-center justify-between gap-3 px-4 py-3 bg-amber-50 border border-amber-200 rounded-lg">
+          <div className="flex items-center gap-2 text-amber-700">
+            <span className="text-sm font-medium">
+              {t('archivedTeacherBanner', { name: `${group.teacher.first_name} ${group.teacher.last_name}` })}
+            </span>
+          </div>
+          {canEdit && (
+            <button
+              onClick={() => { setChangeTeacherId(group.teacher!.id); fetchTeachers(); setShowChangeTeacher(true); }}
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-amber-600 text-white text-xs font-medium rounded hover:bg-amber-700 transition-colors flex-shrink-0"
+            >
+              <Pencil className="w-3 h-3" /> {t('changeTeacher')}
+            </button>
+          )}
+        </div>
+      )}
 
       {/* Frozen banner */}
       {group.status === 'frozen' && (
@@ -594,7 +672,6 @@ export default function GroupDetailPage() {
           <dl className="divide-y divide-gray-100">
             {[
               { label: common('course'), value: group.course?.name },
-              { label: common('teacher'), value: group.teacher ? `${group.teacher.first_name} ${group.teacher.last_name}` : null },
               { label: t('groupType'), value: t(GENDER_LABELS_KEYS[group.gender_type] as Parameters<typeof t>[0]) },
               { label: t('schedule'), value: group.schedule },
               { label: common('room'), value: group.room_name || null },
@@ -609,6 +686,18 @@ export default function GroupDetailPage() {
                 <dd className="text-sm font-medium text-gray-900">{value ?? '—'}</dd>
               </div>
             ))}
+            {/* Teacher row with archived badge */}
+            <div className="flex py-3">
+              <dt className="w-44 text-sm text-gray-500 flex-shrink-0">{common('teacher')}</dt>
+              <dd className="text-sm font-medium text-gray-900 flex items-center gap-2">
+                {group.teacher ? `${group.teacher.first_name} ${group.teacher.last_name}` : '—'}
+                {group.teacher?.status === 'archived' && (
+                  <span className="inline-flex items-center px-1.5 py-0.5 text-xs font-medium bg-amber-100 text-amber-700 border border-amber-200 rounded-full">
+                    {common('archived')}
+                  </span>
+                )}
+              </dd>
+            </div>
           </dl>
         </div>
       )}
@@ -776,6 +865,37 @@ export default function GroupDetailPage() {
             <button onClick={() => setChangeGroupTarget(null)} className="flex-1 px-4 py-2 border border-gray-300 text-sm font-medium rounded hover:bg-gray-50">{common('cancel')}</button>
             <button onClick={handleChangeGroup} disabled={!newGroupId || changingGroup} className="flex-1 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded hover:bg-blue-700 disabled:opacity-60">
               {changingGroup ? common('loading') : common('confirm')}
+            </button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Change teacher */}
+      <Dialog open={showChangeTeacher} onOpenChange={(open) => { if (!open) { setShowChangeTeacher(false); setChangeTeacherId(''); } }}>
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader><DialogTitle>{t('changeTeacher')}</DialogTitle></DialogHeader>
+          <p className="text-sm text-gray-600 mt-1">
+            {common('teacher')}: <span className="font-medium">{group?.teacher ? `${group.teacher.first_name} ${group.teacher.last_name}` : '—'}</span>
+          </p>
+          <select
+            value={changeTeacherId}
+            onChange={(e) => setChangeTeacherId(e.target.value)}
+            className="w-full mt-3 px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            disabled={loadingTeachers}
+          >
+            <option value="">{loadingTeachers ? common('loading') : t('selectTeacherPlaceholder')}</option>
+            {teacherOptions.filter((tc) => tc.id !== group?.teacher?.id).map((tc) => (
+              <option key={tc.id} value={tc.id}>{tc.first_name} {tc.last_name}</option>
+            ))}
+          </select>
+          <div className="flex gap-3 mt-4">
+            <button onClick={() => setShowChangeTeacher(false)} className="flex-1 px-4 py-2 border border-gray-300 text-sm font-medium rounded hover:bg-gray-50">{common('cancel')}</button>
+            <button
+              onClick={handleChangeTeacher}
+              disabled={!changeTeacherId || changingTeacher}
+              className="flex-1 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded hover:bg-blue-700 disabled:opacity-60"
+            >
+              {changingTeacher ? common('loading') : common('confirm')}
             </button>
           </div>
         </DialogContent>

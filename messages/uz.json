@@ -289,6 +289,10 @@
     "addStudent": "Talaba qo'shish",
     "newLesson": "Yangi dars",
     "lessonAlreadyExists": "Bu sanada dars allaqachon o'tkazilgan",
+    "changeTeacher": "O'qituvchini almashtirish",
+    "selectTeacherPlaceholder": "O'qituvchini tanlang",
+    "teacherChanged": "O'qituvchi muvaffaqiyatli almashtirildi",
+    "archivedTeacherBanner": "{name} arxivlangan — yangi o'qituvchi tanlang",
     "transferStudent": "Guruh o'zgartirish",
     "frozenBanner": "Bu guruh hozir muzlatilgan. Oylik qarz hisoblanmaydi.",
     "tabs": {

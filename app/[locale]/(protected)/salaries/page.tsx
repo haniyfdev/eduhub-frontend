@@ -32,6 +32,8 @@ interface TeacherSalaryGrouped {
   teacher_id: string;
   teacher_name: string;
   teacher_subject: string;
+  teacher_status?: string;
+  teacher_archived_at?: string | null;
   salary_type: string;
   salary_percent: number | null;
   fixed_amount: number | null;
@@ -42,6 +44,22 @@ interface TeacherSalaryGrouped {
   total_owed: number;
   overall_status: 'unpaid' | 'partial' | 'paid';
   groups: GroupSalaryData[];
+}
+
+interface SobiqSalaryBreakdown {
+  teacher_name: string;
+  group_name: string | null;
+  course_name: string | null;
+  month: string;
+  archived_at: string;
+  billing_type: 'full' | 'manual' | 'per_day' | 'per_lesson';
+  base_amount: number;
+  raw_amount: number | null;
+  calculated_amount: number | null;
+  per_unit: number | null;
+  units_count: number | null;
+  total_units: number | null;
+  unit_label: 'day' | 'lesson' | null;
 }
 
 interface StaffSalaryData {
@@ -140,6 +158,29 @@ export default function SalariesPage() {
   const [teacherPay, setTeacherPay]           = useState<{ teacher: TeacherSalaryGrouped; selectionId: string } | null>(null);
   const [bulkAmounts, setBulkAmounts]         = useState<Record<string, string>>({});
   const [bulkPaying, setBulkPaying]           = useState(false);
+
+  // ── Sobiq teacher modal ───────────────────────────────────────────────────────
+  const [sobiqSalary,     setSobiqSalary]    = useState<{ salaryId: string; teacher: TeacherSalaryGrouped } | null>(null);
+  const [sobiqBreakdown,  setSobiqBreakdown] = useState<SobiqSalaryBreakdown | null>(null);
+  const [sobiqLoading,    setSobiqLoading]   = useState(false);
+
+  async function openSobiqTeacherModal(teacher: TeacherSalaryGrouped) {
+    const firstGroup = teacher.groups[0];
+    if (!firstGroup) return;
+    setSobiqSalary({ salaryId: firstGroup.salary_id, teacher });
+    setSobiqBreakdown(null);
+    setSobiqLoading(true);
+    try {
+      const { data } = await api.get<SobiqSalaryBreakdown>(
+        `/api/v1/teacher-salaries/${firstGroup.salary_id}/last-month-breakdown/`
+      );
+      setSobiqBreakdown(data);
+    } catch {
+      setSobiqBreakdown(null);
+    } finally {
+      setSobiqLoading(false);
+    }
+  }
 
   // ── Staff salary state ────────────────────────────────────────────────────────
   const [staffSals, setStaffSals] = useState<StaffSalaryData[]>([]);
@@ -252,6 +293,7 @@ export default function SalariesPage() {
   }
 
   function teacherRowBg(teacher: TeacherSalaryGrouped): string {
+    if (teacher.teacher_status === 'archived') return 'bg-green-100 hover:bg-green-200 cursor-pointer';
     if (teacher.overall_status === 'paid') return 'bg-white';
     const today = new Date().toISOString().slice(0, 10);
     const anyOverdue = teacher.groups.some(
@@ -462,7 +504,11 @@ export default function SalariesPage() {
                       const selId = getSelection(teacher.teacher_id);
                       const vals  = getTeacherValues(teacher, selId);
                       return (
-                        <tr key={teacher.teacher_id} className={cn('transition-colors group', teacherRowBg(teacher))}>
+                        <tr
+                          key={teacher.teacher_id}
+                          className={cn('transition-colors group', teacherRowBg(teacher))}
+                          onClick={() => { if (teacher.teacher_status === 'archived') openSobiqTeacherModal(teacher); }}
+                        >
                           <td className="px-4 py-3 text-gray-400 text-xs">{idx + 1}</td>
                           <td className="px-4 py-3">
                             <p className="font-semibold text-gray-900 whitespace-nowrap">{teacher.teacher_name}</p>
@@ -495,7 +541,7 @@ export default function SalariesPage() {
                           </td>
                           {/* Jami — clickable */}
                           <td className="px-4 py-3">
-                            <button onClick={() => setTeacherDetail(teacher)}
+                            <button onClick={(e) => { e.stopPropagation(); setTeacherDetail(teacher); }}
                               className="font-bold text-blue-600 underline underline-offset-2 hover:text-blue-800 transition-colors whitespace-nowrap">
                               {formatCurrency(vals.jami)}
                             </button>
@@ -512,6 +558,8 @@ export default function SalariesPage() {
                           <td className="px-4 py-3 min-w-[130px]">
                             {vals.status === 'paid' ? (
                               <span className="text-emerald-600 font-medium text-xs">{t('paidStatus')}</span>
+                            ) : teacher.teacher_status === 'archived' ? (
+                              <span className="text-xs font-medium text-gray-500">{vals.status === 'partial' ? t('partial') : t('unpaid')}</span>
                             ) : (
                               <span className="relative inline-block">
                                 <span className={cn(
@@ -522,7 +570,7 @@ export default function SalariesPage() {
                                 </span>
                                 <button
                                   className="hidden group-hover:inline-flex items-center gap-1 px-2.5 py-1 bg-emerald-500 text-white text-xs font-semibold rounded-lg hover:bg-emerald-600 transition-colors"
-                                  onClick={() => openTeacherPayModal(teacher, selId)}>
+                                  onClick={(e) => { e.stopPropagation(); openTeacherPayModal(teacher, selId); }}>
                                   <Banknote className="w-3 h-3" /> {t('pay')}
                                 </button>
                               </span>
@@ -920,6 +968,102 @@ export default function SalariesPage() {
               </div>
             );
           })()}
+        </DialogContent>
+      </Dialog>
+
+      {/* ══ Sobiq Teacher Modal ══ */}
+      <Dialog open={!!sobiqSalary} onOpenChange={open => { if (!open) { setSobiqSalary(null); setSobiqBreakdown(null); } }}>
+        <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>{sobiqBreakdown?.teacher_name ?? sobiqSalary?.teacher.teacher_name} — {t('sobiqTeacherModalTitle')}</DialogTitle>
+            {sobiqBreakdown?.group_name && (
+              <p className="text-xs text-gray-500 mt-0.5">{sobiqBreakdown.group_name} · {sobiqBreakdown.course_name}</p>
+            )}
+          </DialogHeader>
+
+          {sobiqLoading ? (
+            <div className="space-y-2 mt-4">
+              {Array(4).fill(0).map((_, i) => <Skeleton key={i} className="h-8 w-full" />)}
+            </div>
+          ) : sobiqBreakdown && (
+            <div className="mt-2 space-y-4">
+              <div className="text-xs text-gray-500 bg-gray-50 px-3 py-2 rounded">
+                {t('archivedAt')}: {sobiqBreakdown.archived_at}
+              </div>
+
+              <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full border border-blue-300 bg-blue-50 text-blue-700 text-xs font-semibold">
+                <span className="w-2 h-2 rounded-full bg-blue-500" />
+                {t('billingTypeLabel')}: {
+                  sobiqBreakdown.billing_type === 'full'       ? t('billingFull') :
+                  sobiqBreakdown.billing_type === 'manual'     ? t('billingManual') :
+                  sobiqBreakdown.billing_type === 'per_day'    ? t('billingPerDay') :
+                  t('billingPerLesson')
+                }
+              </div>
+
+              <div className="border border-gray-100 rounded-lg p-4 space-y-2">
+                {/* FULL or MANUAL — show base amount only */}
+                {(sobiqBreakdown.billing_type === 'full' || sobiqBreakdown.billing_type === 'manual') && (
+                  <div className="flex justify-between text-sm">
+                    <span className="text-gray-500">{t('salaryAmount')}</span>
+                    <span className="font-bold text-blue-600">{formatCurrency(sobiqBreakdown.base_amount)}</span>
+                  </div>
+                )}
+
+                {/* PER_DAY */}
+                {sobiqBreakdown.billing_type === 'per_day' && sobiqBreakdown.per_unit !== null && (
+                  <>
+                    <div className="flex justify-between text-sm">
+                      <span className="text-gray-700">{t('baseSalary')}</span>
+                      <span className="font-semibold">{formatCurrency(sobiqBreakdown.base_amount)}</span>
+                    </div>
+                    <div className="flex justify-between text-sm">
+                      <span className="text-gray-700">{t('perDayAmount')}</span>
+                      <span className="font-semibold">{formatCurrency(sobiqBreakdown.per_unit)}</span>
+                    </div>
+                    <div className="flex justify-between text-sm">
+                      <span className="text-gray-700">{t('daysWorked')}</span>
+                      <span className="font-semibold">{sobiqBreakdown.units_count} / {sobiqBreakdown.total_units} {t('days')}</span>
+                    </div>
+                    <div className="border-t border-gray-200 pt-2 flex justify-between text-sm">
+                      <span className="text-gray-700">{t('calculatedSalary')}</span>
+                      <span className="text-gray-700 font-medium">{formatCurrency(sobiqBreakdown.raw_amount ?? 0)}</span>
+                    </div>
+                    <div className="flex justify-between text-sm">
+                      <span className="text-gray-700 font-medium">{t('salaryAmount')}</span>
+                      <span className="font-bold text-blue-600">{formatCurrency(sobiqBreakdown.calculated_amount ?? 0)}</span>
+                    </div>
+                  </>
+                )}
+
+                {/* PER_LESSON */}
+                {sobiqBreakdown.billing_type === 'per_lesson' && sobiqBreakdown.per_unit !== null && (
+                  <>
+                    <div className="flex justify-between text-sm">
+                      <span className="text-gray-700">{t('baseSalary')}</span>
+                      <span className="font-semibold">{formatCurrency(sobiqBreakdown.base_amount)}</span>
+                    </div>
+                    <div className="flex justify-between text-sm">
+                      <span className="text-gray-700">{t('perLessonAmount')}</span>
+                      <span className="font-semibold">{formatCurrency(sobiqBreakdown.per_unit)}</span>
+                    </div>
+                    <div className="flex justify-between text-sm">
+                      <span className="text-gray-700">{t('lessonsTeached')}</span>
+                      <span className="font-semibold">{sobiqBreakdown.units_count} / {sobiqBreakdown.total_units} {t('lessons')}</span>
+                    </div>
+                    <div className="border-t border-gray-200 pt-2 flex justify-between text-sm">
+                      <span className="text-gray-700">{t('calculatedSalary')}</span>
+                      <span className="text-gray-700 font-medium">{formatCurrency(sobiqBreakdown.raw_amount ?? 0)}</span>
+                    </div>
+                    <div className="flex justify-between text-sm">
+                      <span className="text-gray-700 font-medium">{t('salaryAmount')}</span>
+                      <span className="font-bold text-blue-600">{formatCurrency(sobiqBreakdown.calculated_amount ?? 0)}</span>
+                    </div>
+                  </>
+                )}
+              </div>
+            </div>
+          )}
         </DialogContent>
       </Dialog>
 

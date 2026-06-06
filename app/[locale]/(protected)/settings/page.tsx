@@ -509,8 +509,9 @@ export default function SettingsPage() {
                     className={inputCls}
                   >
                     <option value="full">{t('contractFull')}</option>
-                    <option value="prorate">{t('contractProrate')}</option>
-                    <option value="none">{t('contractNone')}</option>
+                    <option value="per_lesson">{t('contractPerLesson')}</option>
+                    <option value="per_day">{t('contractPerDay')}</option>
+                    <option value="manual">{t('contractManual')}</option>
                   </select>
                 </div>
                 <div>

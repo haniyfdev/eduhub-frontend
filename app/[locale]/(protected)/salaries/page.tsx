@@ -172,8 +172,27 @@ export default function SalariesPage() {
   const [sobiqLoading,    setSobiqLoading]   = useState(false);
   const [manualAmount,    setManualAmount]   = useState('');
   const [savingManual,    setSavingManual]   = useState(false);
+  const [manualSaved,     setManualSaved]    = useState(false);
   const formatAmt = (val: string) => val.replace(/\D/g, '').replace(/\B(?=(\d{3})+(?!\d))/g, ',');
   const parseAmt  = (val: string) => Number(val.replace(/,/g, ''));
+
+  async function handleManualSave() {
+    if (!sobiqSalary || savingManual || manualSaved) return;
+    setSavingManual(true);
+    try {
+      await api.post(
+        `/api/v1/teacher-salaries/${sobiqSalary.salaryId}/set-amount/`,
+        { amount: parseAmt(manualAmount) }
+      );
+      toast.success('Saqlandi');
+      setManualSaved(true);
+      setSobiqSalary(null);
+      setSobiqBreakdown(null);
+      await loadSalaries();
+    } finally {
+      setSavingManual(false);
+    }
+  }
 
   async function openSobiqTeacherModal(teacher: TeacherSalaryGrouped) {
     const firstGroup = teacher.groups.find(g => g.salary_id) ?? teacher.groups[0];
@@ -188,6 +207,7 @@ export default function SalariesPage() {
       setSobiqBreakdown(data);
       if (data.billing_type === 'manual') {
         setManualAmount(String(data.calculated_amount ?? ''));
+        setManualSaved(false);
       }
     } catch {
       setSobiqBreakdown(null);
@@ -1004,7 +1024,7 @@ export default function SalariesPage() {
 
       {/* ══ Sobiq Teacher Modal ══ */}
       <Dialog open={!!sobiqSalary} onOpenChange={open => { if (!open) { setSobiqSalary(null); setSobiqBreakdown(null); } }}>
-        <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
+        <DialogContent hideClose className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <div className="flex items-center justify-between">
               <DialogTitle>{sobiqBreakdown?.teacher_name ?? sobiqSalary?.teacher.teacher_name} — {t('sobiqTeacherModalTitle')}</DialogTitle>
@@ -1066,27 +1086,17 @@ export default function SalariesPage() {
                             type="text"
                             inputMode="numeric"
                             value={formatAmt(manualAmount)}
+                            disabled={manualSaved}
                             onChange={e => setManualAmount(String(parseAmt(e.target.value)))}
-                            className="flex-1 border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            onKeyDown={e => {
+                              if (e.key === 'Enter') handleManualSave();
+                              if (e.key === 'Escape') { setSobiqSalary(null); setSobiqBreakdown(null); }
+                            }}
+                            className="flex-1 border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
                           />
                           <button
-                            disabled={savingManual}
-                            onClick={async () => {
-                              if (!sobiqSalary) return;
-                              setSavingManual(true);
-                              try {
-                                await api.post(
-                                  `/api/v1/teacher-salaries/${sobiqSalary.salaryId}/set-amount/`,
-                                  { amount: parseAmt(manualAmount) }
-                                );
-                                toast.success('Saqlandi');
-                                setSobiqSalary(null);
-                                setSobiqBreakdown(null);
-                                await loadSalaries();
-                              } finally {
-                                setSavingManual(false);
-                              }
-                            }}
+                            disabled={savingManual || manualSaved}
+                            onClick={handleManualSave}
                             className="px-4 py-2 bg-blue-600 text-white text-sm rounded-md hover:bg-blue-700 disabled:opacity-50"
                           >
                             {savingManual ? '...' : common('save')}

@@ -216,17 +216,24 @@ export default function SalariesPage() {
       const data: TeacherSalaryGrouped[] = Array.isArray(tRes.value.data)
         ? tRes.value.data
         : (tRes.value.data.results ?? []);
-      const tierOf = (t: TeacherSalaryGrouped) =>
-        t.overall_status === 'paid'     ? 2 :
-        t.teacher_status === 'archived' ? 1 : 0;
-      setTeacherGrouped(
-        [...data].sort((a, b) => {
-          const ta = tierOf(a), tb = tierOf(b);
-          if (ta !== tb) return ta - tb;
-          if (ta === 0) return b.total_owed - a.total_owed; // largest unpaid first
-          return 0;
-        }),
-      );
+      const sorted = [...data].sort((a, b) => {
+        // 1. Archived first
+        const aArchived = a.teacher_status === 'archived' ? 0 : 1;
+        const bArchived = b.teacher_status === 'archived' ? 0 : 1;
+        if (aArchived !== bArchived) return aArchived - bArchived;
+
+        // 2. Oldest due_date first (ascending)
+        const aDate = a.groups?.[0]?.due_date ?? '';
+        const bDate = b.groups?.[0]?.due_date ?? '';
+        if (aDate !== bDate) return aDate.localeCompare(bDate);
+
+        // 3. Largest total_owed first (descending)
+        if (b.total_owed !== a.total_owed) return b.total_owed - a.total_owed;
+
+        // 4. Alphabetical by teacher name A-Z
+        return a.teacher_name.localeCompare(b.teacher_name);
+      });
+      setTeacherGrouped(sorted);
     }
     if (sRes.status === 'fulfilled') setStaffSals(sRes.value.data.results ?? sRes.value.data);
     setLoadingSals(false);

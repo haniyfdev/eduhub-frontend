@@ -170,6 +170,8 @@ export default function SalariesPage() {
   const [sobiqSalary,     setSobiqSalary]    = useState<{ salaryId: string; teacher: TeacherSalaryGrouped } | null>(null);
   const [sobiqBreakdown,  setSobiqBreakdown] = useState<SobiqSalaryBreakdown | null>(null);
   const [sobiqLoading,    setSobiqLoading]   = useState(false);
+  const [manualAmount,    setManualAmount]   = useState('');
+  const [savingManual,    setSavingManual]   = useState(false);
 
   async function openSobiqTeacherModal(teacher: TeacherSalaryGrouped) {
     const firstGroup = teacher.groups.find(g => g.salary_id) ?? teacher.groups[0];
@@ -182,6 +184,9 @@ export default function SalariesPage() {
         `/api/v1/teacher-salaries/${firstGroup.salary_id}/last-month-breakdown/`
       );
       setSobiqBreakdown(data);
+      if (data.billing_type === 'manual') {
+        setManualAmount(String(data.calculated_amount ?? ''));
+      }
     } catch {
       setSobiqBreakdown(null);
     } finally {
@@ -1046,7 +1051,39 @@ export default function SalariesPage() {
 
                   if (bd.billing_type === 'manual') {
                     return (
-                      <Row label={t('salaryAmount')} value={fc(bd.calculated_amount ?? 0)} bold />
+                      <div className="space-y-3">
+                        <div className="text-sm font-medium text-gray-700">{t('salaryAmount')}</div>
+                        <div className="flex gap-2">
+                          <input
+                            type="number"
+                            min={0}
+                            step={1000}
+                            value={manualAmount}
+                            onChange={e => setManualAmount(e.target.value)}
+                            className="flex-1 border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          />
+                          <button
+                            disabled={savingManual}
+                            onClick={async () => {
+                              if (!sobiqSalary) return;
+                              setSavingManual(true);
+                              try {
+                                await api.post(
+                                  `/api/v1/teacher-salaries/${sobiqSalary.salaryId}/set-amount/`,
+                                  { amount: manualAmount }
+                                );
+                                setSobiqBreakdown(prev => prev ? { ...prev, calculated_amount: Number(manualAmount) } : prev);
+                                await loadSalaries();
+                              } finally {
+                                setSavingManual(false);
+                              }
+                            }}
+                            className="px-4 py-2 bg-blue-600 text-white text-sm rounded-md hover:bg-blue-700 disabled:opacity-50"
+                          >
+                            {savingManual ? '...' : common('save')}
+                          </button>
+                        </div>
+                      </div>
                     );
                   }
 

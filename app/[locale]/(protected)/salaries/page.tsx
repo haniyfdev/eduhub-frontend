@@ -67,6 +67,7 @@ interface SobiqSalaryBreakdown {
   units_count: number | null;
   total_units: number | null;
   unit_label: 'day' | 'lesson' | null;
+  manual_amount_set: boolean;
 }
 
 interface StaffSalaryData {
@@ -205,9 +206,8 @@ export default function SalariesPage() {
         `/api/v1/teacher-salaries/${firstGroup.salary_id}/last-month-breakdown/`
       );
       setSobiqBreakdown(data);
-      if (data.billing_type === 'manual') {
+      if (data.billing_type === 'manual' && !data.manual_amount_set) {
         setManualAmount(String(data.calculated_amount ?? ''));
-        setManualSaved(false);
       }
     } catch {
       setSobiqBreakdown(null);
@@ -1078,6 +1078,11 @@ export default function SalariesPage() {
                   }
 
                   if (bd.billing_type === 'manual') {
+                    if (bd.manual_amount_set) {
+                      return (
+                        <Row label={t('salaryAmount')} value={fc(bd.calculated_amount ?? 0)} bold />
+                      );
+                    }
                     return (
                       <div className="space-y-3">
                         <div className="text-sm font-medium text-gray-700">{t('salaryAmount')}</div>
@@ -1086,16 +1091,15 @@ export default function SalariesPage() {
                             type="text"
                             inputMode="numeric"
                             value={formatAmt(manualAmount)}
-                            disabled={manualSaved}
                             onChange={e => setManualAmount(String(parseAmt(e.target.value)))}
                             onKeyDown={e => {
                               if (e.key === 'Enter') handleManualSave();
                               if (e.key === 'Escape') { setSobiqSalary(null); setSobiqBreakdown(null); }
                             }}
-                            className="flex-1 border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
+                            className="flex-1 border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                           />
                           <button
-                            disabled={savingManual || manualSaved}
+                            disabled={savingManual}
                             onClick={handleManualSave}
                             className="px-4 py-2 bg-blue-600 text-white text-sm rounded-md hover:bg-blue-700 disabled:opacity-50"
                           >

@@ -213,8 +213,20 @@ export default function SalariesPage() {
       api.get(`/api/v1/staff-salaries/?month=${month}`),
     ]);
     if (tRes.status === 'fulfilled') {
-      const data = tRes.value.data.results ?? tRes.value.data;
-      setTeacherGrouped(Array.isArray(data) ? data : []);
+      const data: TeacherSalaryGrouped[] = Array.isArray(tRes.value.data)
+        ? tRes.value.data
+        : (tRes.value.data.results ?? []);
+      const tierOf = (t: TeacherSalaryGrouped) =>
+        t.overall_status === 'paid'     ? 2 :
+        t.teacher_status === 'archived' ? 1 : 0;
+      setTeacherGrouped(
+        [...data].sort((a, b) => {
+          const ta = tierOf(a), tb = tierOf(b);
+          if (ta !== tb) return ta - tb;
+          if (ta === 0) return b.total_owed - a.total_owed; // largest unpaid first
+          return 0;
+        }),
+      );
     }
     if (sRes.status === 'fulfilled') setStaffSals(sRes.value.data.results ?? sRes.value.data);
     setLoadingSals(false);

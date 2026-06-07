@@ -565,8 +565,6 @@ export default function SalariesPage() {
                           <td className="px-4 py-3 min-w-[130px]">
                             {vals.status === 'paid' ? (
                               <span className="text-emerald-600 font-medium text-xs">{t('paidStatus')}</span>
-                            ) : teacher.teacher_status === 'archived' ? (
-                              <span className="text-xs font-medium text-gray-500">{vals.status === 'partial' ? t('partial') : t('unpaid')}</span>
                             ) : (
                               <span className="relative inline-block">
                                 <span className={cn(

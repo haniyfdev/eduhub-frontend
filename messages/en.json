@@ -655,6 +655,11 @@
     "lessonsTeached": "Lessons taught",
     "calculatedSalary": "Calculated salary",
     "salaryAmount": "Salary amount",
+    "groupRevenue": "Group revenue",
+    "teacherShare": "Teacher share",
+    "fullMonthlySalary": "Full monthly salary",
+    "studentsCount": "Number of students",
+    "perStudentRate": "Per student rate",
     "days": "days",
     "lessons": "lessons"
   },

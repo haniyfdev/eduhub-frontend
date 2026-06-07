@@ -675,6 +675,11 @@
     "lessonsTeached": "O'tilgan darslar",
     "calculatedSalary": "Hisoblangan maosh",
     "salaryAmount": "Maosh miqdori",
+    "groupRevenue": "Guruh daromadi",
+    "teacherShare": "O'qituvchi ulushi",
+    "fullMonthlySalary": "To'liq oylik maosh",
+    "studentsCount": "O'quvchilar soni",
+    "perStudentRate": "O'quvchi boshiga",
     "days": "kun",
     "lessons": "dars"
   },

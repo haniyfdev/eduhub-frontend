@@ -655,6 +655,11 @@
     "lessonsTeached": "Проведено уроков",
     "calculatedSalary": "Начисленная зарплата",
     "salaryAmount": "Сумма зарплаты",
+    "groupRevenue": "Доход группы",
+    "teacherShare": "Доля учителя",
+    "fullMonthlySalary": "Полный месячный оклад",
+    "studentsCount": "Количество учеников",
+    "perStudentRate": "Ставка за ученика",
     "days": "дней",
     "lessons": "уроков"
   },

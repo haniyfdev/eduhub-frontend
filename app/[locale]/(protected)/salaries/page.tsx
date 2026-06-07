@@ -53,6 +53,13 @@ interface SobiqSalaryBreakdown {
   month: string;
   archived_at: string;
   billing_type: 'full' | 'manual' | 'per_day' | 'per_lesson';
+  salary_type: 'fixed' | 'percent' | 'per_student';
+  salary_percent: number;
+  per_student_amt: number;
+  students_count: number;
+  group_revenue: number;
+  course_price: number;
+  full_monthly_salary: number;
   base_amount: number;
   raw_amount: number | null;
   calculated_amount: number | null;
@@ -1001,66 +1008,77 @@ export default function SalariesPage() {
                 }
               </div>
 
-              <div className="border border-gray-100 rounded-lg p-4 space-y-2">
-                {/* FULL or MANUAL — show base amount only */}
-                {(sobiqBreakdown.billing_type === 'full' || sobiqBreakdown.billing_type === 'manual') && (
-                  <div className="flex justify-between text-sm">
-                    <span className="text-gray-500">{t('salaryAmount')}</span>
-                    <span className="font-bold text-blue-600">{formatCurrency(sobiqBreakdown.base_amount)}</span>
-                  </div>
-                )}
+              <div className="border border-gray-100 rounded-lg p-4 space-y-0">
+                {/* Helper: one row */}
+                {(() => {
+                  const bd = sobiqBreakdown;
+                  const Row = ({ label, value, bold }: { label: string; value: string; bold?: boolean }) => (
+                    <div className="flex justify-between text-sm py-1">
+                      <span className="text-gray-700">{label}</span>
+                      <span className={bold ? 'font-bold text-blue-600' : 'font-medium text-gray-900'}>{value}</span>
+                    </div>
+                  );
+                  const fc = (n: number) => formatCurrency(n);
+                  const n  = (v: number) => v.toLocaleString('uz-UZ');
 
-                {/* PER_DAY */}
-                {sobiqBreakdown.billing_type === 'per_day' && sobiqBreakdown.per_unit !== null && (
-                  <>
-                    <div className="flex justify-between text-sm">
-                      <span className="text-gray-700">{t('baseSalary')}</span>
-                      <span className="font-semibold">{formatCurrency(sobiqBreakdown.base_amount)}</span>
-                    </div>
-                    <div className="flex justify-between text-sm">
-                      <span className="text-gray-700">{t('perDayAmount')}</span>
-                      <span className="font-semibold">{formatCurrency(sobiqBreakdown.per_unit)}</span>
-                    </div>
-                    <div className="flex justify-between text-sm">
-                      <span className="text-gray-700">{t('daysWorked')}</span>
-                      <span className="font-semibold">{sobiqBreakdown.units_count} / {sobiqBreakdown.total_units} {t('days')}</span>
-                    </div>
-                    <div className="border-t border-gray-200 pt-2 flex justify-between text-sm">
-                      <span className="text-gray-700">{t('calculatedSalary')}</span>
-                      <span className="text-gray-700 font-medium">{formatCurrency(sobiqBreakdown.raw_amount ?? 0)}</span>
-                    </div>
-                    <div className="flex justify-between text-sm">
-                      <span className="text-gray-700 font-medium">{t('salaryAmount')}</span>
-                      <span className="font-bold text-blue-600">{formatCurrency(sobiqBreakdown.calculated_amount ?? 0)}</span>
-                    </div>
-                  </>
-                )}
+                  if (bd.billing_type === 'full' || bd.billing_type === 'manual') {
+                    return (
+                      <Row label={t('salaryAmount')} value={fc(bd.full_monthly_salary)} bold />
+                    );
+                  }
 
-                {/* PER_LESSON */}
-                {sobiqBreakdown.billing_type === 'per_lesson' && sobiqBreakdown.per_unit !== null && (
-                  <>
-                    <div className="flex justify-between text-sm">
-                      <span className="text-gray-700">{t('baseSalary')}</span>
-                      <span className="font-semibold">{formatCurrency(sobiqBreakdown.base_amount)}</span>
-                    </div>
-                    <div className="flex justify-between text-sm">
-                      <span className="text-gray-700">{t('perLessonAmount')}</span>
-                      <span className="font-semibold">{formatCurrency(sobiqBreakdown.per_unit)}</span>
-                    </div>
-                    <div className="flex justify-between text-sm">
-                      <span className="text-gray-700">{t('lessonsTeached')}</span>
-                      <span className="font-semibold">{sobiqBreakdown.units_count} / {sobiqBreakdown.total_units} {t('lessons')}</span>
-                    </div>
-                    <div className="border-t border-gray-200 pt-2 flex justify-between text-sm">
-                      <span className="text-gray-700">{t('calculatedSalary')}</span>
-                      <span className="text-gray-700 font-medium">{formatCurrency(sobiqBreakdown.raw_amount ?? 0)}</span>
-                    </div>
-                    <div className="flex justify-between text-sm">
-                      <span className="text-gray-700 font-medium">{t('salaryAmount')}</span>
-                      <span className="font-bold text-blue-600">{formatCurrency(sobiqBreakdown.calculated_amount ?? 0)}</span>
-                    </div>
-                  </>
-                )}
+                  if (bd.billing_type === 'per_day' && bd.per_unit !== null) {
+                    return (
+                      <>
+                        <Row label={t('fullMonthlySalary')} value={fc(bd.full_monthly_salary)} />
+                        <Row label={t('perDayAmount')}       value={`${fc(bd.full_monthly_salary)} / 30 = ${fc(bd.per_unit)}`} />
+                        <Row label={t('daysWorked')}         value={`${bd.units_count} ${t('days')}`} />
+                        <div className="border-t border-gray-200 my-1" />
+                        <Row label={t('calculatedSalary')}  value={`${fc(bd.per_unit)} × ${bd.units_count} = ${fc(bd.raw_amount ?? 0)}`} />
+                        <Row label={t('salaryAmount')}       value={fc(bd.calculated_amount ?? 0)} bold />
+                      </>
+                    );
+                  }
+
+                  if (bd.billing_type === 'per_lesson' && bd.per_unit !== null) {
+                    const totalU = bd.total_units ?? 0;
+                    return (
+                      <>
+                        {/* Build-up to full monthly depending on salary_type */}
+                        {bd.salary_type === 'percent' && bd.students_count > 0 && (
+                          <>
+                            <Row label={t('groupRevenue')}
+                                 value={`${n(bd.students_count)} × ${fc(bd.course_price)} = ${fc(bd.group_revenue)}`} />
+                            <Row label={t('teacherShare')}
+                                 value={`${fc(bd.group_revenue)} × ${bd.salary_percent}% = ${fc(bd.full_monthly_salary)}`} />
+                          </>
+                        )}
+                        {bd.salary_type === 'per_student' && bd.students_count > 0 && (
+                          <>
+                            <Row label={t('perStudentRate')} value={fc(bd.per_student_amt)} />
+                            <Row label={t('studentsCount')}  value={`${n(bd.students_count)}`} />
+                            <Row label={t('fullMonthlySalary')}
+                                 value={`${n(bd.students_count)} × ${fc(bd.per_student_amt)} = ${fc(bd.full_monthly_salary)}`} />
+                          </>
+                        )}
+                        {bd.salary_type === 'fixed' && (
+                          <Row label={t('fullMonthlySalary')} value={fc(bd.full_monthly_salary)} />
+                        )}
+
+                        <Row label={t('perLessonAmount')}
+                             value={`${fc(bd.full_monthly_salary)} / ${totalU} = ${fc(bd.per_unit)}`} />
+                        <Row label={t('lessonsTeached')}
+                             value={`${bd.units_count} / ${totalU} ${t('lessons')}`} />
+                        <div className="border-t border-gray-200 my-1" />
+                        <Row label={t('calculatedSalary')}
+                             value={`${fc(bd.per_unit)} × ${bd.units_count} = ${fc(bd.raw_amount ?? 0)}`} />
+                        <Row label={t('salaryAmount')} value={fc(bd.calculated_amount ?? 0)} bold />
+                      </>
+                    );
+                  }
+
+                  return null;
+                })()}
               </div>
             </div>
           )}

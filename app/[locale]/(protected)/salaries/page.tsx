@@ -172,8 +172,8 @@ export default function SalariesPage() {
   const [sobiqLoading,    setSobiqLoading]   = useState(false);
 
   async function openSobiqTeacherModal(teacher: TeacherSalaryGrouped) {
-    const firstGroup = teacher.groups[0];
-    if (!firstGroup) return;
+    const firstGroup = teacher.groups.find(g => g.salary_id) ?? teacher.groups[0];
+    if (!firstGroup?.salary_id) return;
     setSobiqSalary({ salaryId: firstGroup.salary_id, teacher });
     setSobiqBreakdown(null);
     setSobiqLoading(true);

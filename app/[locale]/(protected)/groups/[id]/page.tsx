@@ -677,7 +677,7 @@ export default function GroupDetailPage() {
               { label: common('room'), value: group.room_name || null },
               { label: t('startTime'), value: group.start_time || null },
               { label: t('endTime'), value: group.end_time || null },
-              { label: t('studentsCount'), value: String(students.length) },
+              { label: t('studentsCount'), value: String(students.filter(s => !s.left_at).length) },
               { label: common('status'), value: group.status === 'active' ? common('active') : common('archived') },
               { label: t('createdAt'), value: formatDMY(group.created_at) },
             ].map(({ label, value }) => (

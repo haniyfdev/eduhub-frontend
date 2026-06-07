@@ -1038,9 +1038,15 @@ export default function SalariesPage() {
                   const fc = (n: number) => formatCurrency(n);
                   const n  = (v: number) => v.toLocaleString('uz-UZ');
 
-                  if (bd.billing_type === 'full' || bd.billing_type === 'manual') {
+                  if (bd.billing_type === 'full') {
                     return (
                       <Row label={t('salaryAmount')} value={fc(bd.full_monthly_salary)} bold />
+                    );
+                  }
+
+                  if (bd.billing_type === 'manual') {
+                    return (
+                      <Row label={t('salaryAmount')} value={fc(bd.calculated_amount ?? 0)} bold />
                     );
                   }
 

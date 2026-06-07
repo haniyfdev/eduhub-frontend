@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback, useMemo } from 'react';
 import { useTranslations } from 'next-intl';
-import { Banknote } from 'lucide-react';
+import { Banknote, X } from 'lucide-react';
 import toast, { Toaster } from 'react-hot-toast';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -172,6 +172,8 @@ export default function SalariesPage() {
   const [sobiqLoading,    setSobiqLoading]   = useState(false);
   const [manualAmount,    setManualAmount]   = useState('');
   const [savingManual,    setSavingManual]   = useState(false);
+  const formatAmt = (val: string) => val.replace(/\D/g, '').replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+  const parseAmt  = (val: string) => Number(val.replace(/,/g, ''));
 
   async function openSobiqTeacherModal(teacher: TeacherSalaryGrouped) {
     const firstGroup = teacher.groups.find(g => g.salary_id) ?? teacher.groups[0];
@@ -1004,7 +1006,13 @@ export default function SalariesPage() {
       <Dialog open={!!sobiqSalary} onOpenChange={open => { if (!open) { setSobiqSalary(null); setSobiqBreakdown(null); } }}>
         <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>{sobiqBreakdown?.teacher_name ?? sobiqSalary?.teacher.teacher_name} — {t('sobiqTeacherModalTitle')}</DialogTitle>
+            <div className="flex items-center justify-between">
+              <DialogTitle>{sobiqBreakdown?.teacher_name ?? sobiqSalary?.teacher.teacher_name} — {t('sobiqTeacherModalTitle')}</DialogTitle>
+              <button onClick={() => { setSobiqSalary(null); setSobiqBreakdown(null); }}
+                className="p-1 rounded hover:bg-gray-100 text-gray-400">
+                <X className="w-4 h-4" />
+              </button>
+            </div>
             {sobiqBreakdown?.group_name && (
               <p className="text-xs text-gray-500 mt-0.5">{sobiqBreakdown.group_name} · {sobiqBreakdown.course_name}</p>
             )}
@@ -1055,11 +1063,10 @@ export default function SalariesPage() {
                         <div className="text-sm font-medium text-gray-700">{t('salaryAmount')}</div>
                         <div className="flex gap-2">
                           <input
-                            type="number"
-                            min={0}
-                            step={1000}
-                            value={manualAmount}
-                            onChange={e => setManualAmount(e.target.value)}
+                            type="text"
+                            inputMode="numeric"
+                            value={formatAmt(manualAmount)}
+                            onChange={e => setManualAmount(String(parseAmt(e.target.value)))}
                             className="flex-1 border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                           />
                           <button
@@ -1070,9 +1077,11 @@ export default function SalariesPage() {
                               try {
                                 await api.post(
                                   `/api/v1/teacher-salaries/${sobiqSalary.salaryId}/set-amount/`,
-                                  { amount: manualAmount }
+                                  { amount: parseAmt(manualAmount) }
                                 );
-                                setSobiqBreakdown(prev => prev ? { ...prev, calculated_amount: Number(manualAmount) } : prev);
+                                toast.success('Saqlandi');
+                                setSobiqSalary(null);
+                                setSobiqBreakdown(null);
                                 await loadSalaries();
                               } finally {
                                 setSavingManual(false);

@@ -478,30 +478,6 @@ export default function SettingsPage() {
             ) : (
               <form onSubmit={handleSettingsSave} className="space-y-5">
                 <div>
-                  <label className={labelCls}>{t('billingType')}</label>
-                  <select
-                    value={settings.billing_type}
-                    onChange={(e) => setSettings((s) => ({ ...s, billing_type: e.target.value }))}
-                    className={inputCls}
-                  >
-                    <option value="monthly">{t('billingMonthly')}</option>
-                    <option value="per_lesson">{t('billingPerLesson')}</option>
-                    <option value="upfront">{t('billingUpfront')}</option>
-                  </select>
-                </div>
-                <div>
-                  <label className={labelCls}>{t('absentPolicy')}</label>
-                  <select
-                    value={settings.absent_policy}
-                    onChange={(e) => setSettings((s) => ({ ...s, absent_policy: e.target.value }))}
-                    className={inputCls}
-                  >
-                    <option value="ignore">{t('absentIgnore')}</option>
-                    <option value="deduct">{t('absentDeduct')}</option>
-                    <option value="penalty">{t('absentPenalty')}</option>
-                  </select>
-                </div>
-                <div>
                   <label className={labelCls}>{t('contractPolicy')}</label>
                   <select
                     value={settings.teacher_contract_break_policy}

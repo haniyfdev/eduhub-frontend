@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import { useTranslations } from 'next-intl';
-import { X, Building2, Users, Phone, MapPin } from 'lucide-react';
+import { X, Users, Phone, MapPin } from 'lucide-react';
 import api from '@/lib/axios';
 import { cn } from '@/lib/utils';
 import { Skeleton } from '@/components/ui/skeleton';

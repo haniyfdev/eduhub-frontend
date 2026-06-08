@@ -962,6 +962,9 @@
     "saving": "Saving...",
     "formErrors": "Form has errors.",
     "genericError": "An error occurred.",
-    "selectParentError": "Select a parent company."
+    "selectParentError": "Select a parent company.",
+    "phoneLength": "Phone number must be exactly 9 digits",
+    "phoneDigitsOnly": "Digits only",
+    "phoneDuplicate": "This phone number already exists"
   }
 }

@@ -202,6 +202,12 @@ export default function SuperadminCompaniesPage() {
 
   const closeModal = useCallback(() => setSelected(null), []);
 
+  /* ── phone input helper: digits only, max 9 chars ── */
+  function handlePhoneInput(field: 'phone' | 'bossPhone', raw: string) {
+    const digits = raw.replace(/\D/g, '').slice(0, 9);
+    set(field, digits);
+  }
+
   /* ── create modal helpers ── */
   function resetCreate() {
     setForm(EMPTY_FORM);
@@ -224,20 +230,28 @@ export default function SuperadminCompaniesPage() {
     e.preventDefault();
     setCreateErrors({});
 
+    /* client-side validation */
+    const clientErrors: Record<string, string> = {};
     if (form.isBranch && !form.parentId) {
-      setCreateErrors({ parent: t('selectParentError' as Parameters<typeof t>[0]) });
+      clientErrors.parent = t('selectParentError' as Parameters<typeof t>[0]);
+    }
+    const phoneLen = t('phoneLength' as Parameters<typeof t>[0]);
+    if (form.phone.length < 9) clientErrors.phone = phoneLen;
+    if (form.bossPhone.length < 9) clientErrors.boss_phone = phoneLen;
+    if (Object.keys(clientErrors).length > 0) {
+      setCreateErrors(clientErrors);
       return;
     }
 
     const fd = new FormData();
     fd.append('name', form.name);
-    fd.append('phone', form.phone);
+    fd.append('phone', '+998' + form.phone);
     fd.append('address', form.address);
     if (logoFile) fd.append('logo', logoFile);
     if (form.isBranch && form.parentId) fd.append('parent', form.parentId);
     fd.append('boss_first_name', form.bossFirstName);
     fd.append('boss_last_name', form.bossLastName);
-    fd.append('boss_phone', form.bossPhone);
+    fd.append('boss_phone', '+998' + form.bossPhone);
     fd.append('boss_password', form.bossPassword);
 
     setCreating(true);
@@ -441,14 +455,24 @@ export default function SuperadminCompaniesPage() {
             <div>
               <label className={labelCls}>{t('phone')} <span className="text-red-500">*</span></label>
               <div className="flex">
-                <span className="inline-flex items-center px-3 border border-r-0 border-gray-300 rounded-l-lg bg-gray-50 text-gray-600 text-sm">
+                <span className={cn(
+                  'inline-flex items-center px-3 border border-r-0 rounded-l-lg bg-gray-50 text-gray-600 text-sm',
+                  createErrors.phone ? 'border-red-400' : 'border-gray-300',
+                )}>
                   +998
                 </span>
                 <input
-                  className="flex-1 px-3 py-2 border border-gray-300 rounded-r-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className={cn(
+                    'flex-1 px-3 py-2 border rounded-r-lg text-sm focus:outline-none focus:ring-2',
+                    createErrors.phone
+                      ? 'border-red-400 focus:ring-red-400'
+                      : 'border-gray-300 focus:ring-blue-500',
+                  )}
                   value={form.phone}
-                  onChange={e => set('phone', e.target.value)}
-                  placeholder="90 123 45 67"
+                  onChange={e => handlePhoneInput('phone', e.target.value)}
+                  placeholder="901234567"
+                  inputMode="numeric"
+                  maxLength={9}
                   required
                 />
               </div>
@@ -560,14 +584,24 @@ export default function SuperadminCompaniesPage() {
                 {t('bossPhone' as Parameters<typeof t>[0])} <span className="text-red-500">*</span>
               </label>
               <div className="flex">
-                <span className="inline-flex items-center px-3 border border-r-0 border-gray-300 rounded-l-lg bg-gray-50 text-gray-600 text-sm">
+                <span className={cn(
+                  'inline-flex items-center px-3 border border-r-0 rounded-l-lg bg-gray-50 text-gray-600 text-sm',
+                  createErrors.boss_phone ? 'border-red-400' : 'border-gray-300',
+                )}>
                   +998
                 </span>
                 <input
-                  className="flex-1 px-3 py-2 border border-gray-300 rounded-r-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className={cn(
+                    'flex-1 px-3 py-2 border rounded-r-lg text-sm focus:outline-none focus:ring-2',
+                    createErrors.boss_phone
+                      ? 'border-red-400 focus:ring-red-400'
+                      : 'border-gray-300 focus:ring-blue-500',
+                  )}
                   value={form.bossPhone}
-                  onChange={e => set('bossPhone', e.target.value)}
-                  placeholder="90 123 45 67"
+                  onChange={e => handlePhoneInput('bossPhone', e.target.value)}
+                  placeholder="901234567"
+                  inputMode="numeric"
+                  maxLength={9}
                   required
                 />
               </div>

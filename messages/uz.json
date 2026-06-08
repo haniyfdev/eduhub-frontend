@@ -982,6 +982,9 @@
     "saving": "Saqlanmoqda...",
     "formErrors": "Formda xatoliklar mavjud.",
     "genericError": "Xatolik yuz berdi.",
-    "selectParentError": "Asosiy markazni tanlang."
+    "selectParentError": "Asosiy markazni tanlang.",
+    "phoneLength": "Telefon raqam 9 ta raqamdan iborat bo'lishi kerak",
+    "phoneDigitsOnly": "Faqat raqam kiriting",
+    "phoneDuplicate": "Bu telefon raqam allaqachon mavjud"
   }
 }

@@ -906,6 +906,7 @@
     "period": "Период",
     "branch": "Филиал",
     "company": "Компания",
+    "amount": "Сумма",
     "status": {
       "pending": "Ожидает",
       "partial": "Частично",

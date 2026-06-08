@@ -926,6 +926,7 @@
     "period": "Davr",
     "branch": "Filial",
     "company": "Kompaniya",
+    "amount": "Summa",
     "status": {
       "pending": "Kutilmoqda",
       "partial": "Qisman",

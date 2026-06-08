@@ -906,6 +906,7 @@
     "period": "Period",
     "branch": "Branch",
     "company": "Company",
+    "amount": "Amount",
     "status": {
       "pending": "Pending",
       "partial": "Partial",

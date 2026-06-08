@@ -2,10 +2,11 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import { useTranslations } from 'next-intl';
-import { X, Users, Phone, MapPin } from 'lucide-react';
+import { X, Users, Phone, MapPin, Plus, Eye, EyeOff } from 'lucide-react';
 import api from '@/lib/axios';
 import { cn } from '@/lib/utils';
 import { Skeleton } from '@/components/ui/skeleton';
+import toast from 'react-hot-toast';
 
 interface CompanyCard {
   id: string;
@@ -34,6 +35,25 @@ interface CompanyDetail extends CompanyCard {
 }
 
 type CompanyWithBadge = CompanyCard & { badge: string };
+
+interface CreateForm {
+  name: string;
+  phone: string;
+  address: string;
+  isBranch: boolean;
+  parentId: string;
+  bossFirstName: string;
+  bossLastName: string;
+  bossPhone: string;
+  bossPassword: string;
+}
+
+const EMPTY_FORM: CreateForm = {
+  name: '', phone: '', address: '',
+  isBranch: false, parentId: '',
+  bossFirstName: '', bossLastName: '',
+  bossPhone: '', bossPassword: '',
+};
 
 const STATUS_COLORS: Record<string, string> = {
   pending: 'bg-yellow-100 text-yellow-800 border-yellow-200',
@@ -72,7 +92,6 @@ function getCount(detail: CompanyDetail, key: ConversionKey): number {
   return map[key];
 }
 
-// Sort: parents first, then branches grouped under each parent
 function buildHierarchicalList(companies: CompanyCard[]): CompanyWithBadge[] {
   const parents = companies
     .filter(c => !c.branch_of)
@@ -93,11 +112,7 @@ function buildHierarchicalList(companies: CompanyCard[]): CompanyWithBadge[] {
 }
 
 function CompanyInitials({ name, className }: { name: string; className?: string }) {
-  const initials = name
-    .split(' ')
-    .slice(0, 2)
-    .map((w) => w[0]?.toUpperCase() ?? '')
-    .join('');
+  const initials = name.split(' ').slice(0, 2).map(w => w[0]?.toUpperCase() ?? '').join('');
   return (
     <div className={cn('w-full h-full flex items-center justify-center bg-gradient-to-br from-blue-500 to-blue-700 text-white font-bold select-none', className)}>
       {initials}
@@ -105,14 +120,33 @@ function CompanyInitials({ name, className }: { name: string; className?: string
   );
 }
 
+const inputCls = 'w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent';
+const labelCls = 'block text-sm font-medium text-gray-700 mb-1.5';
+const errorCls = 'text-red-500 text-xs mt-1';
+
 export default function SuperadminCompaniesPage() {
   const t = useTranslations('superadmin');
+
+  /* ── detail state ── */
   const [companies, setCompanies] = useState<CompanyCard[]>([]);
   const [loading, setLoading] = useState(true);
   const [selected, setSelected] = useState<CompanyWithBadge | null>(null);
   const [detail, setDetail] = useState<CompanyDetail | null>(null);
   const [detailLoading, setDetailLoading] = useState(false);
 
+  /* ── create modal state ── */
+  const [showCreate, setShowCreate] = useState(false);
+  const [form, setForm] = useState<CreateForm>(EMPTY_FORM);
+  const [logoFile, setLogoFile] = useState<File | null>(null);
+  const [logoPreview, setLogoPreview] = useState<string | null>(null);
+  const [showPassword, setShowPassword] = useState(false);
+  const [creating, setCreating] = useState(false);
+  const [createErrors, setCreateErrors] = useState<Record<string, string>>({});
+
+  const set = useCallback(<K extends keyof CreateForm>(k: K, v: CreateForm[K]) =>
+    setForm(p => ({ ...p, [k]: v })), []);
+
+  /* ── fetch ── */
   const fetchCompanies = useCallback(async () => {
     setLoading(true);
     try {
@@ -127,12 +161,24 @@ export default function SuperadminCompaniesPage() {
 
   useEffect(() => { fetchCompanies(); }, [fetchCompanies]);
 
+  /* ── keyboard ── */
   useEffect(() => {
-    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setSelected(null); };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== 'Escape') return;
+      if (showCreate) { resetCreate(); return; }
+      setSelected(null);
+    };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, []);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [showCreate]);
 
+  /* ── logo preview cleanup ── */
+  useEffect(() => {
+    return () => { if (logoPreview) URL.revokeObjectURL(logoPreview); };
+  }, [logoPreview]);
+
+  /* ── detail modal open ── */
   const openDetail = useCallback(async (company: CompanyWithBadge) => {
     setSelected(company);
     setDetail(null);
@@ -149,20 +195,88 @@ export default function SuperadminCompaniesPage() {
 
   const closeModal = useCallback(() => setSelected(null), []);
 
+  /* ── create modal helpers ── */
+  function resetCreate() {
+    setForm(EMPTY_FORM);
+    setLogoFile(null);
+    setLogoPreview(null);
+    setShowPassword(false);
+    setCreateErrors({});
+    setShowCreate(false);
+  }
+
+  function handleLogoChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setLogoFile(file);
+    if (logoPreview) URL.revokeObjectURL(logoPreview);
+    setLogoPreview(URL.createObjectURL(file));
+  }
+
+  async function handleCreate(e: React.FormEvent) {
+    e.preventDefault();
+    setCreateErrors({});
+
+    if (form.isBranch && !form.parentId) {
+      setCreateErrors({ parent: "Asosiy markazni tanlang." });
+      return;
+    }
+
+    const fd = new FormData();
+    fd.append('name', form.name);
+    fd.append('phone', form.phone);
+    fd.append('address', form.address);
+    if (logoFile) fd.append('logo', logoFile);
+    if (form.isBranch && form.parentId) fd.append('parent', form.parentId);
+    fd.append('boss_first_name', form.bossFirstName);
+    fd.append('boss_last_name', form.bossLastName);
+    fd.append('boss_phone', form.bossPhone);
+    fd.append('boss_password', form.bossPassword);
+
+    setCreating(true);
+    try {
+      await api.post('/api/superadmin/companies/', fd);
+      toast.success(t('companyCreated' as Parameters<typeof t>[0]));
+      resetCreate();
+      fetchCompanies();
+    } catch (err: unknown) {
+      const data = (err as { response?: { data?: Record<string, string> } })?.response?.data;
+      if (data && typeof data === 'object' && !Array.isArray(data)) {
+        setCreateErrors(data as Record<string, string>);
+        toast.error("Formda xatoliklar mavjud.");
+      } else {
+        toast.error("Xatolik yuz berdi.");
+      }
+    } finally {
+      setCreating(false);
+    }
+  }
+
+  const parentCompanies = companies.filter(c => !c.is_branch);
   const hierarchical = buildHierarchicalList(companies);
 
+  /* ════════════════════════════════ JSX ════════════════════════════════ */
   return (
     <div className="space-y-6">
+      {/* Header */}
       <div className="flex items-center justify-between">
         <h1 className="text-xl font-bold text-gray-900">{t('companies')}</h1>
-        <span className="text-sm text-gray-500">{companies.length} ta kompaniya</span>
+        <div className="flex items-center gap-3">
+          <span className="text-sm text-gray-500">{companies.length} ta kompaniya</span>
+          <button
+            onClick={() => setShowCreate(true)}
+            className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white text-sm font-semibold rounded-lg hover:bg-blue-700 transition-colors shadow-sm"
+          >
+            <Plus className="w-4 h-4" />
+            {t('addCompany' as Parameters<typeof t>[0])}
+          </button>
+        </div>
       </div>
 
+      {/* Company grid */}
       {loading ? (
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
-          {Array(8).fill(0).map((_, i) => (
-            <Skeleton key={i} className="h-40 rounded-xl" />
-          ))}
+          {Array(8).fill(0).map((_, i) => <Skeleton key={i} className="h-40 rounded-xl" />)}
         </div>
       ) : companies.length === 0 ? (
         <div className="text-center py-20 text-gray-400">Kompaniyalar yo&apos;q</div>
@@ -174,29 +288,22 @@ export default function SuperadminCompaniesPage() {
               onClick={() => openDetail(company)}
               className="group relative aspect-square rounded-xl overflow-hidden border border-gray-200 hover:border-blue-300 hover:shadow-md transition-all duration-200 hover:scale-[1.02] text-left"
             >
-              {/* Background */}
               <div className="absolute inset-0 opacity-20 group-hover:opacity-30 transition-opacity">
-                {company.logo ? (
-                  <img src={company.logo} alt="" className="w-full h-full object-cover" />
-                ) : (
-                  <CompanyInitials name={company.name} />
-                )}
+                {company.logo
+                  ? <img src={company.logo} alt="" className="w-full h-full object-cover" />
+                  : <CompanyInitials name={company.name} />}
               </div>
               <div className="absolute inset-0 bg-white/70 group-hover:bg-white/60 transition-colors" />
 
-              {/* Hierarchical badge */}
               <div className="absolute top-2 left-2 min-w-8 h-8 px-1.5 rounded-full bg-blue-600 text-white text-sm font-bold flex items-center justify-center shadow-sm z-10 leading-none">
                 {company.badge}
               </div>
 
-              {/* Content */}
               <div className="relative h-full flex flex-col items-center justify-center p-3 gap-2">
                 <div className="w-14 h-14 rounded-xl overflow-hidden shadow-sm border border-white/50 flex-shrink-0">
-                  {company.logo ? (
-                    <img src={company.logo} alt={company.name} className="w-full h-full object-cover" />
-                  ) : (
-                    <CompanyInitials name={company.name} className="text-2xl" />
-                  )}
+                  {company.logo
+                    ? <img src={company.logo} alt={company.name} className="w-full h-full object-cover" />
+                    : <CompanyInitials name={company.name} className="text-2xl" />}
                 </div>
                 <p className="font-semibold text-gray-900 text-sm text-center leading-tight line-clamp-2">
                   {company.name}
@@ -219,41 +326,26 @@ export default function SuperadminCompaniesPage() {
         </div>
       )}
 
-      {/* Detail modal */}
+      {/* ══════════════ Detail modal ══════════════ */}
       {selected && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50"
-          onClick={closeModal}
-        >
-          <div
-            className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden"
-            onClick={(e) => e.stopPropagation()}
-          >
-            {/* Seamless gradient header — no border artifact */}
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50" onClick={closeModal}>
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden" onClick={e => e.stopPropagation()}>
             <div className="relative h-28 bg-gradient-to-br from-blue-500 to-blue-700 rounded-t-2xl">
               {selected.logo ? (
                 <div className="absolute inset-0 flex items-center justify-center p-4">
-                  <img
-                    src={selected.logo}
-                    alt={selected.name}
-                    className="max-h-16 max-w-full object-contain"
-                  />
+                  <img src={selected.logo} alt={selected.name} className="max-h-16 max-w-full object-contain" />
                 </div>
               ) : (
                 <div className="absolute inset-0 flex items-center justify-center text-white font-bold text-5xl select-none opacity-25 tracking-tight">
                   {selected.name.split(' ').slice(0, 2).map(w => w[0]?.toUpperCase() ?? '').join('')}
                 </div>
               )}
-              <button
-                onClick={closeModal}
-                className="absolute top-3 right-3 w-8 h-8 rounded-full bg-black/25 hover:bg-black/45 flex items-center justify-center text-white transition-colors"
-              >
+              <button onClick={closeModal} className="absolute top-3 right-3 w-8 h-8 rounded-full bg-black/25 hover:bg-black/45 flex items-center justify-center text-white transition-colors">
                 <X className="w-4 h-4" />
               </button>
             </div>
 
             <div className="p-6 space-y-4 max-h-[70vh] overflow-y-auto">
-              {/* Name + branch */}
               <div>
                 <h2 className="text-lg font-bold text-gray-900">{selected.name}</h2>
                 {selected.is_branch && selected.branch_of_name && (
@@ -261,7 +353,6 @@ export default function SuperadminCompaniesPage() {
                 )}
               </div>
 
-              {/* Contact info */}
               <div className="space-y-2.5">
                 {selected.phone && (
                   <div className="flex items-center gap-2 text-sm text-gray-700">
@@ -284,26 +375,22 @@ export default function SuperadminCompaniesPage() {
                 </div>
               </div>
 
-              {/* Subscription status */}
               {selected.subscription_status && (
                 <div className="flex items-center justify-between pt-2 border-t border-gray-100">
                   <span className="text-sm text-gray-500">{t('subscriptionStatus')}</span>
-                  <span className={cn(
-                    'inline-flex items-center gap-1.5 px-3 py-1 text-sm font-medium rounded-full border',
-                    STATUS_COLORS[selected.subscription_status] ?? 'bg-gray-100 text-gray-600 border-gray-200',
-                  )}>
+                  <span className={cn('inline-flex items-center gap-1.5 px-3 py-1 text-sm font-medium rounded-full border',
+                    STATUS_COLORS[selected.subscription_status] ?? 'bg-gray-100 text-gray-600 border-gray-200')}>
                     <span className={cn('w-2 h-2 rounded-full', STATUS_DOT[selected.subscription_status] ?? 'bg-gray-400')} />
                     {t(`status.${selected.subscription_status}` as Parameters<typeof t>[0])}
                   </span>
                 </div>
               )}
 
-              {/* Branches */}
               {selected.branches.length > 0 && (
                 <div className="pt-2 border-t border-gray-100">
                   <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2">Filiallar</p>
                   <div className="flex flex-wrap gap-1">
-                    {selected.branches.map((b) => (
+                    {selected.branches.map(b => (
                       <span key={b.id} className="px-2 py-0.5 bg-blue-50 text-blue-700 text-xs rounded-full border border-blue-100">
                         {b.name}
                       </span>
@@ -312,36 +399,29 @@ export default function SuperadminCompaniesPage() {
                 </div>
               )}
 
-              {/* Student conversion */}
               <div className="pt-2 border-t border-gray-100">
                 <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">
                   {t('conversion.title' as Parameters<typeof t>[0])}
                 </p>
-
                 {detailLoading ? (
                   <div className="space-y-2">
                     {Array(6).fill(0).map((_, i) => <Skeleton key={i} className="h-5 w-full rounded" />)}
                   </div>
                 ) : detail ? (() => {
-                  const grandTotal = Math.max(
-                    1,
+                  const grandTotal = Math.max(1,
                     detail.active_students + detail.trial_students + detail.frozen_students +
                     detail.archived_students + detail.pending_students + detail.rejected_students,
                   );
                   return (
                     <div className="space-y-2">
-                      {/* Jami row */}
                       <div className="flex items-center gap-2">
-                        <span className="w-28 text-xs text-gray-600 truncate">
-                          {t('conversion.total' as Parameters<typeof t>[0])}
-                        </span>
+                        <span className="w-28 text-xs text-gray-600 truncate">{t('conversion.total' as Parameters<typeof t>[0])}</span>
                         <div className="flex-1 h-2 bg-gray-100 rounded-full overflow-hidden">
                           <div className="h-full rounded-full bg-blue-600 w-full" />
                         </div>
                         <span className="w-6 text-right text-xs font-medium text-gray-700">{grandTotal}</span>
                         <span className="w-9 text-right text-xs text-gray-400">100%</span>
                       </div>
-
                       {CONVERSION_ROWS.map(({ key, color }) => {
                         const count = getCount(detail, key);
                         const pct = Math.round((count / grandTotal) * 100);
@@ -351,10 +431,7 @@ export default function SuperadminCompaniesPage() {
                               {t(`conversion.${key}` as Parameters<typeof t>[0])}
                             </span>
                             <div className="flex-1 h-2 bg-gray-100 rounded-full overflow-hidden">
-                              <div
-                                className={cn('h-full rounded-full transition-all', color)}
-                                style={{ width: `${pct}%` }}
-                              />
+                              <div className={cn('h-full rounded-full transition-all', color)} style={{ width: `${pct}%` }} />
                             </div>
                             <span className="w-6 text-right text-xs font-medium text-gray-700">{count}</span>
                             <span className="w-9 text-right text-xs text-gray-400">{pct}%</span>
@@ -366,6 +443,236 @@ export default function SuperadminCompaniesPage() {
                 })() : null}
               </div>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* ══════════════ Create company modal ══════════════ */}
+      {showCreate && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50" onClick={resetCreate}>
+          <div
+            className="bg-white rounded-2xl shadow-xl w-full max-w-lg overflow-hidden flex flex-col max-h-[92vh]"
+            onClick={e => e.stopPropagation()}
+          >
+            {/* Modal header */}
+            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
+              <h2 className="text-base font-bold text-gray-900">
+                {t('addCompany' as Parameters<typeof t>[0])}
+              </h2>
+              <button onClick={resetCreate} className="text-gray-400 hover:text-gray-600 transition-colors">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Scrollable form body */}
+            <form onSubmit={handleCreate} className="overflow-y-auto flex-1">
+              <div className="px-6 py-5 space-y-5">
+
+                {/* ── Section 1: Company ── */}
+                <div className="pb-1">
+                  <p className="text-xs font-semibold text-blue-700 uppercase tracking-wide bg-blue-50 px-3 py-1.5 rounded-md">
+                    {t('companyInfo' as Parameters<typeof t>[0])}
+                  </p>
+                </div>
+
+                <div>
+                  <label className={labelCls}>Nomi <span className="text-red-500">*</span></label>
+                  <input
+                    className={inputCls}
+                    value={form.name}
+                    onChange={e => set('name', e.target.value)}
+                    placeholder="O'quv markaz nomi"
+                    required
+                  />
+                  {createErrors.name && <p className={errorCls}>{createErrors.name}</p>}
+                </div>
+
+                <div>
+                  <label className={labelCls}>Telefon <span className="text-red-500">*</span></label>
+                  <div className="flex">
+                    <span className="inline-flex items-center px-3 border border-r-0 border-gray-300 rounded-l-lg bg-gray-50 text-gray-600 text-sm">
+                      +998
+                    </span>
+                    <input
+                      className="flex-1 px-3 py-2 border border-gray-300 rounded-r-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      value={form.phone}
+                      onChange={e => set('phone', e.target.value)}
+                      placeholder="90 123 45 67"
+                      required
+                    />
+                  </div>
+                  {createErrors.phone && <p className={errorCls}>{createErrors.phone}</p>}
+                </div>
+
+                <div>
+                  <label className={labelCls}>Manzil <span className="text-red-500">*</span></label>
+                  <input
+                    className={inputCls}
+                    value={form.address}
+                    onChange={e => set('address', e.target.value)}
+                    placeholder="Shahar, ko'cha, uy"
+                    required
+                  />
+                  {createErrors.address && <p className={errorCls}>{createErrors.address}</p>}
+                </div>
+
+                {/* Logo upload */}
+                <div>
+                  <label className={labelCls}>Logo</label>
+                  <label className="flex items-center gap-4 cursor-pointer">
+                    <div className="w-16 h-16 rounded-xl border-2 border-dashed border-gray-300 hover:border-blue-400 transition-colors overflow-hidden flex-shrink-0 flex items-center justify-center bg-gray-50">
+                      {logoPreview
+                        ? <img src={logoPreview} alt="preview" className="w-full h-full object-cover" />
+                        : <span className="text-gray-400 text-[10px] text-center leading-tight px-1">Logo yuklash</span>
+                      }
+                    </div>
+                    <div className="text-sm text-gray-500">
+                      <span className="text-blue-600 hover:underline">Rasm tanlang</span> (ixtiyoriy)
+                      <p className="text-xs text-gray-400 mt-0.5">PNG, JPG, WEBP</p>
+                    </div>
+                    <input type="file" accept="image/*" className="sr-only" onChange={handleLogoChange} />
+                  </label>
+                </div>
+
+                {/* Branch toggle */}
+                <div className="flex items-center gap-3">
+                  <input
+                    id="is-branch"
+                    type="checkbox"
+                    className="w-4 h-4 rounded border-gray-300 text-blue-600 cursor-pointer"
+                    checked={form.isBranch}
+                    onChange={e => { set('isBranch', e.target.checked); if (!e.target.checked) set('parentId', ''); }}
+                  />
+                  <label htmlFor="is-branch" className="text-sm font-medium text-gray-700 cursor-pointer">
+                    {t('isBranch' as Parameters<typeof t>[0])}
+                  </label>
+                </div>
+
+                {form.isBranch && (
+                  <div>
+                    <label className={labelCls}>
+                      {t('parentCompany' as Parameters<typeof t>[0])} <span className="text-red-500">*</span>
+                    </label>
+                    <select
+                      className={inputCls}
+                      value={form.parentId}
+                      onChange={e => set('parentId', e.target.value)}
+                      required={form.isBranch}
+                    >
+                      <option value="">— Tanlang —</option>
+                      {parentCompanies.map(c => (
+                        <option key={c.id} value={c.id}>{c.name}</option>
+                      ))}
+                    </select>
+                    {createErrors.parent && <p className={errorCls}>{createErrors.parent}</p>}
+                  </div>
+                )}
+
+                {/* ── Section 2: Boss ── */}
+                <div className="pt-2 pb-1">
+                  <p className="text-xs font-semibold text-blue-700 uppercase tracking-wide bg-blue-50 px-3 py-1.5 rounded-md">
+                    {t('bossInfo' as Parameters<typeof t>[0])}
+                  </p>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className={labelCls}>
+                      {t('bossFirstName' as Parameters<typeof t>[0])} <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      className={inputCls}
+                      value={form.bossFirstName}
+                      onChange={e => set('bossFirstName', e.target.value)}
+                      placeholder="Ism"
+                      required
+                    />
+                    {createErrors.boss_first_name && <p className={errorCls}>{createErrors.boss_first_name}</p>}
+                  </div>
+                  <div>
+                    <label className={labelCls}>
+                      {t('bossLastName' as Parameters<typeof t>[0])} <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      className={inputCls}
+                      value={form.bossLastName}
+                      onChange={e => set('bossLastName', e.target.value)}
+                      placeholder="Familiya"
+                      required
+                    />
+                    {createErrors.boss_last_name && <p className={errorCls}>{createErrors.boss_last_name}</p>}
+                  </div>
+                </div>
+
+                <div>
+                  <label className={labelCls}>
+                    {t('bossPhone' as Parameters<typeof t>[0])} <span className="text-red-500">*</span>
+                  </label>
+                  <div className="flex">
+                    <span className="inline-flex items-center px-3 border border-r-0 border-gray-300 rounded-l-lg bg-gray-50 text-gray-600 text-sm">
+                      +998
+                    </span>
+                    <input
+                      className="flex-1 px-3 py-2 border border-gray-300 rounded-r-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      value={form.bossPhone}
+                      onChange={e => set('bossPhone', e.target.value)}
+                      placeholder="90 123 45 67"
+                      required
+                    />
+                  </div>
+                  {createErrors.boss_phone && <p className={errorCls}>{createErrors.boss_phone}</p>}
+                </div>
+
+                <div>
+                  <label className={labelCls}>
+                    {t('bossPassword' as Parameters<typeof t>[0])} <span className="text-red-500">*</span>
+                  </label>
+                  <div className="relative">
+                    <input
+                      type={showPassword ? 'text' : 'password'}
+                      className={cn(inputCls, 'pr-10')}
+                      value={form.bossPassword}
+                      onChange={e => set('bossPassword', e.target.value)}
+                      placeholder="Kamida 8 ta belgi"
+                      required
+                      minLength={4}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(p => !p)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                    >
+                      {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    </button>
+                  </div>
+                  {createErrors.boss_password && <p className={errorCls}>{createErrors.boss_password}</p>}
+                </div>
+
+                {/* Generic error */}
+                {createErrors.detail && (
+                  <p className="text-sm text-red-600 bg-red-50 px-3 py-2 rounded-lg">{createErrors.detail}</p>
+                )}
+
+              </div>
+
+              {/* Footer */}
+              <div className="px-6 py-4 border-t border-gray-100 flex gap-3 bg-gray-50">
+                <button
+                  type="button"
+                  onClick={resetCreate}
+                  className="flex-1 py-2.5 border border-gray-300 text-gray-700 text-sm font-medium rounded-lg hover:bg-gray-100 transition-colors"
+                >
+                  Bekor qilish
+                </button>
+                <button
+                  type="submit"
+                  disabled={creating}
+                  className="flex-1 py-2.5 bg-blue-600 text-white text-sm font-semibold rounded-lg hover:bg-blue-700 disabled:opacity-60 transition-colors"
+                >
+                  {creating ? 'Saqlanmoqda...' : 'Saqlash'}
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

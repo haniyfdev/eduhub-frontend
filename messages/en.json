@@ -933,6 +933,16 @@
       "partial": "Partial",
       "paid": "Paid",
       "overdue": "Overdue"
-    }
+    },
+    "addCompany": "+ Add Company",
+    "companyInfo": "Company Information",
+    "bossInfo": "Boss Information",
+    "isBranch": "Is this a branch?",
+    "parentCompany": "Parent company",
+    "bossFirstName": "First name",
+    "bossLastName": "Last name",
+    "bossPhone": "Phone",
+    "bossPassword": "Password",
+    "companyCreated": "Company created successfully"
   }
 }

@@ -933,6 +933,16 @@
       "partial": "Частично",
       "paid": "Оплачено",
       "overdue": "Просрочено"
-    }
+    },
+    "addCompany": "+ Добавить компанию",
+    "companyInfo": "Информация о компании",
+    "bossInfo": "Информация о боссе",
+    "isBranch": "Это филиал?",
+    "parentCompany": "Головная компания",
+    "bossFirstName": "Имя",
+    "bossLastName": "Фамилия",
+    "bossPhone": "Телефон",
+    "bossPassword": "Пароль",
+    "companyCreated": "Компания успешно создана"
   }
 }

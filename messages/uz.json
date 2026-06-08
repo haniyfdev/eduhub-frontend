@@ -953,6 +953,16 @@
       "partial": "Qisman",
       "paid": "To'langan",
       "overdue": "Muddati o'tgan"
-    }
+    },
+    "addCompany": "+ Kompaniya qo'shish",
+    "companyInfo": "Kompaniya ma'lumotlari",
+    "bossInfo": "Boss ma'lumotlari",
+    "isBranch": "Filialmi?",
+    "parentCompany": "Asosiy markaz",
+    "bossFirstName": "Ismi",
+    "bossLastName": "Familiyasi",
+    "bossPhone": "Telefon",
+    "bossPassword": "Parol",
+    "companyCreated": "Kompaniya muvaffaqiyatli yaratildi"
   }
 }

@@ -12,12 +12,13 @@ interface SubscriptionDebt {
   id: number;
   company_id: string;
   company_name: string;
+  created_at: string;
   amount: number;
   paid_amount: number;
+  remaining: number;
   period_start: string;
   period_end: string;
   status: 'pending' | 'partial' | 'paid' | 'overdue';
-  created_at: string;
 }
 
 interface Plan {
@@ -25,19 +26,14 @@ interface Plan {
   price: number | null;
 }
 
-const ROW_BG: Record<string, string> = {
-  pending: 'bg-yellow-50 hover:bg-yellow-100',
-  partial: 'bg-orange-50 hover:bg-orange-100',
-  paid:    'bg-green-50  hover:bg-green-100',
-  overdue: 'bg-red-50    hover:bg-red-100',
-};
-
 const BADGE: Record<string, string> = {
   pending: 'bg-yellow-100 text-yellow-800 border-yellow-200',
   partial: 'bg-orange-100 text-orange-800 border-orange-200',
   paid:    'bg-green-100  text-green-800  border-green-200',
   overdue: 'bg-red-100    text-red-800    border-red-200',
 };
+
+const thCls = 'text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide bg-gray-50 whitespace-nowrap';
 
 export default function SuperadminDebtsPage() {
   const t = useTranslations('superadmin');
@@ -50,6 +46,7 @@ export default function SuperadminDebtsPage() {
 
   const [payTarget, setPayTarget] = useState<SubscriptionDebt | null>(null);
   const [payAmount, setPayAmount] = useState('');
+  const [payMethod, setPayMethod] = useState<'cash' | 'card' | 'transfer'>('cash');
   const [paying, setPaying] = useState(false);
 
   const fetchDebts = useCallback(async () => {
@@ -95,6 +92,12 @@ export default function SuperadminDebtsPage() {
     }
   }
 
+  function openPayModal(debt: SubscriptionDebt) {
+    setPayTarget(debt);
+    setPayAmount(String(debt.remaining));
+    setPayMethod('cash');
+  }
+
   async function handlePay(e: React.FormEvent) {
     e.preventDefault();
     if (!payTarget) return;
@@ -102,19 +105,38 @@ export default function SuperadminDebtsPage() {
     if (isNaN(amount) || amount <= 0) { toast.error("Noto'g'ri summa"); return; }
     setPaying(true);
     try {
-      await api.post(`/api/superadmin/debts/${payTarget.id}/pay/`, { amount });
+      await api.post(`/api/superadmin/debts/${payTarget.id}/pay/`, {
+        amount,
+        payment_method: payMethod,
+      });
       toast.success("To'lov qabul qilindi");
       setPayTarget(null);
-      setPayAmount('');
       fetchDebts();
-    } catch (err: any) {
-      toast.error(err?.response?.data?.error || "Xatolik");
+    } catch (err: unknown) {
+      const msg = (err as { response?: { data?: { error?: string } } })?.response?.data?.error;
+      toast.error(msg || "Xatolik");
     } finally {
       setPaying(false);
     }
   }
 
-  const thCls = 'text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide bg-gray-50';
+  const COLS = [
+    '№',
+    t('company'),
+    t('debtRecordedAt' as Parameters<typeof t>[0]),
+    t('total' as Parameters<typeof t>[0]),
+    t('paid' as Parameters<typeof t>[0]),
+    t('remaining' as Parameters<typeof t>[0]),
+    'Holat',
+    t('dueDate' as Parameters<typeof t>[0]),
+    '',
+  ];
+
+  const METHODS: { value: 'cash' | 'card' | 'transfer'; labelKey: string }[] = [
+    { value: 'cash',     labelKey: 'cash'     },
+    { value: 'card',     labelKey: 'card'     },
+    { value: 'transfer', labelKey: 'transfer' },
+  ];
 
   return (
     <div className="space-y-5">
@@ -133,7 +155,10 @@ export default function SuperadminDebtsPage() {
                 onChange={(e) => setPlanInput(e.target.value)}
                 className="w-32 px-2 py-1 border border-blue-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
                 autoFocus
-                onKeyDown={(e) => { if (e.key === 'Enter') savePlan(); if (e.key === 'Escape') setEditingPlan(false); }}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') savePlan();
+                  if (e.key === 'Escape') setEditingPlan(false);
+                }}
               />
               <button onClick={savePlan} disabled={savingPlan}
                 className="p-1 text-green-600 hover:text-green-700 disabled:opacity-50">
@@ -159,47 +184,53 @@ export default function SuperadminDebtsPage() {
       </div>
 
       {/* Debts table */}
-      <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+      <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-x-auto">
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-gray-200">
-              {['№', t('company'), t('period'), t('amount'), 'Holat', ''].map((h, i) => (
-                <th key={i} className={thCls}>{h}</th>
-              ))}
+              {COLS.map((h, i) => <th key={i} className={thCls}>{h}</th>)}
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100">
             {loading
               ? Array(6).fill(0).map((_, i) => (
-                <tr key={i}><td colSpan={6} className="px-4 py-3">
+                <tr key={i}><td colSpan={COLS.length} className="px-4 py-3">
                   <Skeleton className="h-4 w-full" />
                 </td></tr>
               ))
               : debts.length === 0
-                ? <tr><td colSpan={6} className="px-4 py-16 text-center text-gray-400">Qarzlar yo&apos;q</td></tr>
+                ? <tr><td colSpan={COLS.length} className="px-4 py-16 text-center text-gray-400">Qarzlar yo&apos;q</td></tr>
                 : debts.map((debt, idx) => (
-                  <tr key={debt.id} className={cn('transition-colors', ROW_BG[debt.status] ?? 'hover:bg-gray-50')}>
+                  <tr key={debt.id} className="hover:bg-gray-50 transition-colors">
                     <td className="px-4 py-3 text-gray-400 text-xs">{idx + 1}</td>
                     <td className="px-4 py-3 font-medium text-gray-900 whitespace-nowrap">{debt.company_name}</td>
-                    <td className="px-4 py-3 text-gray-600 whitespace-nowrap text-xs">
-                      {formatDMY(debt.period_start)} → {formatDMY(debt.period_end)}
-                    </td>
-                    <td className="px-4 py-3 whitespace-nowrap">
-                      <div className="text-gray-900 font-medium">{formatCurrency(debt.amount)}</div>
-                      {debt.paid_amount > 0 && debt.status !== 'paid' && (
-                        <div className="text-xs text-green-600">+{formatCurrency(debt.paid_amount)} to&apos;langan</div>
-                      )}
+                    <td className="px-4 py-3 text-gray-500 whitespace-nowrap text-xs">{formatDMY(debt.created_at)}</td>
+                    <td className="px-4 py-3 font-medium text-gray-900 whitespace-nowrap">{formatCurrency(debt.amount)}</td>
+                    <td className="px-4 py-3 text-green-700 whitespace-nowrap">{formatCurrency(debt.paid_amount)}</td>
+                    <td className={cn(
+                      'px-4 py-3 font-semibold whitespace-nowrap',
+                      debt.remaining > 0 ? 'text-red-600' : 'text-gray-400',
+                    )}>
+                      {formatCurrency(debt.remaining)}
                     </td>
                     <td className="px-4 py-3">
-                      <span className={cn('inline-flex items-center px-2 py-0.5 text-xs font-medium border rounded-full',
-                        BADGE[debt.status] ?? 'bg-gray-100 text-gray-600 border-gray-200')}>
+                      <span className={cn(
+                        'inline-flex items-center px-2 py-0.5 text-xs font-medium border rounded-full',
+                        BADGE[debt.status] ?? 'bg-gray-100 text-gray-600 border-gray-200',
+                      )}>
                         {t(`status.${debt.status}` as Parameters<typeof t>[0])}
                       </span>
+                    </td>
+                    <td className={cn(
+                      'px-4 py-3 whitespace-nowrap text-xs font-medium',
+                      debt.status === 'overdue' ? 'text-red-600' : 'text-gray-600',
+                    )}>
+                      {formatDMY(debt.period_end)}
                     </td>
                     <td className="px-4 py-3">
                       {debt.status !== 'paid' && (
                         <button
-                          onClick={() => { setPayTarget(debt); setPayAmount(String(debt.amount - debt.paid_amount)); }}
+                          onClick={() => openPayModal(debt)}
                           className="px-3 py-1.5 bg-blue-600 text-white text-xs font-medium rounded hover:bg-blue-700 transition-colors whitespace-nowrap"
                         >
                           {t('payNow')}
@@ -214,8 +245,10 @@ export default function SuperadminDebtsPage() {
 
       {/* Payment modal */}
       {payTarget && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
-          <div className="bg-white rounded-xl shadow-xl w-full max-w-sm p-6">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm"
+          onClick={() => setPayTarget(null)}>
+          <div className="bg-white rounded-xl shadow-xl w-full max-w-sm p-6"
+            onClick={(e) => e.stopPropagation()}>
             <div className="flex items-start justify-between mb-4">
               <div>
                 <h2 className="font-bold text-gray-900">{t('payNow')}</h2>
@@ -228,28 +261,26 @@ export default function SuperadminDebtsPage() {
 
             <div className="mb-4 text-sm text-gray-600 space-y-1">
               <div className="flex justify-between">
-                <span>Davr:</span>
-                <span className="font-medium">{formatDMY(payTarget.period_start)} → {formatDMY(payTarget.period_end)}</span>
-              </div>
-              <div className="flex justify-between">
-                <span>Jami qarz:</span>
+                <span>{t('total' as Parameters<typeof t>[0])}:</span>
                 <span className="font-medium">{formatCurrency(payTarget.amount)}</span>
               </div>
               {payTarget.paid_amount > 0 && (
                 <div className="flex justify-between text-green-600">
-                  <span>To&apos;langan:</span>
+                  <span>{t('paid' as Parameters<typeof t>[0])}:</span>
                   <span className="font-medium">{formatCurrency(payTarget.paid_amount)}</span>
                 </div>
               )}
-              <div className="flex justify-between text-gray-900 font-semibold border-t border-gray-100 pt-1">
-                <span>Qolgan:</span>
-                <span>{formatCurrency(payTarget.amount - payTarget.paid_amount)}</span>
+              <div className="flex justify-between text-red-600 font-semibold border-t border-gray-100 pt-1">
+                <span>{t('remaining' as Parameters<typeof t>[0])}:</span>
+                <span>{formatCurrency(payTarget.remaining)}</span>
               </div>
             </div>
 
-            <form onSubmit={handlePay} className="space-y-4">
+            <form onSubmit={handlePay} className="space-y-3">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1.5">Summa (so&apos;m)</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                  {t('amount')} (so&apos;m)
+                </label>
                 <input
                   type="number"
                   value={payAmount}
@@ -260,7 +291,31 @@ export default function SuperadminDebtsPage() {
                   autoFocus
                 />
               </div>
-              <div className="flex gap-3">
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                  {t('paymentMethod' as Parameters<typeof t>[0])}
+                </label>
+                <div className="flex gap-2">
+                  {METHODS.map(({ value, labelKey }) => (
+                    <button
+                      key={value}
+                      type="button"
+                      onClick={() => setPayMethod(value)}
+                      className={cn(
+                        'flex-1 py-2 text-sm font-medium rounded-lg border transition-colors',
+                        payMethod === value
+                          ? 'bg-blue-600 text-white border-blue-600'
+                          : 'bg-white text-gray-700 border-gray-300 hover:border-blue-300',
+                      )}
+                    >
+                      {t(labelKey as Parameters<typeof t>[0])}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="flex gap-3 pt-1">
                 <button type="button" onClick={() => setPayTarget(null)}
                   className="flex-1 py-2 border border-gray-300 text-gray-700 text-sm font-medium rounded-lg hover:bg-gray-50 transition-colors">
                   Bekor

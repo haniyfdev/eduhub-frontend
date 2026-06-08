@@ -913,5 +913,24 @@
     "confirmPassword": "Yangi parolni tasdiqlang",
     "passwordMismatch": "Parollar mos kelmaydi",
     "passwordChanged": "Parol muvaffaqiyatli o'zgartirildi"
+  },
+  "superadmin": {
+    "companies": "Kompaniyalar",
+    "debts": "Qarzdorlar",
+    "payments": "To'lovlar",
+    "plan": "Obuna narxi",
+    "editPlan": "Narxni tahrirlash",
+    "activeStudents": "faol o'quvchi",
+    "subscriptionStatus": "Obuna holati",
+    "payNow": "To'lov qilish",
+    "period": "Davr",
+    "branch": "Filial",
+    "company": "Kompaniya",
+    "status": {
+      "pending": "Kutilmoqda",
+      "partial": "Qisman",
+      "paid": "To'langan",
+      "overdue": "Muddati o'tgan"
+    }
   }
 }

@@ -893,5 +893,24 @@
     "confirmPassword": "Confirm new password",
     "passwordMismatch": "Passwords do not match",
     "passwordChanged": "Password changed successfully"
+  },
+  "superadmin": {
+    "companies": "Companies",
+    "debts": "Debtors",
+    "payments": "Payments",
+    "plan": "Subscription price",
+    "editPlan": "Edit price",
+    "activeStudents": "active students",
+    "subscriptionStatus": "Subscription status",
+    "payNow": "Pay now",
+    "period": "Period",
+    "branch": "Branch",
+    "company": "Company",
+    "status": {
+      "pending": "Pending",
+      "partial": "Partial",
+      "paid": "Paid",
+      "overdue": "Overdue"
+    }
   }
 }

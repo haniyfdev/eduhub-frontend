@@ -7,6 +7,7 @@ import {
   LayoutDashboard, Users, Users2, GraduationCap, BookOpen,
   CreditCard, AlertCircle, BarChart3, Settings, Building2, Archive,
   Lightbulb, CalendarCheck, DoorOpen, Banknote, Send, Tag,
+  BadgeDollarSign,
 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { cn } from '@/lib/utils';
@@ -49,6 +50,12 @@ const sections = [
   },
 ];
 
+const superadminItems = [
+  { key: 'companies', icon: Building2, href: '/superadmin/companies', label: 'Kompaniyalar' },
+  { key: 'debts',     icon: AlertCircle, href: '/superadmin/debts',   label: 'Qarzdorlar' },
+  { key: 'payments',  icon: BadgeDollarSign, href: '/superadmin/payments', label: "To'lovlar" },
+];
+
 export default function Sidebar() {
   const t = useTranslations('navigation');
   const locale = useLocale();
@@ -59,7 +66,7 @@ export default function Sidebar() {
   useEffect(() => {
     const u = getUser();
     setUser(u);
-    if (!u) return;
+    if (!u || u.role === 'superadmin') return;
 
     const activeId = localStorage.getItem('active_company_id') || u.company_id;
     if (!activeId) return;
@@ -71,7 +78,6 @@ export default function Sidebar() {
           if (name) setCompanyName(name);
         })
         .catch(() => {
-          // fallback: show cached name if not a UUID
           try {
             const cached = localStorage.getItem('company_name') ?? '';
             const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-/.test(cached);
@@ -85,6 +91,60 @@ export default function Sidebar() {
     const segment = pathname.split('/').slice(2).join('/');
     return segment === href.replace('/', '') || pathname.endsWith(href);
   };
+
+  if (user?.role === 'superadmin') {
+    return (
+      <aside className="fixed left-0 top-0 h-full w-60 bg-white border-r border-gray-200 flex flex-col z-30 shadow-[2px_0_8px_rgba(0,0,0,0.04)]">
+        <div className="flex items-center px-5 py-5 gap-3 border-b border-gray-100 flex-shrink-0">
+          <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center flex-shrink-0">
+            <GraduationCap className="w-5 h-5 text-white" />
+          </div>
+          <div className="min-w-0">
+            <p className="text-sm font-bold text-gray-900 leading-tight">EduHub</p>
+            <p className="text-xs text-blue-600 font-medium truncate max-w-[120px] leading-tight">SuperAdmin</p>
+          </div>
+        </div>
+
+        <nav className="flex-1 px-2 py-3 overflow-y-auto">
+          <div>
+            <p className="px-3 mb-1.5 pt-1 text-[10px] font-semibold text-gray-400 uppercase tracking-widest">
+              Boshqaruv
+            </p>
+            <div className="space-y-0.5">
+              {superadminItems.map(({ key, icon: Icon, href, label }) => {
+                const active = isActive(href);
+                return (
+                  <Link
+                    key={key}
+                    href={`/${locale}${href}`}
+                    className={cn(
+                      'flex items-center gap-3 mx-2 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors',
+                      active ? 'bg-blue-600 text-white shadow-sm' : 'text-gray-600 hover:bg-blue-50 hover:text-blue-600'
+                    )}
+                  >
+                    <Icon className={cn('flex-shrink-0', active ? 'text-white' : '')} style={{ width: 18, height: 18 }} />
+                    {label}
+                  </Link>
+                );
+              })}
+            </div>
+          </div>
+        </nav>
+
+        <div className="px-2 pb-3 pt-2 border-t border-gray-100">
+          <a
+            href="https://t.me/haniyfdev"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-3 mx-2 px-3 py-2 rounded-lg text-sm text-gray-500 hover:text-blue-600 hover:bg-blue-50 transition-colors"
+          >
+            <Send className="flex-shrink-0" style={{ width: 18, height: 18 }} />
+            Support
+          </a>
+        </div>
+      </aside>
+    );
+  }
 
   return (
     <>
@@ -110,7 +170,6 @@ export default function Sidebar() {
           {sections.map((section, si) => {
             const visibleItems = section.items.filter((item) => {
               if (!user) return false;
-              if (user.role === 'superadmin') return true;
 
               if (user.role === 'teacher') {
                 return item.key === 'groups';
@@ -156,23 +215,6 @@ export default function Sidebar() {
               </div>
             );
           })}
-
-          {/* Companies — superadmin only */}
-          {user?.role === 'superadmin' && (
-            <div>
-              <p className="px-3 mb-1.5 pt-1 text-[10px] font-semibold text-gray-400 uppercase tracking-widest border-t border-gray-100">Superadmin</p>
-              <Link
-                href={`/${locale}/companies`}
-                className={cn(
-                  'flex items-center gap-3 mx-2 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors',
-                  isActive('/companies') ? 'bg-blue-600 text-white shadow-sm' : 'text-gray-600 hover:bg-blue-50 hover:text-blue-600'
-                )}
-              >
-                <Building2 className={cn('flex-shrink-0', isActive('/companies') ? 'text-white' : '')} style={{ width: 18, height: 18 }} />
-                {t('companies')}
-              </Link>
-            </div>
-          )}
         </nav>
 
         {/* Support link */}

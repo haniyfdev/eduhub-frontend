@@ -893,5 +893,24 @@
     "confirmPassword": "Подтвердите новый пароль",
     "passwordMismatch": "Пароли не совпадают",
     "passwordChanged": "Пароль успешно изменён"
+  },
+  "superadmin": {
+    "companies": "Компании",
+    "debts": "Должники",
+    "payments": "Платежи",
+    "plan": "Цена подписки",
+    "editPlan": "Изменить цену",
+    "activeStudents": "активных учеников",
+    "subscriptionStatus": "Статус подписки",
+    "payNow": "Оплатить",
+    "period": "Период",
+    "branch": "Филиал",
+    "company": "Компания",
+    "status": {
+      "pending": "Ожидает",
+      "partial": "Частично",
+      "paid": "Оплачено",
+      "overdue": "Просрочено"
+    }
   }
 }

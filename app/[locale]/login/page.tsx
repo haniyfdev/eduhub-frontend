@@ -45,7 +45,10 @@ export default function LoginPage() {
       if (!('requires_company_selection' in data)) {
         setUser(data.user);
         setAuthenticated(true);
-        router.push(`/${locale}/dashboard`);
+        const home = data.user.role === 'superadmin'
+          ? `/${locale}/superadmin/companies`
+          : `/${locale}/dashboard`;
+        router.push(home);
       }
     } catch (err: unknown) {
       const e = err as { response?: { data?: Record<string, unknown> } };
@@ -69,7 +72,10 @@ export default function LoginPage() {
       const data = await selectCompany(company.id, tempToken);
       setUser(data.user);
       setAuthenticated(true);
-      router.push(`/${locale}/dashboard`);
+      const home = data.user.role === 'superadmin'
+        ? `/${locale}/superadmin/companies`
+        : `/${locale}/dashboard`;
+      router.push(home);
     } catch (err: unknown) {
       const e = err as { response?: { data?: Record<string, unknown> } };
       const d = e?.response?.data;

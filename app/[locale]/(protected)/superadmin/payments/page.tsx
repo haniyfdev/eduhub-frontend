@@ -62,7 +62,7 @@ export default function SuperadminPaymentsPage() {
     t('phone' as Parameters<typeof t>[0]),
     t('amount'),
     t('paymentMethod' as Parameters<typeof t>[0]),
-    t('payments'),
+    t('paymentDate' as Parameters<typeof t>[0]),
   ];
 
   return (

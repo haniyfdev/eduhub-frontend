@@ -917,6 +917,7 @@
     "cash": "Cash",
     "card": "Card",
     "transfer": "Transfer",
+    "paymentDate": "Payment date",
     "conversion": {
       "title": "Student conversion",
       "total": "Total",

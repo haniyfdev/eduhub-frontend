@@ -937,6 +937,7 @@
     "cash": "Naqd",
     "card": "Karta",
     "transfer": "O'tkazma",
+    "paymentDate": "To'lov vaqti",
     "conversion": {
       "title": "O'quvchi konversiyasi",
       "total": "Jami",

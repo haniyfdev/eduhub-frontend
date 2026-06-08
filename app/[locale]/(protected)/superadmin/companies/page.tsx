@@ -99,7 +99,7 @@ function CompanyInitials({ name, className }: { name: string; className?: string
     .map((w) => w[0]?.toUpperCase() ?? '')
     .join('');
   return (
-    <div className={cn('w-full h-full flex items-center justify-center bg-gradient-to-br from-blue-400 to-blue-600 text-white font-bold select-none', className)}>
+    <div className={cn('w-full h-full flex items-center justify-center bg-gradient-to-br from-blue-500 to-blue-700 text-white font-bold select-none', className)}>
       {initials}
     </div>
   );
@@ -185,7 +185,7 @@ export default function SuperadminCompaniesPage() {
               <div className="absolute inset-0 bg-white/70 group-hover:bg-white/60 transition-colors" />
 
               {/* Hierarchical badge */}
-              <div className="absolute top-2 left-2 min-w-[20px] h-5 px-1.5 rounded-full bg-blue-600 text-white text-[10px] font-bold flex items-center justify-center shadow-sm z-10 leading-none">
+              <div className="absolute top-2 left-2 min-w-8 h-8 px-1.5 rounded-full bg-blue-600 text-white text-sm font-bold flex items-center justify-center shadow-sm z-10 leading-none">
                 {company.badge}
               </div>
 
@@ -222,7 +222,7 @@ export default function SuperadminCompaniesPage() {
       {/* Detail modal */}
       {selected && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm"
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50"
           onClick={closeModal}
         >
           <div
@@ -230,7 +230,7 @@ export default function SuperadminCompaniesPage() {
             onClick={(e) => e.stopPropagation()}
           >
             {/* Seamless gradient header — no border artifact */}
-            <div className="relative h-28 bg-gradient-to-br from-blue-400 to-blue-600 rounded-t-2xl">
+            <div className="relative h-28 bg-gradient-to-br from-blue-500 to-blue-700 rounded-t-2xl">
               {selected.logo ? (
                 <div className="absolute inset-0 flex items-center justify-center p-4">
                   <img

@@ -607,7 +607,7 @@ export default function GroupDetailPage() {
       {/* ══ TAB: Darslar ══ */}
       {tab === 'lessons' && (
         <div className="space-y-3">
-          {canEdit && (
+          {(canEdit || isTeacher) && (
             <div className="flex justify-end">
               <button
                 onClick={() => setShowAddLesson(true)}

@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
+import ReactDOM from 'react-dom';
 import { useTranslations } from 'next-intl';
 import { X, Users, Phone, MapPin, Plus, Eye, EyeOff } from 'lucide-react';
 import api from '@/lib/axios';
@@ -124,8 +125,14 @@ const inputCls = 'w-full px-3 py-2 border border-gray-300 rounded-lg text-sm foc
 const labelCls = 'block text-sm font-medium text-gray-700 mb-1.5';
 const errorCls = 'text-red-500 text-xs mt-1';
 
+const BACKDROP = 'fixed top-0 left-0 w-screen h-screen z-50 bg-black/50 flex items-center justify-center';
+
 export default function SuperadminCompaniesPage() {
   const t = useTranslations('superadmin');
+
+  /* ── portal mount guard (SSR-safe) ── */
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
 
   /* ── detail state ── */
   const [companies, setCompanies] = useState<CompanyCard[]>([]);
@@ -255,6 +262,372 @@ export default function SuperadminCompaniesPage() {
   const parentCompanies = companies.filter(c => !c.is_branch);
   const hierarchical = buildHierarchicalList(companies);
 
+  /* ════════════════════════════════ MODALS ════════════════════════════════ */
+
+  const detailModal = selected ? (
+    <div className={BACKDROP} onClick={closeModal}>
+      <div
+        className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl mx-4 max-h-[90vh] overflow-hidden flex flex-col"
+        onClick={e => e.stopPropagation()}
+      >
+        {/* Colored header — min-h-40 */}
+        <div className="relative min-h-40 bg-gradient-to-br from-blue-500 to-blue-700 rounded-t-2xl flex-shrink-0">
+          {selected.logo ? (
+            <div className="absolute inset-0 flex items-center justify-center p-6">
+              <img src={selected.logo} alt={selected.name} className="max-h-24 max-w-full object-contain" />
+            </div>
+          ) : (
+            <div className="absolute inset-0 flex items-center justify-center text-white font-bold text-7xl select-none opacity-20 tracking-tight">
+              {selected.name.split(' ').slice(0, 2).map(w => w[0]?.toUpperCase() ?? '').join('')}
+            </div>
+          )}
+          <button
+            onClick={closeModal}
+            className="absolute top-4 right-4 w-9 h-9 rounded-full bg-black/25 hover:bg-black/45 flex items-center justify-center text-white transition-colors"
+          >
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+
+        {/* Scrollable body */}
+        <div className="p-8 space-y-5 overflow-y-auto flex-1">
+          {/* Name + branch */}
+          <div>
+            <h2 className="text-2xl font-bold text-gray-900">{selected.name}</h2>
+            {selected.is_branch && selected.branch_of_name && (
+              <p className="text-base text-gray-500 mt-0.5">{t('branch')}: {selected.branch_of_name}</p>
+            )}
+          </div>
+
+          {/* Contact info */}
+          <div className="space-y-3">
+            {selected.phone && (
+              <div className="flex items-center gap-3 text-base text-gray-700">
+                <Phone className="w-5 h-5 text-gray-400 flex-shrink-0" />
+                <span className="whitespace-nowrap">{selected.phone}</span>
+              </div>
+            )}
+            {selected.address && (
+              <div className="flex items-start gap-3 text-base text-gray-700">
+                <MapPin className="w-5 h-5 text-gray-400 flex-shrink-0 mt-0.5" />
+                <span>{selected.address}</span>
+              </div>
+            )}
+            <div className="flex items-center gap-3 text-base text-gray-700">
+              <Users className="w-5 h-5 text-gray-400 flex-shrink-0" />
+              <span>
+                <span className="font-semibold text-gray-900">{selected.active_student_count}</span>
+                {' '}{t('activeStudents')}
+              </span>
+            </div>
+          </div>
+
+          {/* Subscription status */}
+          {selected.subscription_status && (
+            <div className="flex items-center justify-between pt-3 border-t border-gray-100">
+              <span className="text-base text-gray-500">{t('subscriptionStatus')}</span>
+              <span className={cn(
+                'inline-flex items-center gap-2 px-3 py-1 text-base font-medium rounded-full border',
+                STATUS_COLORS[selected.subscription_status] ?? 'bg-gray-100 text-gray-600 border-gray-200',
+              )}>
+                <span className={cn('w-2 h-2 rounded-full', STATUS_DOT[selected.subscription_status] ?? 'bg-gray-400')} />
+                {t(`status.${selected.subscription_status}` as Parameters<typeof t>[0])}
+              </span>
+            </div>
+          )}
+
+          {/* Branches */}
+          {selected.branches.length > 0 && (
+            <div className="pt-3 border-t border-gray-100">
+              <p className="text-sm font-semibold text-gray-400 uppercase tracking-widest mb-3">Filiallar</p>
+              <div className="flex flex-wrap gap-1.5">
+                {selected.branches.map(b => (
+                  <span key={b.id} className="px-3 py-1 bg-blue-50 text-blue-700 text-sm rounded-full border border-blue-100">
+                    {b.name}
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Conversion funnel */}
+          <div className="pt-3 border-t border-gray-100">
+            <p className="text-sm font-semibold text-gray-400 uppercase tracking-widest mb-4">
+              {t('conversion.title' as Parameters<typeof t>[0])}
+            </p>
+            {detailLoading ? (
+              <div className="space-y-3">
+                {Array(6).fill(0).map((_, i) => <Skeleton key={i} className="h-6 w-full rounded" />)}
+              </div>
+            ) : detail ? (() => {
+              const grandTotal = Math.max(1,
+                detail.active_students + detail.trial_students + detail.frozen_students +
+                detail.archived_students + detail.pending_students + detail.rejected_students,
+              );
+              return (
+                <div className="space-y-3">
+                  <div className="flex items-center gap-3">
+                    <span className="w-36 text-sm text-gray-600 truncate">{t('conversion.total' as Parameters<typeof t>[0])}</span>
+                    <div className="flex-1 h-2.5 bg-gray-100 rounded-full overflow-hidden">
+                      <div className="h-full rounded-full bg-blue-600 w-full" />
+                    </div>
+                    <span className="w-7 text-right text-sm font-medium text-gray-700">{grandTotal}</span>
+                    <span className="w-10 text-right text-sm text-gray-400">100%</span>
+                  </div>
+                  {CONVERSION_ROWS.map(({ key, color }) => {
+                    const count = getCount(detail, key);
+                    const pct = Math.round((count / grandTotal) * 100);
+                    return (
+                      <div key={key} className="flex items-center gap-3">
+                        <span className="w-36 text-sm text-gray-600 truncate">
+                          {t(`conversion.${key}` as Parameters<typeof t>[0])}
+                        </span>
+                        <div className="flex-1 h-2.5 bg-gray-100 rounded-full overflow-hidden">
+                          <div className={cn('h-full rounded-full transition-all', color)} style={{ width: `${pct}%` }} />
+                        </div>
+                        <span className="w-7 text-right text-sm font-medium text-gray-700">{count}</span>
+                        <span className="w-10 text-right text-sm text-gray-400">{pct}%</span>
+                      </div>
+                    );
+                  })}
+                </div>
+              );
+            })() : null}
+          </div>
+        </div>
+      </div>
+    </div>
+  ) : null;
+
+  const createModal = showCreate ? (
+    <div className={BACKDROP} onClick={resetCreate}>
+      <div
+        className="bg-white rounded-2xl shadow-xl w-full max-w-lg mx-4 overflow-hidden flex flex-col max-h-[92vh]"
+        onClick={e => e.stopPropagation()}
+      >
+        {/* Modal header */}
+        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
+          <h2 className="text-base font-bold text-gray-900">
+            {t('addCompany' as Parameters<typeof t>[0])}
+          </h2>
+          <button onClick={resetCreate} className="text-gray-400 hover:text-gray-600 transition-colors">
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+
+        {/* Scrollable form body */}
+        <form onSubmit={handleCreate} className="overflow-y-auto flex-1">
+          <div className="px-6 py-5 space-y-5">
+
+            {/* ── Section 1: Company ── */}
+            <div className="pb-1">
+              <p className="text-xs font-semibold text-blue-700 uppercase tracking-wide bg-blue-50 px-3 py-1.5 rounded-md">
+                {t('companyInfo' as Parameters<typeof t>[0])}
+              </p>
+            </div>
+
+            <div>
+              <label className={labelCls}>{t('companyName' as Parameters<typeof t>[0])} <span className="text-red-500">*</span></label>
+              <input
+                className={inputCls}
+                value={form.name}
+                onChange={e => set('name', e.target.value)}
+                placeholder={t('namePlaceholder' as Parameters<typeof t>[0])}
+                required
+              />
+              {createErrors.name && <p className={errorCls}>{createErrors.name}</p>}
+            </div>
+
+            <div>
+              <label className={labelCls}>{t('phone')} <span className="text-red-500">*</span></label>
+              <div className="flex">
+                <span className="inline-flex items-center px-3 border border-r-0 border-gray-300 rounded-l-lg bg-gray-50 text-gray-600 text-sm">
+                  +998
+                </span>
+                <input
+                  className="flex-1 px-3 py-2 border border-gray-300 rounded-r-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  value={form.phone}
+                  onChange={e => set('phone', e.target.value)}
+                  placeholder="90 123 45 67"
+                  required
+                />
+              </div>
+              {createErrors.phone && <p className={errorCls}>{createErrors.phone}</p>}
+            </div>
+
+            <div>
+              <label className={labelCls}>{t('address' as Parameters<typeof t>[0])} <span className="text-red-500">*</span></label>
+              <input
+                className={inputCls}
+                value={form.address}
+                onChange={e => set('address', e.target.value)}
+                placeholder={t('addressPlaceholder' as Parameters<typeof t>[0])}
+                required
+              />
+              {createErrors.address && <p className={errorCls}>{createErrors.address}</p>}
+            </div>
+
+            {/* Logo upload */}
+            <div>
+              <label className={labelCls}>{t('logo' as Parameters<typeof t>[0])}</label>
+              <label className="flex items-center gap-4 cursor-pointer">
+                <div className="w-16 h-16 rounded-xl border-2 border-dashed border-gray-300 hover:border-blue-400 transition-colors overflow-hidden flex-shrink-0 flex items-center justify-center bg-gray-50">
+                  {logoPreview
+                    ? <img src={logoPreview} alt="preview" className="w-full h-full object-cover" />
+                    : <span className="text-gray-400 text-[10px] text-center leading-tight px-1">{t('logoUpload' as Parameters<typeof t>[0])}</span>
+                  }
+                </div>
+                <div className="text-sm text-gray-500">
+                  <span className="text-blue-600 hover:underline">{t('chooseImage' as Parameters<typeof t>[0])}</span> ({t('optional' as Parameters<typeof t>[0])})
+                  <p className="text-xs text-gray-400 mt-0.5">{t('imageFormats' as Parameters<typeof t>[0])}</p>
+                </div>
+                <input type="file" accept="image/*" className="sr-only" onChange={handleLogoChange} />
+              </label>
+            </div>
+
+            {/* Branch toggle */}
+            <div className="flex items-center gap-3">
+              <input
+                id="is-branch"
+                type="checkbox"
+                className="w-4 h-4 rounded border-gray-300 text-blue-600 cursor-pointer"
+                checked={form.isBranch}
+                onChange={e => { set('isBranch', e.target.checked); if (!e.target.checked) set('parentId', ''); }}
+              />
+              <label htmlFor="is-branch" className="text-sm font-medium text-gray-700 cursor-pointer">
+                {t('isBranch' as Parameters<typeof t>[0])}
+              </label>
+            </div>
+
+            {form.isBranch && (
+              <div>
+                <label className={labelCls}>
+                  {t('parentCompany' as Parameters<typeof t>[0])} <span className="text-red-500">*</span>
+                </label>
+                <select
+                  className={inputCls}
+                  value={form.parentId}
+                  onChange={e => set('parentId', e.target.value)}
+                  required={form.isBranch}
+                >
+                  <option value="">{t('selectPlaceholder' as Parameters<typeof t>[0])}</option>
+                  {parentCompanies.map(c => (
+                    <option key={c.id} value={c.id}>{c.name}</option>
+                  ))}
+                </select>
+                {createErrors.parent && <p className={errorCls}>{createErrors.parent}</p>}
+              </div>
+            )}
+
+            {/* ── Section 2: Boss ── */}
+            <div className="pt-2 pb-1">
+              <p className="text-xs font-semibold text-blue-700 uppercase tracking-wide bg-blue-50 px-3 py-1.5 rounded-md">
+                {t('bossInfo' as Parameters<typeof t>[0])}
+              </p>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className={labelCls}>
+                  {t('bossFirstName' as Parameters<typeof t>[0])} <span className="text-red-500">*</span>
+                </label>
+                <input
+                  className={inputCls}
+                  value={form.bossFirstName}
+                  onChange={e => set('bossFirstName', e.target.value)}
+                  placeholder={t('firstNamePlaceholder' as Parameters<typeof t>[0])}
+                  required
+                />
+                {createErrors.boss_first_name && <p className={errorCls}>{createErrors.boss_first_name}</p>}
+              </div>
+              <div>
+                <label className={labelCls}>
+                  {t('bossLastName' as Parameters<typeof t>[0])} <span className="text-red-500">*</span>
+                </label>
+                <input
+                  className={inputCls}
+                  value={form.bossLastName}
+                  onChange={e => set('bossLastName', e.target.value)}
+                  placeholder={t('lastNamePlaceholder' as Parameters<typeof t>[0])}
+                  required
+                />
+                {createErrors.boss_last_name && <p className={errorCls}>{createErrors.boss_last_name}</p>}
+              </div>
+            </div>
+
+            <div>
+              <label className={labelCls}>
+                {t('bossPhone' as Parameters<typeof t>[0])} <span className="text-red-500">*</span>
+              </label>
+              <div className="flex">
+                <span className="inline-flex items-center px-3 border border-r-0 border-gray-300 rounded-l-lg bg-gray-50 text-gray-600 text-sm">
+                  +998
+                </span>
+                <input
+                  className="flex-1 px-3 py-2 border border-gray-300 rounded-r-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  value={form.bossPhone}
+                  onChange={e => set('bossPhone', e.target.value)}
+                  placeholder="90 123 45 67"
+                  required
+                />
+              </div>
+              {createErrors.boss_phone && <p className={errorCls}>{createErrors.boss_phone}</p>}
+            </div>
+
+            <div>
+              <label className={labelCls}>
+                {t('bossPassword' as Parameters<typeof t>[0])} <span className="text-red-500">*</span>
+              </label>
+              <div className="relative">
+                <input
+                  type={showPassword ? 'text' : 'password'}
+                  className={cn(inputCls, 'pr-10')}
+                  value={form.bossPassword}
+                  onChange={e => set('bossPassword', e.target.value)}
+                  placeholder={t('passwordPlaceholder' as Parameters<typeof t>[0])}
+                  required
+                  minLength={4}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(p => !p)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                >
+                  {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
+              </div>
+              {createErrors.boss_password && <p className={errorCls}>{createErrors.boss_password}</p>}
+            </div>
+
+            {/* Generic error */}
+            {createErrors.detail && (
+              <p className="text-sm text-red-600 bg-red-50 px-3 py-2 rounded-lg">{createErrors.detail}</p>
+            )}
+
+          </div>
+
+          {/* Footer */}
+          <div className="px-6 py-4 border-t border-gray-100 flex gap-3 bg-gray-50">
+            <button
+              type="button"
+              onClick={resetCreate}
+              className="flex-1 py-2.5 border border-gray-300 text-gray-700 text-sm font-medium rounded-lg hover:bg-gray-100 transition-colors"
+            >
+              {t('cancel' as Parameters<typeof t>[0])}
+            </button>
+            <button
+              type="submit"
+              disabled={creating}
+              className="flex-1 py-2.5 bg-blue-600 text-white text-sm font-semibold rounded-lg hover:bg-blue-700 disabled:opacity-60 transition-colors"
+            >
+              {creating ? t('saving' as Parameters<typeof t>[0]) : t('save' as Parameters<typeof t>[0])}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  ) : null;
+
   /* ════════════════════════════════ JSX ════════════════════════════════ */
   return (
     <div className="space-y-6">
@@ -326,356 +699,9 @@ export default function SuperadminCompaniesPage() {
         </div>
       )}
 
-      {/* ══════════════ Detail modal ══════════════ */}
-      {selected && (
-        <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center" onClick={closeModal}>
-          <div className="bg-white rounded-2xl shadow-xl w-full max-w-md mx-4 overflow-hidden" onClick={e => e.stopPropagation()}>
-            <div className="relative h-28 bg-gradient-to-br from-blue-500 to-blue-700 rounded-t-2xl">
-              {selected.logo ? (
-                <div className="absolute inset-0 flex items-center justify-center p-4">
-                  <img src={selected.logo} alt={selected.name} className="max-h-16 max-w-full object-contain" />
-                </div>
-              ) : (
-                <div className="absolute inset-0 flex items-center justify-center text-white font-bold text-5xl select-none opacity-25 tracking-tight">
-                  {selected.name.split(' ').slice(0, 2).map(w => w[0]?.toUpperCase() ?? '').join('')}
-                </div>
-              )}
-              <button onClick={closeModal} className="absolute top-3 right-3 w-8 h-8 rounded-full bg-black/25 hover:bg-black/45 flex items-center justify-center text-white transition-colors">
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-
-            <div className="p-6 space-y-4 max-h-[70vh] overflow-y-auto">
-              <div>
-                <h2 className="text-lg font-bold text-gray-900">{selected.name}</h2>
-                {selected.is_branch && selected.branch_of_name && (
-                  <p className="text-sm text-gray-500">{t('branch')}: {selected.branch_of_name}</p>
-                )}
-              </div>
-
-              <div className="space-y-2.5">
-                {selected.phone && (
-                  <div className="flex items-center gap-2 text-sm text-gray-700">
-                    <Phone className="w-4 h-4 text-gray-400 flex-shrink-0" />
-                    <span className="whitespace-nowrap">{selected.phone}</span>
-                  </div>
-                )}
-                {selected.address && (
-                  <div className="flex items-start gap-2 text-sm text-gray-700">
-                    <MapPin className="w-4 h-4 text-gray-400 flex-shrink-0 mt-0.5" />
-                    <span>{selected.address}</span>
-                  </div>
-                )}
-                <div className="flex items-center gap-2 text-sm text-gray-700">
-                  <Users className="w-4 h-4 text-gray-400 flex-shrink-0" />
-                  <span>
-                    <span className="font-semibold text-gray-900">{selected.active_student_count}</span>
-                    {' '}{t('activeStudents')}
-                  </span>
-                </div>
-              </div>
-
-              {selected.subscription_status && (
-                <div className="flex items-center justify-between pt-2 border-t border-gray-100">
-                  <span className="text-sm text-gray-500">{t('subscriptionStatus')}</span>
-                  <span className={cn('inline-flex items-center gap-1.5 px-3 py-1 text-sm font-medium rounded-full border',
-                    STATUS_COLORS[selected.subscription_status] ?? 'bg-gray-100 text-gray-600 border-gray-200')}>
-                    <span className={cn('w-2 h-2 rounded-full', STATUS_DOT[selected.subscription_status] ?? 'bg-gray-400')} />
-                    {t(`status.${selected.subscription_status}` as Parameters<typeof t>[0])}
-                  </span>
-                </div>
-              )}
-
-              {selected.branches.length > 0 && (
-                <div className="pt-2 border-t border-gray-100">
-                  <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2">Filiallar</p>
-                  <div className="flex flex-wrap gap-1">
-                    {selected.branches.map(b => (
-                      <span key={b.id} className="px-2 py-0.5 bg-blue-50 text-blue-700 text-xs rounded-full border border-blue-100">
-                        {b.name}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              <div className="pt-2 border-t border-gray-100">
-                <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">
-                  {t('conversion.title' as Parameters<typeof t>[0])}
-                </p>
-                {detailLoading ? (
-                  <div className="space-y-2">
-                    {Array(6).fill(0).map((_, i) => <Skeleton key={i} className="h-5 w-full rounded" />)}
-                  </div>
-                ) : detail ? (() => {
-                  const grandTotal = Math.max(1,
-                    detail.active_students + detail.trial_students + detail.frozen_students +
-                    detail.archived_students + detail.pending_students + detail.rejected_students,
-                  );
-                  return (
-                    <div className="space-y-2">
-                      <div className="flex items-center gap-2">
-                        <span className="w-28 text-xs text-gray-600 truncate">{t('conversion.total' as Parameters<typeof t>[0])}</span>
-                        <div className="flex-1 h-2 bg-gray-100 rounded-full overflow-hidden">
-                          <div className="h-full rounded-full bg-blue-600 w-full" />
-                        </div>
-                        <span className="w-6 text-right text-xs font-medium text-gray-700">{grandTotal}</span>
-                        <span className="w-9 text-right text-xs text-gray-400">100%</span>
-                      </div>
-                      {CONVERSION_ROWS.map(({ key, color }) => {
-                        const count = getCount(detail, key);
-                        const pct = Math.round((count / grandTotal) * 100);
-                        return (
-                          <div key={key} className="flex items-center gap-2">
-                            <span className="w-28 text-xs text-gray-600 truncate">
-                              {t(`conversion.${key}` as Parameters<typeof t>[0])}
-                            </span>
-                            <div className="flex-1 h-2 bg-gray-100 rounded-full overflow-hidden">
-                              <div className={cn('h-full rounded-full transition-all', color)} style={{ width: `${pct}%` }} />
-                            </div>
-                            <span className="w-6 text-right text-xs font-medium text-gray-700">{count}</span>
-                            <span className="w-9 text-right text-xs text-gray-400">{pct}%</span>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  );
-                })() : null}
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* ══════════════ Create company modal ══════════════ */}
-      {showCreate && (
-        <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center" onClick={resetCreate}>
-          <div
-            className="bg-white rounded-2xl shadow-xl w-full max-w-lg mx-4 overflow-hidden flex flex-col max-h-[92vh]"
-            onClick={e => e.stopPropagation()}
-          >
-            {/* Modal header */}
-            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
-              <h2 className="text-base font-bold text-gray-900">
-                {t('addCompany' as Parameters<typeof t>[0])}
-              </h2>
-              <button onClick={resetCreate} className="text-gray-400 hover:text-gray-600 transition-colors">
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            {/* Scrollable form body */}
-            <form onSubmit={handleCreate} className="overflow-y-auto flex-1">
-              <div className="px-6 py-5 space-y-5">
-
-                {/* ── Section 1: Company ── */}
-                <div className="pb-1">
-                  <p className="text-xs font-semibold text-blue-700 uppercase tracking-wide bg-blue-50 px-3 py-1.5 rounded-md">
-                    {t('companyInfo' as Parameters<typeof t>[0])}
-                  </p>
-                </div>
-
-                <div>
-                  <label className={labelCls}>{t('companyName' as Parameters<typeof t>[0])} <span className="text-red-500">*</span></label>
-                  <input
-                    className={inputCls}
-                    value={form.name}
-                    onChange={e => set('name', e.target.value)}
-                    placeholder={t('namePlaceholder' as Parameters<typeof t>[0])}
-                    required
-                  />
-                  {createErrors.name && <p className={errorCls}>{createErrors.name}</p>}
-                </div>
-
-                <div>
-                  <label className={labelCls}>{t('phone')} <span className="text-red-500">*</span></label>
-                  <div className="flex">
-                    <span className="inline-flex items-center px-3 border border-r-0 border-gray-300 rounded-l-lg bg-gray-50 text-gray-600 text-sm">
-                      +998
-                    </span>
-                    <input
-                      className="flex-1 px-3 py-2 border border-gray-300 rounded-r-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      value={form.phone}
-                      onChange={e => set('phone', e.target.value)}
-                      placeholder="90 123 45 67"
-                      required
-                    />
-                  </div>
-                  {createErrors.phone && <p className={errorCls}>{createErrors.phone}</p>}
-                </div>
-
-                <div>
-                  <label className={labelCls}>{t('address' as Parameters<typeof t>[0])} <span className="text-red-500">*</span></label>
-                  <input
-                    className={inputCls}
-                    value={form.address}
-                    onChange={e => set('address', e.target.value)}
-                    placeholder={t('addressPlaceholder' as Parameters<typeof t>[0])}
-                    required
-                  />
-                  {createErrors.address && <p className={errorCls}>{createErrors.address}</p>}
-                </div>
-
-                {/* Logo upload */}
-                <div>
-                  <label className={labelCls}>{t('logo' as Parameters<typeof t>[0])}</label>
-                  <label className="flex items-center gap-4 cursor-pointer">
-                    <div className="w-16 h-16 rounded-xl border-2 border-dashed border-gray-300 hover:border-blue-400 transition-colors overflow-hidden flex-shrink-0 flex items-center justify-center bg-gray-50">
-                      {logoPreview
-                        ? <img src={logoPreview} alt="preview" className="w-full h-full object-cover" />
-                        : <span className="text-gray-400 text-[10px] text-center leading-tight px-1">{t('logoUpload' as Parameters<typeof t>[0])}</span>
-                      }
-                    </div>
-                    <div className="text-sm text-gray-500">
-                      <span className="text-blue-600 hover:underline">{t('chooseImage' as Parameters<typeof t>[0])}</span> ({t('optional' as Parameters<typeof t>[0])})
-                      <p className="text-xs text-gray-400 mt-0.5">{t('imageFormats' as Parameters<typeof t>[0])}</p>
-                    </div>
-                    <input type="file" accept="image/*" className="sr-only" onChange={handleLogoChange} />
-                  </label>
-                </div>
-
-                {/* Branch toggle */}
-                <div className="flex items-center gap-3">
-                  <input
-                    id="is-branch"
-                    type="checkbox"
-                    className="w-4 h-4 rounded border-gray-300 text-blue-600 cursor-pointer"
-                    checked={form.isBranch}
-                    onChange={e => { set('isBranch', e.target.checked); if (!e.target.checked) set('parentId', ''); }}
-                  />
-                  <label htmlFor="is-branch" className="text-sm font-medium text-gray-700 cursor-pointer">
-                    {t('isBranch' as Parameters<typeof t>[0])}
-                  </label>
-                </div>
-
-                {form.isBranch && (
-                  <div>
-                    <label className={labelCls}>
-                      {t('parentCompany' as Parameters<typeof t>[0])} <span className="text-red-500">*</span>
-                    </label>
-                    <select
-                      className={inputCls}
-                      value={form.parentId}
-                      onChange={e => set('parentId', e.target.value)}
-                      required={form.isBranch}
-                    >
-                      <option value="">{t('selectPlaceholder' as Parameters<typeof t>[0])}</option>
-                      {parentCompanies.map(c => (
-                        <option key={c.id} value={c.id}>{c.name}</option>
-                      ))}
-                    </select>
-                    {createErrors.parent && <p className={errorCls}>{createErrors.parent}</p>}
-                  </div>
-                )}
-
-                {/* ── Section 2: Boss ── */}
-                <div className="pt-2 pb-1">
-                  <p className="text-xs font-semibold text-blue-700 uppercase tracking-wide bg-blue-50 px-3 py-1.5 rounded-md">
-                    {t('bossInfo' as Parameters<typeof t>[0])}
-                  </p>
-                </div>
-
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className={labelCls}>
-                      {t('bossFirstName' as Parameters<typeof t>[0])} <span className="text-red-500">*</span>
-                    </label>
-                    <input
-                      className={inputCls}
-                      value={form.bossFirstName}
-                      onChange={e => set('bossFirstName', e.target.value)}
-                      placeholder={t('firstNamePlaceholder' as Parameters<typeof t>[0])}
-                      required
-                    />
-                    {createErrors.boss_first_name && <p className={errorCls}>{createErrors.boss_first_name}</p>}
-                  </div>
-                  <div>
-                    <label className={labelCls}>
-                      {t('bossLastName' as Parameters<typeof t>[0])} <span className="text-red-500">*</span>
-                    </label>
-                    <input
-                      className={inputCls}
-                      value={form.bossLastName}
-                      onChange={e => set('bossLastName', e.target.value)}
-                      placeholder={t('lastNamePlaceholder' as Parameters<typeof t>[0])}
-                      required
-                    />
-                    {createErrors.boss_last_name && <p className={errorCls}>{createErrors.boss_last_name}</p>}
-                  </div>
-                </div>
-
-                <div>
-                  <label className={labelCls}>
-                    {t('bossPhone' as Parameters<typeof t>[0])} <span className="text-red-500">*</span>
-                  </label>
-                  <div className="flex">
-                    <span className="inline-flex items-center px-3 border border-r-0 border-gray-300 rounded-l-lg bg-gray-50 text-gray-600 text-sm">
-                      +998
-                    </span>
-                    <input
-                      className="flex-1 px-3 py-2 border border-gray-300 rounded-r-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      value={form.bossPhone}
-                      onChange={e => set('bossPhone', e.target.value)}
-                      placeholder="90 123 45 67"
-                      required
-                    />
-                  </div>
-                  {createErrors.boss_phone && <p className={errorCls}>{createErrors.boss_phone}</p>}
-                </div>
-
-                <div>
-                  <label className={labelCls}>
-                    {t('bossPassword' as Parameters<typeof t>[0])} <span className="text-red-500">*</span>
-                  </label>
-                  <div className="relative">
-                    <input
-                      type={showPassword ? 'text' : 'password'}
-                      className={cn(inputCls, 'pr-10')}
-                      value={form.bossPassword}
-                      onChange={e => set('bossPassword', e.target.value)}
-                      placeholder={t('passwordPlaceholder' as Parameters<typeof t>[0])}
-                      required
-                      minLength={4}
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowPassword(p => !p)}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
-                    >
-                      {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                    </button>
-                  </div>
-                  {createErrors.boss_password && <p className={errorCls}>{createErrors.boss_password}</p>}
-                </div>
-
-                {/* Generic error */}
-                {createErrors.detail && (
-                  <p className="text-sm text-red-600 bg-red-50 px-3 py-2 rounded-lg">{createErrors.detail}</p>
-                )}
-
-              </div>
-
-              {/* Footer */}
-              <div className="px-6 py-4 border-t border-gray-100 flex gap-3 bg-gray-50">
-                <button
-                  type="button"
-                  onClick={resetCreate}
-                  className="flex-1 py-2.5 border border-gray-300 text-gray-700 text-sm font-medium rounded-lg hover:bg-gray-100 transition-colors"
-                >
-                  {t('cancel' as Parameters<typeof t>[0])}
-                </button>
-                <button
-                  type="submit"
-                  disabled={creating}
-                  className="flex-1 py-2.5 bg-blue-600 text-white text-sm font-semibold rounded-lg hover:bg-blue-700 disabled:opacity-60 transition-colors"
-                >
-                  {creating ? t('saving' as Parameters<typeof t>[0]) : t('save' as Parameters<typeof t>[0])}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
+      {/* Portals — rendered directly into document.body, no parent clipping */}
+      {mounted && ReactDOM.createPortal(detailModal, document.body)}
+      {mounted && ReactDOM.createPortal(createModal, document.body)}
     </div>
   );
 }

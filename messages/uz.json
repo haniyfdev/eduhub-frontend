@@ -985,6 +985,15 @@
     "selectParentError": "Asosiy markazni tanlang.",
     "phoneLength": "Telefon raqam 9 ta raqamdan iborat bo'lishi kerak",
     "phoneDigitsOnly": "Faqat raqam kiriting",
-    "phoneDuplicate": "Bu telefon raqam allaqachon mavjud"
+    "phoneDuplicate": "Bu telefon raqam allaqachon mavjud",
+    "archive": "Arxivlash",
+    "unarchive": "Qayta tiklash",
+    "archiveConfirm": "Haqiqatan ham arxivlamoqchimisiz?",
+    "archiveWarning": "Barcha foydalanuvchilar tizimga kira olmay qoladi.",
+    "archived": "Arxivlangan",
+    "active": "Faol",
+    "archiveSuccess": "Kompaniya arxivlandi",
+    "unarchiveSuccess": "Kompaniya qayta tiklandi",
+    "details": "Batafsil"
   }
 }

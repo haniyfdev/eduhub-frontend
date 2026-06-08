@@ -965,6 +965,15 @@
     "selectParentError": "Select a parent company.",
     "phoneLength": "Phone number must be exactly 9 digits",
     "phoneDigitsOnly": "Digits only",
-    "phoneDuplicate": "This phone number already exists"
+    "phoneDuplicate": "This phone number already exists",
+    "archive": "Archive",
+    "unarchive": "Restore",
+    "archiveConfirm": "Are you sure you want to archive this company?",
+    "archiveWarning": "All users will lose access to the system.",
+    "archived": "Archived",
+    "active": "Active",
+    "archiveSuccess": "Company archived",
+    "unarchiveSuccess": "Company restored",
+    "details": "Details"
   }
 }

@@ -218,7 +218,7 @@ export default function SuperadminCompaniesPage() {
     setCreateErrors({});
 
     if (form.isBranch && !form.parentId) {
-      setCreateErrors({ parent: "Asosiy markazni tanlang." });
+      setCreateErrors({ parent: t('selectParentError' as Parameters<typeof t>[0]) });
       return;
     }
 
@@ -243,9 +243,9 @@ export default function SuperadminCompaniesPage() {
       const data = (err as { response?: { data?: Record<string, string> } })?.response?.data;
       if (data && typeof data === 'object' && !Array.isArray(data)) {
         setCreateErrors(data as Record<string, string>);
-        toast.error("Formda xatoliklar mavjud.");
+        toast.error(t('formErrors' as Parameters<typeof t>[0]));
       } else {
-        toast.error("Xatolik yuz berdi.");
+        toast.error(t('genericError' as Parameters<typeof t>[0]));
       }
     } finally {
       setCreating(false);
@@ -328,8 +328,8 @@ export default function SuperadminCompaniesPage() {
 
       {/* ══════════════ Detail modal ══════════════ */}
       {selected && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50" onClick={closeModal}>
-          <div className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden" onClick={e => e.stopPropagation()}>
+        <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center" onClick={closeModal}>
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-md mx-4 overflow-hidden" onClick={e => e.stopPropagation()}>
             <div className="relative h-28 bg-gradient-to-br from-blue-500 to-blue-700 rounded-t-2xl">
               {selected.logo ? (
                 <div className="absolute inset-0 flex items-center justify-center p-4">
@@ -449,9 +449,9 @@ export default function SuperadminCompaniesPage() {
 
       {/* ══════════════ Create company modal ══════════════ */}
       {showCreate && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50" onClick={resetCreate}>
+        <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center" onClick={resetCreate}>
           <div
-            className="bg-white rounded-2xl shadow-xl w-full max-w-lg overflow-hidden flex flex-col max-h-[92vh]"
+            className="bg-white rounded-2xl shadow-xl w-full max-w-lg mx-4 overflow-hidden flex flex-col max-h-[92vh]"
             onClick={e => e.stopPropagation()}
           >
             {/* Modal header */}
@@ -476,19 +476,19 @@ export default function SuperadminCompaniesPage() {
                 </div>
 
                 <div>
-                  <label className={labelCls}>Nomi <span className="text-red-500">*</span></label>
+                  <label className={labelCls}>{t('companyName' as Parameters<typeof t>[0])} <span className="text-red-500">*</span></label>
                   <input
                     className={inputCls}
                     value={form.name}
                     onChange={e => set('name', e.target.value)}
-                    placeholder="O'quv markaz nomi"
+                    placeholder={t('namePlaceholder' as Parameters<typeof t>[0])}
                     required
                   />
                   {createErrors.name && <p className={errorCls}>{createErrors.name}</p>}
                 </div>
 
                 <div>
-                  <label className={labelCls}>Telefon <span className="text-red-500">*</span></label>
+                  <label className={labelCls}>{t('phone')} <span className="text-red-500">*</span></label>
                   <div className="flex">
                     <span className="inline-flex items-center px-3 border border-r-0 border-gray-300 rounded-l-lg bg-gray-50 text-gray-600 text-sm">
                       +998
@@ -505,12 +505,12 @@ export default function SuperadminCompaniesPage() {
                 </div>
 
                 <div>
-                  <label className={labelCls}>Manzil <span className="text-red-500">*</span></label>
+                  <label className={labelCls}>{t('address' as Parameters<typeof t>[0])} <span className="text-red-500">*</span></label>
                   <input
                     className={inputCls}
                     value={form.address}
                     onChange={e => set('address', e.target.value)}
-                    placeholder="Shahar, ko'cha, uy"
+                    placeholder={t('addressPlaceholder' as Parameters<typeof t>[0])}
                     required
                   />
                   {createErrors.address && <p className={errorCls}>{createErrors.address}</p>}
@@ -518,17 +518,17 @@ export default function SuperadminCompaniesPage() {
 
                 {/* Logo upload */}
                 <div>
-                  <label className={labelCls}>Logo</label>
+                  <label className={labelCls}>{t('logo' as Parameters<typeof t>[0])}</label>
                   <label className="flex items-center gap-4 cursor-pointer">
                     <div className="w-16 h-16 rounded-xl border-2 border-dashed border-gray-300 hover:border-blue-400 transition-colors overflow-hidden flex-shrink-0 flex items-center justify-center bg-gray-50">
                       {logoPreview
                         ? <img src={logoPreview} alt="preview" className="w-full h-full object-cover" />
-                        : <span className="text-gray-400 text-[10px] text-center leading-tight px-1">Logo yuklash</span>
+                        : <span className="text-gray-400 text-[10px] text-center leading-tight px-1">{t('logoUpload' as Parameters<typeof t>[0])}</span>
                       }
                     </div>
                     <div className="text-sm text-gray-500">
-                      <span className="text-blue-600 hover:underline">Rasm tanlang</span> (ixtiyoriy)
-                      <p className="text-xs text-gray-400 mt-0.5">PNG, JPG, WEBP</p>
+                      <span className="text-blue-600 hover:underline">{t('chooseImage' as Parameters<typeof t>[0])}</span> ({t('optional' as Parameters<typeof t>[0])})
+                      <p className="text-xs text-gray-400 mt-0.5">{t('imageFormats' as Parameters<typeof t>[0])}</p>
                     </div>
                     <input type="file" accept="image/*" className="sr-only" onChange={handleLogoChange} />
                   </label>
@@ -559,7 +559,7 @@ export default function SuperadminCompaniesPage() {
                       onChange={e => set('parentId', e.target.value)}
                       required={form.isBranch}
                     >
-                      <option value="">— Tanlang —</option>
+                      <option value="">{t('selectPlaceholder' as Parameters<typeof t>[0])}</option>
                       {parentCompanies.map(c => (
                         <option key={c.id} value={c.id}>{c.name}</option>
                       ))}
@@ -584,7 +584,7 @@ export default function SuperadminCompaniesPage() {
                       className={inputCls}
                       value={form.bossFirstName}
                       onChange={e => set('bossFirstName', e.target.value)}
-                      placeholder="Ism"
+                      placeholder={t('firstNamePlaceholder' as Parameters<typeof t>[0])}
                       required
                     />
                     {createErrors.boss_first_name && <p className={errorCls}>{createErrors.boss_first_name}</p>}
@@ -597,7 +597,7 @@ export default function SuperadminCompaniesPage() {
                       className={inputCls}
                       value={form.bossLastName}
                       onChange={e => set('bossLastName', e.target.value)}
-                      placeholder="Familiya"
+                      placeholder={t('lastNamePlaceholder' as Parameters<typeof t>[0])}
                       required
                     />
                     {createErrors.boss_last_name && <p className={errorCls}>{createErrors.boss_last_name}</p>}
@@ -633,7 +633,7 @@ export default function SuperadminCompaniesPage() {
                       className={cn(inputCls, 'pr-10')}
                       value={form.bossPassword}
                       onChange={e => set('bossPassword', e.target.value)}
-                      placeholder="Kamida 8 ta belgi"
+                      placeholder={t('passwordPlaceholder' as Parameters<typeof t>[0])}
                       required
                       minLength={4}
                     />
@@ -662,14 +662,14 @@ export default function SuperadminCompaniesPage() {
                   onClick={resetCreate}
                   className="flex-1 py-2.5 border border-gray-300 text-gray-700 text-sm font-medium rounded-lg hover:bg-gray-100 transition-colors"
                 >
-                  Bekor qilish
+                  {t('cancel' as Parameters<typeof t>[0])}
                 </button>
                 <button
                   type="submit"
                   disabled={creating}
                   className="flex-1 py-2.5 bg-blue-600 text-white text-sm font-semibold rounded-lg hover:bg-blue-700 disabled:opacity-60 transition-colors"
                 >
-                  {creating ? 'Saqlanmoqda...' : 'Saqlash'}
+                  {creating ? t('saving' as Parameters<typeof t>[0]) : t('save' as Parameters<typeof t>[0])}
                 </button>
               </div>
             </form>

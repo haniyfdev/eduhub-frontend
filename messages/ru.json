@@ -943,6 +943,25 @@
     "bossLastName": "Фамилия",
     "bossPhone": "Телефон",
     "bossPassword": "Пароль",
-    "companyCreated": "Компания успешно создана"
+    "companyCreated": "Компания успешно создана",
+    "companyName": "Название",
+    "address": "Адрес",
+    "logo": "Логотип",
+    "chooseImage": "Выбрать изображение",
+    "optional": "необязательно",
+    "imageFormats": "PNG, JPG, WEBP",
+    "logoUpload": "Загрузить логотип",
+    "namePlaceholder": "Название учебного центра",
+    "addressPlaceholder": "Город, улица, дом",
+    "firstNamePlaceholder": "Имя",
+    "lastNamePlaceholder": "Фамилия",
+    "passwordPlaceholder": "Минимум 8 символов",
+    "selectPlaceholder": "— Выберите —",
+    "cancel": "Отмена",
+    "save": "Сохранить",
+    "saving": "Сохранение...",
+    "formErrors": "В форме есть ошибки.",
+    "genericError": "Произошла ошибка.",
+    "selectParentError": "Выберите головную компанию."
   }
 }

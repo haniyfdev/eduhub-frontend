@@ -963,6 +963,25 @@
     "bossLastName": "Familiyasi",
     "bossPhone": "Telefon",
     "bossPassword": "Parol",
-    "companyCreated": "Kompaniya muvaffaqiyatli yaratildi"
+    "companyCreated": "Kompaniya muvaffaqiyatli yaratildi",
+    "companyName": "Nomi",
+    "address": "Manzil",
+    "logo": "Logo",
+    "chooseImage": "Rasm tanlang",
+    "optional": "ixtiyoriy",
+    "imageFormats": "PNG, JPG, WEBP",
+    "logoUpload": "Logo yuklash",
+    "namePlaceholder": "O'quv markaz nomi",
+    "addressPlaceholder": "Shahar, ko'cha, uy",
+    "firstNamePlaceholder": "Ism",
+    "lastNamePlaceholder": "Familiya",
+    "passwordPlaceholder": "Kamida 8 ta belgi",
+    "selectPlaceholder": "— Tanlang —",
+    "cancel": "Bekor qilish",
+    "save": "Saqlash",
+    "saving": "Saqlanmoqda...",
+    "formErrors": "Formda xatoliklar mavjud.",
+    "genericError": "Xatolik yuz berdi.",
+    "selectParentError": "Asosiy markazni tanlang."
   }
 }

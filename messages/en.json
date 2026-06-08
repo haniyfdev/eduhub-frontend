@@ -943,6 +943,25 @@
     "bossLastName": "Last name",
     "bossPhone": "Phone",
     "bossPassword": "Password",
-    "companyCreated": "Company created successfully"
+    "companyCreated": "Company created successfully",
+    "companyName": "Name",
+    "address": "Address",
+    "logo": "Logo",
+    "chooseImage": "Choose image",
+    "optional": "optional",
+    "imageFormats": "PNG, JPG, WEBP",
+    "logoUpload": "Upload logo",
+    "namePlaceholder": "Learning center name",
+    "addressPlaceholder": "City, street, house",
+    "firstNamePlaceholder": "First name",
+    "lastNamePlaceholder": "Last name",
+    "passwordPlaceholder": "At least 8 characters",
+    "selectPlaceholder": "— Select —",
+    "cancel": "Cancel",
+    "save": "Save",
+    "saving": "Saving...",
+    "formErrors": "Form has errors.",
+    "genericError": "An error occurred.",
+    "selectParentError": "Select a parent company."
   }
 }

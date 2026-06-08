@@ -37,7 +37,10 @@
     "phone": "Telefon raqam",
     "password": "Parol",
     "submit": "Kirish",
-    "error": "Telefon yoki parol noto'g'ri"
+    "error": "Telefon yoki parol noto'g'ri",
+    "selectCompany": "Markazni tanlang",
+    "selectCompanyHint": "Bir nechta markaz topildi. Qaysi birida ishlashni xohlaysiz?",
+    "back": "Orqaga"
   },
   "dashboard": {
     "title": "Bosh sahifa",

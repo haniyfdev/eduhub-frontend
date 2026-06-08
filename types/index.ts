@@ -12,6 +12,19 @@ export interface AuthTokens {
   user: User;
 }
 
+export interface CompanyChoice {
+  id: string;
+  name: string;
+}
+
+export interface CompanySelectionRequired {
+  requires_company_selection: true;
+  companies: CompanyChoice[];
+  temp_token: string;
+}
+
+export type LoginResponse = AuthTokens | CompanySelectionRequired;
+
 export interface Student {
   id: string;
   first_name: string;

@@ -37,7 +37,10 @@
     "phone": "Phone number",
     "password": "Password",
     "submit": "Sign in",
-    "error": "Wrong phone or password"
+    "error": "Wrong phone or password",
+    "selectCompany": "Select a center",
+    "selectCompanyHint": "Multiple centers found. Which one would you like to work in?",
+    "back": "Back"
   },
   "dashboard": {
     "title": "Dashboard",

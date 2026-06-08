@@ -1,8 +1,25 @@
 import api from './axios';
-import { AuthTokens } from '@/types';
+import { AuthTokens, LoginResponse } from '@/types';
 
-export async function login(phone: string, password: string): Promise<AuthTokens> {
-  const { data } = await api.post<AuthTokens>('/api/auth/login/', { phone, password });
+export async function login(phone: string, password: string): Promise<LoginResponse> {
+  const { data } = await api.post<LoginResponse>('/api/auth/login/', { phone, password });
+
+  if ('requires_company_selection' in data && data.requires_company_selection) {
+    return data;
+  }
+
+  const tokens = data as AuthTokens;
+  localStorage.setItem('access_token', tokens.access);
+  localStorage.setItem('refresh_token', tokens.refresh);
+  localStorage.setItem('user', JSON.stringify(tokens.user));
+  return tokens;
+}
+
+export async function selectCompany(company_id: string, temp_token: string): Promise<AuthTokens> {
+  const { data } = await api.post<AuthTokens>('/api/auth/select-company/', {
+    company_id,
+    temp_token,
+  });
   localStorage.setItem('access_token', data.access);
   localStorage.setItem('refresh_token', data.refresh);
   localStorage.setItem('user', JSON.stringify(data.user));

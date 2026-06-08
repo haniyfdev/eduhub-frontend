@@ -703,8 +703,8 @@ export default function DashboardPage() {
                       <tr key={s.id} className="bg-red-50 transition-colors hover:brightness-95">
                         <td className="px-4 py-3 text-gray-400 text-xs font-medium">{idx + 1}</td>
                         <td className="px-4 py-3 font-semibold text-gray-900">{s.first_name} {s.last_name}</td>
-                        <td className="px-4 py-3 text-gray-600">{s.phone || '—'}</td>
-                        <td className="px-4 py-3 text-gray-500">{s.second_phone || '—'}</td>
+                        <td className="px-4 py-3 text-gray-600 whitespace-nowrap">{s.phone || '—'}</td>
+                        <td className="px-4 py-3 text-gray-500 whitespace-nowrap">{s.second_phone || '—'}</td>
                         <td className="px-4 py-3 text-gray-600">{s.group_name || '—'}</td>
                         <td className="px-4 py-3 text-gray-500">{s.course_name || '—'}</td>
                         <td className="px-4 py-3 text-gray-500">{s.archived_at ? s.archived_at.slice(0, 10) : '—'}</td>

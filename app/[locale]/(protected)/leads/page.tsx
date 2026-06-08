@@ -320,7 +320,7 @@ export default function LeadsPage() {
                           <input type="checkbox" checked={phoneSelection[l.id]?.phone1 ?? false}
                             onChange={() => togglePhone(l.id, 'phone1')}
                             className="rounded border-gray-300 flex-shrink-0" />
-                          <span className="text-gray-500">{formatPhone(l.phone)}</span>
+                          <span className="text-gray-500 whitespace-nowrap">{formatPhone(l.phone)}</span>
                         </label>
                       </td>
                       <td className="px-4 py-3">
@@ -329,7 +329,7 @@ export default function LeadsPage() {
                             <input type="checkbox" checked={phoneSelection[l.id]?.phone2 ?? false}
                               onChange={() => togglePhone(l.id, 'phone2')}
                               className="rounded border-gray-300 flex-shrink-0" />
-                            <span className="text-gray-500">{formatPhone(l.second_phone)}</span>
+                            <span className="text-gray-500 whitespace-nowrap">{formatPhone(l.second_phone)}</span>
                           </label>
                         ) : <span className="text-gray-300">—</span>}
                       </td>

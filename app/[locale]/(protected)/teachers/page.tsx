@@ -478,7 +478,7 @@ export default function TeachersPage() {
                         <tr key={teacher.id} className={cn('transition-colors', teacher.status === 'archived' ? 'bg-yellow-50 hover:bg-yellow-100' : teacher.status === 'frozen' ? 'bg-cyan-50 hover:bg-cyan-100' : 'hover:bg-gray-50')}>
                           <td className="px-4 py-3 text-gray-400 text-xs">{(page - 1) * pageSize + idx + 1}</td>
                           <td className="px-4 py-3 font-medium text-gray-900">{teacher.first_name} {teacher.last_name}</td>
-                          <td className="px-4 py-3 text-gray-500">{formatPhone(teacher.phone)}</td>
+                          <td className="px-4 py-3 text-gray-500 whitespace-nowrap">{formatPhone(teacher.phone)}</td>
                           <td className="px-4 py-3 text-gray-600">{teacher.subject || '—'}</td>
                           <td className="px-4 py-3">
                             <Popover>
@@ -604,7 +604,7 @@ export default function TeachersPage() {
                           <p className="font-semibold text-gray-900">{s.full_name}</p>
                           <p className="text-xs text-gray-500">{s.role_display}</p>
                         </td>
-                        <td className="px-4 py-3 text-gray-500 text-sm">{formatPhone(s.phone)}</td>
+                        <td className="px-4 py-3 text-gray-500 text-sm whitespace-nowrap">{formatPhone(s.phone)}</td>
                         <td className="px-4 py-3 text-gray-500 text-xs whitespace-nowrap">{formatDMY(s.hired_at)}</td>
                         <td className="px-4 py-3 font-semibold text-gray-900 whitespace-nowrap">{formatCurrency(s.salary_amount)}</td>
                         <td className="px-4 py-3">

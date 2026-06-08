@@ -163,7 +163,7 @@ export default function CompaniesPage() {
                   : companies.map((c) => (
                     <tr key={c.id} className="hover:bg-gray-50 transition-colors">
                       <td className="px-4 py-3 font-medium text-gray-900">{c.name}</td>
-                      <td className="px-4 py-3 text-gray-500">{c.phone || '—'}</td>
+                      <td className="px-4 py-3 text-gray-500 whitespace-nowrap">{c.phone || '—'}</td>
                       <td className="px-4 py-3 text-gray-600">{c.address || '—'}</td>
                       <td className="px-4 py-3 text-gray-600">{c.branch_of_name || '—'}</td>
                       <td className="px-4 py-3">

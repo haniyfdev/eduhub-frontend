@@ -527,8 +527,8 @@ export default function GroupDetailPage() {
                         )}>
                           <td className={cn('px-4 py-3', isLeft ? 'text-gray-400' : 'text-gray-500')}>{idx + 1}</td>
                           <td className={cn('px-4 py-3 font-medium', isLeft ? 'text-gray-400' : 'text-gray-900')}>{s.first_name} {s.last_name}</td>
-                          <td className={cn('px-4 py-3', isLeft ? 'text-gray-400' : 'text-gray-600')}>{formatPhone(s.phone)}</td>
-                          <td className={cn('px-4 py-3', isLeft ? 'text-gray-400' : 'text-gray-600')}>{s.second_phone ? formatPhone(s.second_phone) : '—'}</td>
+                          <td className={cn('px-4 py-3 whitespace-nowrap', isLeft ? 'text-gray-400' : 'text-gray-600')}>{formatPhone(s.phone)}</td>
+                          <td className={cn('px-4 py-3 whitespace-nowrap', isLeft ? 'text-gray-400' : 'text-gray-600')}>{s.second_phone ? formatPhone(s.second_phone) : '—'}</td>
                           <td className={cn('px-4 py-3', isLeft ? 'text-gray-400' : 'text-gray-600')}>{formatDMY(s.birth_date) || '—'}</td>
                           <td className="px-4 py-3">
                             {/* Student still in this group — use gs_status for per-group accuracy */}
@@ -782,7 +782,7 @@ export default function GroupDetailPage() {
                             </div>
                           </td>
                           <td className="px-4 py-3 font-medium text-gray-900">{s.first_name} {s.last_name}</td>
-                          <td className="px-4 py-3 text-gray-600">{formatPhone(s.phone)}</td>
+                          <td className="px-4 py-3 text-gray-600 whitespace-nowrap">{formatPhone(s.phone)}</td>
                           <td className="px-4 py-3 text-gray-600">{formatDMY(s.birth_date) || '—'}</td>
                           <td className="px-4 py-3 text-gray-600">{s.course_name || '—'}</td>
                         </tr>

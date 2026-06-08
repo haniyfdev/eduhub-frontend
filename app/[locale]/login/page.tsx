@@ -42,9 +42,11 @@ export default function LoginPage() {
         return;
       }
 
-      setUser(data.user);
-      setAuthenticated(true);
-      router.push(`/${locale}/dashboard`);
+      if (!('requires_company_selection' in data)) {
+        setUser(data.user);
+        setAuthenticated(true);
+        router.push(`/${locale}/dashboard`);
+      }
     } catch (err: unknown) {
       const e = err as { response?: { data?: Record<string, unknown> } };
       const d = e?.response?.data;

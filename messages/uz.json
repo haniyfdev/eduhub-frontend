@@ -927,6 +927,16 @@
     "branch": "Filial",
     "company": "Kompaniya",
     "amount": "Summa",
+    "conversion": {
+      "title": "O'quvchi konversiyasi",
+      "total": "Jami",
+      "active": "Faol",
+      "trial": "Sinov muddatida",
+      "frozen": "Muzlatilgan",
+      "pending": "Kutilmoqda",
+      "rejected": "Rad etdi",
+      "archived": "Arxivlangan"
+    },
     "status": {
       "pending": "Kutilmoqda",
       "partial": "Qisman",

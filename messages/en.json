@@ -907,6 +907,16 @@
     "branch": "Branch",
     "company": "Company",
     "amount": "Amount",
+    "conversion": {
+      "title": "Student conversion",
+      "total": "Total",
+      "active": "Active",
+      "trial": "On trial",
+      "frozen": "Frozen",
+      "pending": "Pending",
+      "rejected": "Rejected",
+      "archived": "Archived"
+    },
     "status": {
       "pending": "Pending",
       "partial": "Partial",

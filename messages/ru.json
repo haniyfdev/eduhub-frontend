@@ -907,6 +907,16 @@
     "branch": "Филиал",
     "company": "Компания",
     "amount": "Сумма",
+    "conversion": {
+      "title": "Конверсия учеников",
+      "total": "Всего",
+      "active": "Активные",
+      "trial": "На испытании",
+      "frozen": "Заморожены",
+      "pending": "Ожидают",
+      "rejected": "Отказались",
+      "archived": "В архиве"
+    },
     "status": {
       "pending": "Ожидает",
       "partial": "Частично",

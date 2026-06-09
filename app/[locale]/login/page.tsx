@@ -159,10 +159,8 @@ export default function LoginPage() {
         setFpError(ta('telegramNotLinked'));
       } else if (errCode === 'rate_limited') {
         const ws = e?.response?.data?.wait_seconds ?? 0;
-        const h = Math.floor(ws / 3600);
-        const m = Math.floor((ws % 3600) / 60);
-        const parts = [h > 0 ? `${h} soat` : '', m > 0 ? `${m} daqiqa` : ''].filter(Boolean).join(' ');
-        setFpError(`${ta('tooManyAttempts')} ${parts} ${ta('tryAfter')}`);
+        const timeStr = ws >= 3600 ? `${Math.round(ws / 3600)} soat` : `${Math.round(ws / 60)} daqiqa`;
+        setFpError(`${ta('tooManyAttempts')} ${timeStr} ${ta('tryAfter')}`);
       } else {
         setFpError('Xatolik yuz berdi');
       }
@@ -198,10 +196,8 @@ export default function LoginPage() {
       const errCode = e?.response?.data?.error;
       if (errCode === 'rate_limited') {
         const ws = e?.response?.data?.wait_seconds ?? 0;
-        const h = Math.floor(ws / 3600);
-        const m = Math.floor((ws % 3600) / 60);
-        const parts = [h > 0 ? `${h} soat` : '', m > 0 ? `${m} daqiqa` : ''].filter(Boolean).join(' ');
-        setFpError(`${ta('tooManyAttempts')} ${parts} ${ta('tryAfter')}`);
+        const timeStr = ws >= 3600 ? `${Math.round(ws / 3600)} soat` : `${Math.round(ws / 60)} daqiqa`;
+        setFpError(`${ta('tooManyAttempts')} ${timeStr} ${ta('tryAfter')}`);
       } else {
         setFpError('Xatolik yuz berdi');
       }

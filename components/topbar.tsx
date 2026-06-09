@@ -2,7 +2,7 @@
 
 import { usePathname, useRouter } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
-import { Bell, ChevronDown, Eye, EyeOff, Globe, LogOut, Paperclip, Plus, Trash2, X } from 'lucide-react';
+import { Bell, ChevronDown, Eye, EyeOff, Globe, LogOut, Paperclip, Plus, Trash2, Users, X } from 'lucide-react';
 import { useLocale, useTranslations } from 'next-intl';
 import { getUser, logout } from '@/lib/auth';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -346,6 +346,19 @@ export default function Topbar() {
               </div>
             )}
           </div>
+
+          {/* Community link — boss/manager only */}
+          {(user?.role === 'boss' || user?.role === 'manager') && (
+            <a
+              href="https://t.me/+q6IQ8Ae82pQzZWRi"
+              target="_blank"
+              rel="noopener noreferrer"
+              title={tn('community' as Parameters<typeof tn>[0])}
+              className="p-2 rounded-lg hover:bg-gray-100 transition-colors text-gray-400 hover:text-gray-600"
+            >
+              <Users className="w-5 h-5" />
+            </a>
+          )}
 
           {/* Announcement bell — hidden for teachers */}
           {user?.role !== 'teacher' && (

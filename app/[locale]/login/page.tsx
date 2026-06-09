@@ -47,27 +47,27 @@ export default function LoginPage() {
   const [telegramNotLinked, setTelegramNotLinked] = useState(false);
   const [countdown, setCountdown] = useState(100);
   const [canResend, setCanResend] = useState(false);
+  const [countdownKey, setCountdownKey] = useState(0); // increment to restart timer
 
-  const countdownRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const otpRefs = useRef<(HTMLInputElement | null)[]>([]);
 
-  /* ── Countdown for OTP step ── */
+  /* ── Countdown for OTP step — restarts whenever countdownKey changes ── */
   useEffect(() => {
     if (forgotStep !== 2) return;
     setCountdown(100);
     setCanResend(false);
-    countdownRef.current = setInterval(() => {
+    const id = setInterval(() => {
       setCountdown((prev) => {
         if (prev <= 1) {
-          clearInterval(countdownRef.current!);
+          clearInterval(id);
           setCanResend(true);
           return 0;
         }
         return prev - 1;
       });
     }, 1000);
-    return () => { if (countdownRef.current) clearInterval(countdownRef.current); };
-  }, [forgotStep]);
+    return () => clearInterval(id);
+  }, [forgotStep, countdownKey]);
 
   /* ── Login handlers ── */
   async function handleSubmit(e: React.FormEvent) {
@@ -138,7 +138,7 @@ export default function LoginPage() {
     setFpConfirm('');
     setFpError('');
     setTelegramNotLinked(false);
-    if (countdownRef.current) clearInterval(countdownRef.current);
+    setCountdownKey(0);
   }
 
   async function handleSendCode() {
@@ -188,6 +188,31 @@ export default function LoginPage() {
     }
   }
 
+  async function handleResend() {
+    setFpOtp(['', '', '', '', '', '']);
+    setFpError('');
+    setFpLoading(true);
+    try {
+      await api.post('/api/auth/forgot-password/', { phone: '+998' + fpPhone });
+      setCountdownKey((k) => k + 1);
+      setTimeout(() => otpRefs.current[0]?.focus(), 100);
+    } catch (err: unknown) {
+      const e = err as { response?: { data?: { error?: string; wait_seconds?: number } } };
+      const errCode = e?.response?.data?.error;
+      if (errCode === 'rate_limited') {
+        const ws = e?.response?.data?.wait_seconds ?? 0;
+        const h = Math.floor(ws / 3600);
+        const m = Math.floor((ws % 3600) / 60);
+        const parts = [h > 0 ? `${h} soat` : '', m > 0 ? `${m} daqiqa` : ''].filter(Boolean).join(' ');
+        setFpError(`${ta('tooManyAttempts')} ${parts} ${ta('tryAfter')}`);
+      } else {
+        setFpError('Xatolik yuz berdi');
+      }
+    } finally {
+      setFpLoading(false);
+    }
+  }
+
   async function handleVerifyOtp() {
     setFpError('');
     const code = fpOtp.join('');
@@ -212,6 +237,10 @@ export default function LoginPage() {
 
   async function handleResetPassword() {
     setFpError('');
+    if (!fpNewPassword || !fpConfirm) {
+      setFpError("Barcha maydonlarni to'ldiring");
+      return;
+    }
     if (fpNewPassword.length < 8) {
       setFpError("Parol kamida 8 ta belgidan iborat bo'lishi kerak");
       return;
@@ -226,8 +255,25 @@ export default function LoginPage() {
         reset_token: fpResetToken,
         new_password: fpNewPassword,
       });
+
+      // Auto-login with new credentials
+      const fullPhone = '+998' + fpPhone;
+      const loginData = await login(fullPhone, fpNewPassword);
       toast.success(ta('passwordUpdated'));
-      resetForgotFlow();
+
+      if ('requires_company_selection' in loginData && loginData.requires_company_selection) {
+        setCompanies(loginData.companies);
+        setTempToken(loginData.temp_token);
+        resetForgotFlow();
+        setSelectingCompany(true);
+      } else if (!('requires_company_selection' in loginData)) {
+        setUser(loginData.user);
+        setAuthenticated(true);
+        const home = loginData.user.role === 'superadmin'
+          ? `/${locale}/superadmin/dashboard`
+          : `/${locale}/dashboard`;
+        router.push(home);
+      }
     } catch {
       setFpError('Xatolik yuz berdi');
     } finally {
@@ -385,16 +431,11 @@ export default function LoginPage() {
               </span>
               <button
                 type="button"
-                disabled={!canResend}
-                onClick={async () => {
-                  setFpOtp(['', '', '', '', '', '']);
-                  setFpError('');
-                  await handleSendCode();
-                  if (forgotStep === 2) setForgotStep(2); // re-trigger countdown
-                }}
+                disabled={!canResend || fpLoading}
+                onClick={handleResend}
                 className={cn(
                   'text-sm font-medium',
-                  canResend ? 'text-blue-600 hover:underline cursor-pointer' : 'text-gray-300 cursor-not-allowed',
+                  canResend && !fpLoading ? 'text-blue-600 hover:underline cursor-pointer' : 'text-gray-300 cursor-not-allowed',
                 )}
               >
                 {ta('resendCode')}
@@ -451,6 +492,7 @@ export default function LoginPage() {
                     type={fpShowConfirm ? 'text' : 'password'}
                     value={fpConfirm}
                     onChange={(e) => setFpConfirm(e.target.value)}
+                    onKeyDown={(e) => { if (e.key === 'Enter') handleResetPassword(); }}
                     className={cn(inputCls, 'pr-10')}
                   />
                   <button

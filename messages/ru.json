@@ -886,15 +886,6 @@
     "supply": "Завхоз",
     "other": "Другое"
   },
-  "auth": {
-    "passwordPlaceholder": "Минимум 8 символов",
-    "passwordTooShort": "Пароль должен содержать не менее 8 символов",
-    "oldPassword": "Старый пароль",
-    "newPassword": "Новый пароль",
-    "confirmPassword": "Подтвердите новый пароль",
-    "passwordMismatch": "Пароли не совпадают",
-    "passwordChanged": "Пароль успешно изменён"
-  },
   "superadmin": {
     "companies": "Компании",
     "debts": "Должники",
@@ -997,7 +988,13 @@
     "dateTo": "До"
   },
   "auth": {
+    "passwordPlaceholder": "Минимум 8 символов",
+    "passwordTooShort": "Пароль должен содержать не менее 8 символов",
+    "oldPassword": "Старый пароль",
+    "passwordMismatch": "Пароли не совпадают",
+    "passwordChanged": "Пароль успешно изменён",
     "forgotPassword": "Забыл пароль?",
+    "forgotPasswordQ": "Забыли пароль?",
     "resetPassword": "Сбросить пароль",
     "sendCode": "Отправить код",
     "enterCode": "Введите код",
@@ -1010,6 +1007,10 @@
     "tooManyAttempts": "Слишком много попыток.",
     "tryAfter": "повторите через",
     "back": "Назад",
-    "seconds": "секунд"
+    "seconds": "секунд",
+    "toGetCode": "Чтобы получить код, перейдите в наш Telegram бот и отправьте номер телефона",
+    "goToBot": "📱 Перейти в @EduHub_Message_Bot",
+    "afterBotInstruction": "После отправки номера боту введите свой номер телефона",
+    "enterVerifyCode": "Введите код подтверждения EduHub"
   }
 }

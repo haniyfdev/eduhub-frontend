@@ -886,15 +886,6 @@
     "supply": "Supply",
     "other": "Other"
   },
-  "auth": {
-    "passwordPlaceholder": "At least 8 characters",
-    "passwordTooShort": "Password must be at least 8 characters",
-    "oldPassword": "Old password",
-    "newPassword": "New password",
-    "confirmPassword": "Confirm new password",
-    "passwordMismatch": "Passwords do not match",
-    "passwordChanged": "Password changed successfully"
-  },
   "superadmin": {
     "companies": "Companies",
     "debts": "Debtors",
@@ -997,7 +988,13 @@
     "dateTo": "To"
   },
   "auth": {
+    "passwordPlaceholder": "At least 8 characters",
+    "passwordTooShort": "Password must be at least 8 characters",
+    "oldPassword": "Old password",
+    "passwordMismatch": "Passwords do not match",
+    "passwordChanged": "Password changed successfully",
     "forgotPassword": "Forgot password?",
+    "forgotPasswordQ": "Forgot your password?",
     "resetPassword": "Reset password",
     "sendCode": "Send code",
     "enterCode": "Enter code",
@@ -1010,6 +1007,10 @@
     "tooManyAttempts": "Too many attempts.",
     "tryAfter": "try after",
     "back": "Back",
-    "seconds": "seconds"
+    "seconds": "seconds",
+    "toGetCode": "To get the verification code, go to our Telegram bot and send your phone number",
+    "goToBot": "📱 Go to @EduHub_Message_Bot",
+    "afterBotInstruction": "After sending your number to the bot, enter your phone number below",
+    "enterVerifyCode": "Enter EduHub verification code"
   }
 }

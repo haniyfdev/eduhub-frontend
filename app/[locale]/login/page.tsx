@@ -12,7 +12,7 @@ import api from '@/lib/axios';
 import toast from 'react-hot-toast';
 
 // Replace with your actual bot username
-const TELEGRAM_BOT_USERNAME = 'eduhub_bot';
+const TELEGRAM_BOT_USERNAME = 'EduHub_Message_Bot';
 
 export default function LoginPage() {
   const t = useTranslations('login');
@@ -44,7 +44,6 @@ export default function LoginPage() {
   const [fpShowConfirm, setFpShowConfirm] = useState(false);
   const [fpLoading, setFpLoading] = useState(false);
   const [fpError, setFpError] = useState('');
-  const [telegramNotLinked, setTelegramNotLinked] = useState(false);
   const [countdown, setCountdown] = useState(100);
   const [canResend, setCanResend] = useState(false);
   const [countdownKey, setCountdownKey] = useState(0); // increment to restart timer
@@ -137,13 +136,11 @@ export default function LoginPage() {
     setFpNewPassword('');
     setFpConfirm('');
     setFpError('');
-    setTelegramNotLinked(false);
     setCountdownKey(0);
   }
 
   async function handleSendCode() {
     setFpError('');
-    setTelegramNotLinked(false);
     if (fpPhone.length !== 9) {
       setFpError("Telefon raqamni to'liq kiriting");
       return;
@@ -159,7 +156,7 @@ export default function LoginPage() {
       const e = err as { response?: { data?: { error?: string; wait_seconds?: number } } };
       const errCode = e?.response?.data?.error;
       if (errCode === 'telegram_not_linked') {
-        setTelegramNotLinked(true);
+        setFpError(ta('telegramNotLinked'));
       } else if (errCode === 'rate_limited') {
         const ws = e?.response?.data?.wait_seconds ?? 0;
         const h = Math.floor(ws / 3600);
@@ -340,8 +337,20 @@ export default function LoginPage() {
         /* ── Forgot step 1: phone ── */
         ) : forgotStep === 1 ? (
           <div className="bg-white rounded shadow-md p-8">
-            <h2 className="text-base font-semibold text-gray-800 mb-1">{ta('resetPassword')}</h2>
-            <p className="text-sm text-gray-500 mb-5">Parolingizni tiklash uchun telefon raqamingizni kiriting</p>
+            <h2 className="text-base font-semibold text-gray-800 mb-4">{ta('resetPassword')}</h2>
+
+            <p className="text-sm text-gray-600 mb-4">{ta('toGetCode')}</p>
+
+            <a
+              href={`https://t.me/${TELEGRAM_BOT_USERNAME}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className={cn(btnPrimary, 'block text-center mb-5 no-underline')}
+            >
+              {ta('goToBot')}
+            </a>
+
+            <p className="text-xs text-gray-400 mb-3">{ta('afterBotInstruction')}</p>
 
             <div className="space-y-4">
               <div>
@@ -356,29 +365,9 @@ export default function LoginPage() {
                     onChange={(e) => setFpPhone(e.target.value.replace(/\D/g, '').slice(0, 9))}
                     placeholder="XX XXX XX XX"
                     className="flex-1 px-3 py-2 border border-gray-300 rounded-r text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                    autoFocus
                   />
                 </div>
               </div>
-
-              {telegramNotLinked && (
-                <div className="bg-amber-50 border border-amber-200 rounded p-3 text-sm text-amber-800">
-                  <p className="font-medium">⚠️ Telegram ulangan emas</p>
-                  <p className="mt-1">
-                    <a
-                      href={`https://t.me/${TELEGRAM_BOT_USERNAME}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="underline font-medium"
-                    >
-                      @{TELEGRAM_BOT_USERNAME}
-                    </a>
-                    {' '}ga{' '}
-                    <code className="bg-amber-100 px-1 rounded">/start</code>
-                    {' '}yuboring va telefon raqamingizni ulang, so'ng qaytib keling.
-                  </p>
-                </div>
-              )}
 
               {fpError && (
                 <div className="bg-red-50 border border-red-200 text-red-700 text-sm px-3 py-2 rounded">{fpError}</div>
@@ -402,7 +391,7 @@ export default function LoginPage() {
         ) : forgotStep === 2 ? (
           <div className="bg-white rounded shadow-md p-8">
             <h2 className="text-base font-semibold text-gray-800 mb-1">{ta('enterCode')}</h2>
-            <p className="text-sm text-gray-500 mb-5">{ta('codeSentTelegram')}</p>
+            <p className="text-sm text-gray-500 mb-5">{ta('enterVerifyCode')}</p>
 
             {/* 6 OTP boxes */}
             <div className="flex gap-2 justify-center mb-4">
@@ -543,10 +532,10 @@ export default function LoginPage() {
                   <label className="block text-sm font-medium text-gray-700">{t('password')}</label>
                   <button
                     type="button"
-                    onClick={() => { setForgotStep(1); setFpPhone(phone); setFpError(''); setTelegramNotLinked(false); }}
+                    onClick={() => { setForgotStep(1); setFpPhone(phone); setFpError(''); }}
                     className="text-xs text-blue-600 hover:underline"
                   >
-                    {ta('forgotPassword')}
+                    {ta('forgotPasswordQ')}
                   </button>
                 </div>
                 <div className="relative">

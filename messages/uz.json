@@ -906,15 +906,6 @@
     "supply": "Zavxoz",
     "other": "Boshqa"
   },
-  "auth": {
-    "passwordPlaceholder": "Kamida 8 ta belgi",
-    "passwordTooShort": "Parol kamida 8 ta belgidan iborat bo'lishi kerak",
-    "oldPassword": "Eski parol",
-    "newPassword": "Yangi parol",
-    "confirmPassword": "Yangi parolni tasdiqlang",
-    "passwordMismatch": "Parollar mos kelmaydi",
-    "passwordChanged": "Parol muvaffaqiyatli o'zgartirildi"
-  },
   "superadmin": {
     "companies": "Kompaniyalar",
     "debts": "Qarzdorlar",
@@ -1017,7 +1008,13 @@
     "dateTo": "Gacha"
   },
   "auth": {
+    "passwordPlaceholder": "Kamida 8 ta belgi",
+    "passwordTooShort": "Parol kamida 8 ta belgidan iborat bo'lishi kerak",
+    "oldPassword": "Eski parol",
+    "passwordMismatch": "Parollar mos kelmaydi",
+    "passwordChanged": "Parol muvaffaqiyatli o'zgartirildi",
     "forgotPassword": "Parolni unutdim?",
+    "forgotPasswordQ": "Parolni unutdingizmi?",
     "resetPassword": "Parolni tiklash",
     "sendCode": "Kod yuborish",
     "enterCode": "Kodni kiriting",
@@ -1030,6 +1027,10 @@
     "tooManyAttempts": "Juda ko'p urinish.",
     "tryAfter": "dan so'ng urinib ko'ring",
     "back": "Orqaga",
-    "seconds": "soniya"
+    "seconds": "soniya",
+    "toGetCode": "Tasdiqlash kodini olish uchun Telegram botimizga o'ting va telefon raqamingizni yuboring",
+    "goToBot": "📱 @EduHub_Message_Bot ga o'tish",
+    "afterBotInstruction": "Botga raqam yuborgandan so'ng telefon raqamingizni kiriting",
+    "enterVerifyCode": "EduHub tasdiqlash kodini kiriting"
   }
 }

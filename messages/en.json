@@ -975,6 +975,7 @@
     "archiveSuccess": "Company archived",
     "unarchiveSuccess": "Company restored",
     "details": "Details",
-    "searchByCompany": "Search by company name..."
+    "searchByCompany": "Search by company name...",
+    "searchCompanies": "Search by name or number..."
   }
 }

@@ -975,6 +975,7 @@
     "archiveSuccess": "Компания архивирована",
     "unarchiveSuccess": "Компания восстановлена",
     "details": "Подробнее",
-    "searchByCompany": "Поиск по названию компании..."
+    "searchByCompany": "Поиск по названию компании...",
+    "searchCompanies": "Поиск по названию или номеру..."
   }
 }

@@ -995,6 +995,7 @@
     "archiveSuccess": "Kompaniya arxivlandi",
     "unarchiveSuccess": "Kompaniya qayta tiklandi",
     "details": "Batafsil",
-    "searchByCompany": "Kompaniya nomini kiriting..."
+    "searchByCompany": "Kompaniya nomini kiriting...",
+    "searchCompanies": "Nomi yoki raqam bo'yicha izlash..."
   }
 }

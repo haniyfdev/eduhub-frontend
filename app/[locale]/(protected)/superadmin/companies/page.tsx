@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback, useRef } from 'react';
 import ReactDOM from 'react-dom';
 import { useTranslations } from 'next-intl';
-import { X, Users, Phone, MapPin, Plus, Eye, EyeOff, MoreHorizontal, RotateCcw } from 'lucide-react';
+import { X, Users, Phone, MapPin, Plus, Eye, EyeOff, MoreHorizontal, RotateCcw, Search } from 'lucide-react';
 import api from '@/lib/axios';
 import { cn } from '@/lib/utils';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -149,6 +149,11 @@ export default function SuperadminCompaniesPage() {
   const [detail, setDetail] = useState<CompanyDetail | null>(null);
   const [detailLoading, setDetailLoading] = useState(false);
 
+  /* ── search ── */
+  const [search, setSearch] = useState('');
+  const [searchQuery, setSearchQuery] = useState('');
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   /* ── card menu ── */
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
   const menuRef = useRef<HTMLDivElement | null>(null);
@@ -171,10 +176,12 @@ export default function SuperadminCompaniesPage() {
     setForm(p => ({ ...p, [k]: v })), []);
 
   /* ── fetch ── */
-  const fetchCompanies = useCallback(async (filter: 'active' | 'archived' = 'active') => {
+  const fetchCompanies = useCallback(async (filter: 'active' | 'archived' = 'active', q = '') => {
     setLoading(true);
     try {
-      const { data } = await api.get<CompanyCard[]>(`/api/superadmin/companies/?status=${filter}`);
+      const params = new URLSearchParams({ status: filter });
+      if (q) params.set('search', q);
+      const { data } = await api.get<CompanyCard[]>(`/api/superadmin/companies/?${params}`);
       setCompanies(data);
     } catch {
       //
@@ -183,7 +190,13 @@ export default function SuperadminCompaniesPage() {
     }
   }, []);
 
-  useEffect(() => { fetchCompanies(statusFilter); }, [fetchCompanies, statusFilter]);
+  useEffect(() => {
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => setSearchQuery(search), 400);
+    return () => { if (debounceRef.current) clearTimeout(debounceRef.current); };
+  }, [search]);
+
+  useEffect(() => { fetchCompanies(statusFilter, searchQuery); }, [fetchCompanies, statusFilter, searchQuery]);
 
   /* ── close menu on outside click ── */
   useEffect(() => {
@@ -238,7 +251,7 @@ export default function SuperadminCompaniesPage() {
       await api.post(`/api/superadmin/companies/${archiveTarget.id}/archive/`);
       toast.success(t('archiveSuccess' as Parameters<typeof t>[0]));
       setArchiveTarget(null);
-      fetchCompanies(statusFilter);
+      fetchCompanies(statusFilter, searchQuery);
     } catch {
       toast.error(t('genericError' as Parameters<typeof t>[0]));
     } finally {
@@ -254,7 +267,7 @@ export default function SuperadminCompaniesPage() {
       await api.post(`/api/superadmin/companies/${unarchiveTarget.id}/unarchive/`);
       toast.success(t('unarchiveSuccess' as Parameters<typeof t>[0]));
       setUnarchiveTarget(null);
-      fetchCompanies(statusFilter);
+      fetchCompanies(statusFilter, searchQuery);
     } catch {
       toast.error(t('genericError' as Parameters<typeof t>[0]));
     } finally {
@@ -316,7 +329,7 @@ export default function SuperadminCompaniesPage() {
       await api.post('/api/superadmin/companies/', fd);
       toast.success(t('companyCreated' as Parameters<typeof t>[0]));
       resetCreate();
-      fetchCompanies(statusFilter);
+      fetchCompanies(statusFilter, searchQuery);
     } catch (err: unknown) {
       const data = (err as { response?: { data?: Record<string, string> } })?.response?.data;
       if (data && typeof data === 'object' && !Array.isArray(data)) {
@@ -732,6 +745,26 @@ export default function SuperadminCompaniesPage() {
             {t(s as Parameters<typeof t>[0])}
           </button>
         ))}
+      </div>
+
+      {/* Search */}
+      <div className="relative w-full max-w-sm">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
+        <input
+          type="text"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder={t('searchCompanies' as Parameters<typeof t>[0])}
+          className="w-full pl-9 pr-8 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+        />
+        {search && (
+          <button
+            onClick={() => setSearch('')}
+            className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+          >
+            <X className="w-3.5 h-3.5" />
+          </button>
+        )}
       </div>
 
       {/* Grid */}

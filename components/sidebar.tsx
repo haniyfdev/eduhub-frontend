@@ -51,6 +51,7 @@ const sections = [
 ];
 
 const superadminItems = [
+  { key: 'dashboard', icon: LayoutDashboard, href: '/superadmin/dashboard', label: 'Dashboard' },
   { key: 'companies', icon: Building2, href: '/superadmin/companies', label: 'Kompaniyalar' },
   { key: 'debts',     icon: AlertCircle, href: '/superadmin/debts',   label: 'Qarzdorlar' },
   { key: 'payments',  icon: BadgeDollarSign, href: '/superadmin/payments', label: "To'lovlar" },

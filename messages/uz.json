@@ -996,6 +996,16 @@
     "unarchiveSuccess": "Kompaniya qayta tiklandi",
     "details": "Batafsil",
     "searchByCompany": "Kompaniya nomini kiriting...",
-    "searchCompanies": "Nomi yoki raqam bo'yicha izlash..."
+    "searchCompanies": "Nomi yoki raqam bo'yicha izlash...",
+    "dashboard": "Dashboard",
+    "totalCompanies": "Jami markazlar",
+    "debtCompanies": "Qarzdor markazlar",
+    "totalActiveStudents": "Faol o'quvchilar",
+    "totalRevenue": "Jami daromad",
+    "monthRevenue": "Bu oy daromad",
+    "overdueTotal": "Muddati o'tgan qarzlar",
+    "revenueTrend": "Daromad trendi",
+    "companiesStatus": "Markazlar holati",
+    "remainingDebt": "Qoldiq qarz"
   }
 }

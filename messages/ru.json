@@ -976,6 +976,16 @@
     "unarchiveSuccess": "Компания восстановлена",
     "details": "Подробнее",
     "searchByCompany": "Поиск по названию компании...",
-    "searchCompanies": "Поиск по названию или номеру..."
+    "searchCompanies": "Поиск по названию или номеру...",
+    "dashboard": "Панель управления",
+    "totalCompanies": "Всего центров",
+    "debtCompanies": "Центров с долгом",
+    "totalActiveStudents": "Активных учеников",
+    "totalRevenue": "Общий доход",
+    "monthRevenue": "Доход за этот месяц",
+    "overdueTotal": "Просроченные долги",
+    "revenueTrend": "Динамика дохода",
+    "companiesStatus": "Статус центров",
+    "remainingDebt": "Остаток долга"
   }
 }

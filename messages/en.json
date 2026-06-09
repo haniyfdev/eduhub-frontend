@@ -976,6 +976,16 @@
     "unarchiveSuccess": "Company restored",
     "details": "Details",
     "searchByCompany": "Search by company name...",
-    "searchCompanies": "Search by name or number..."
+    "searchCompanies": "Search by name or number...",
+    "dashboard": "Dashboard",
+    "totalCompanies": "Total centers",
+    "debtCompanies": "Centers with debt",
+    "totalActiveStudents": "Active students",
+    "totalRevenue": "Total revenue",
+    "monthRevenue": "This month revenue",
+    "overdueTotal": "Overdue debts",
+    "revenueTrend": "Revenue trend",
+    "companiesStatus": "Centers status",
+    "remainingDebt": "Remaining debt"
   }
 }

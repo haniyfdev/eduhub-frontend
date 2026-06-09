@@ -46,7 +46,7 @@ export default function LoginPage() {
         setUser(data.user);
         setAuthenticated(true);
         const home = data.user.role === 'superadmin'
-          ? `/${locale}/superadmin/companies`
+          ? `/${locale}/superadmin/dashboard`
           : `/${locale}/dashboard`;
         router.push(home);
       }
@@ -73,7 +73,7 @@ export default function LoginPage() {
       setUser(data.user);
       setAuthenticated(true);
       const home = data.user.role === 'superadmin'
-        ? `/${locale}/superadmin/companies`
+        ? `/${locale}/superadmin/dashboard`
         : `/${locale}/dashboard`;
       router.push(home);
     } catch (err: unknown) {

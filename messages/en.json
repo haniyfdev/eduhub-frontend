@@ -974,6 +974,7 @@
     "active": "Active",
     "archiveSuccess": "Company archived",
     "unarchiveSuccess": "Company restored",
-    "details": "Details"
+    "details": "Details",
+    "searchByCompany": "Search by company name..."
   }
 }

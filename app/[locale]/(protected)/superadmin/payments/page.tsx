@@ -1,7 +1,8 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import { useTranslations } from 'next-intl';
+import { Search, X } from 'lucide-react';
 import api from '@/lib/axios';
 import { formatCurrency } from '@/lib/utils';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -41,11 +42,16 @@ export default function SuperadminPaymentsPage() {
   const t = useTranslations('superadmin');
   const [payments, setPayments] = useState<SubscriptionPayment[]>([]);
   const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState('');
+  const [searchQuery, setSearchQuery] = useState('');
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const fetchPayments = useCallback(async () => {
+  const fetchPayments = useCallback(async (q: string) => {
     setLoading(true);
     try {
-      const { data } = await api.get<SubscriptionPayment[]>('/api/superadmin/payments/');
+      const params = new URLSearchParams();
+      if (q) params.set('search', q);
+      const { data } = await api.get<SubscriptionPayment[]>(`/api/superadmin/payments/?${params}`);
       setPayments(data);
     } catch {
       //
@@ -54,7 +60,13 @@ export default function SuperadminPaymentsPage() {
     }
   }, []);
 
-  useEffect(() => { fetchPayments(); }, [fetchPayments]);
+  useEffect(() => {
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => setSearchQuery(search), 400);
+    return () => { if (debounceRef.current) clearTimeout(debounceRef.current); };
+  }, [search]);
+
+  useEffect(() => { fetchPayments(searchQuery); }, [fetchPayments, searchQuery]);
 
   const COLS = [
     '№',
@@ -67,9 +79,29 @@ export default function SuperadminPaymentsPage() {
 
   return (
     <div className="space-y-5">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between flex-wrap gap-3">
         <h1 className="text-xl font-bold text-gray-900">{t('payments')}</h1>
         <span className="text-sm text-gray-500">{payments.length} ta to&apos;lov</span>
+      </div>
+
+      {/* Search */}
+      <div className="relative w-full max-w-sm">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
+        <input
+          type="text"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder={t('searchByCompany' as Parameters<typeof t>[0])}
+          className="w-full pl-9 pr-8 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+        />
+        {search && (
+          <button
+            onClick={() => setSearch('')}
+            className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+          >
+            <X className="w-3.5 h-3.5" />
+          </button>
+        )}
       </div>
 
       <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-x-auto">

@@ -1,8 +1,8 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import { useTranslations } from 'next-intl';
-import { Pencil, Check, X } from 'lucide-react';
+import { Pencil, Check, X, Search } from 'lucide-react';
 import api from '@/lib/axios';
 import { cn, formatCurrency, formatDMY } from '@/lib/utils';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -44,15 +44,21 @@ export default function SuperadminDebtsPage() {
   const [planInput, setPlanInput] = useState('');
   const [savingPlan, setSavingPlan] = useState(false);
 
+  const [search, setSearch] = useState('');
+  const [searchQuery, setSearchQuery] = useState('');
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   const [payTarget, setPayTarget] = useState<SubscriptionDebt | null>(null);
   const [payAmount, setPayAmount] = useState('');
   const [payMethod, setPayMethod] = useState<'cash' | 'card' | 'transfer'>('cash');
   const [paying, setPaying] = useState(false);
 
-  const fetchDebts = useCallback(async () => {
+  const fetchDebts = useCallback(async (q: string) => {
     setLoading(true);
     try {
-      const { data } = await api.get<SubscriptionDebt[]>('/api/superadmin/debts/');
+      const params = new URLSearchParams();
+      if (q) params.set('search', q);
+      const { data } = await api.get<SubscriptionDebt[]>(`/api/superadmin/debts/?${params}`);
       setDebts(data);
     } catch {
       //
@@ -72,9 +78,13 @@ export default function SuperadminDebtsPage() {
   }, []);
 
   useEffect(() => {
-    fetchDebts();
-    fetchPlan();
-  }, [fetchDebts, fetchPlan]);
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => setSearchQuery(search), 400);
+    return () => { if (debounceRef.current) clearTimeout(debounceRef.current); };
+  }, [search]);
+
+  useEffect(() => { fetchDebts(searchQuery); }, [fetchDebts, searchQuery]);
+  useEffect(() => { fetchPlan(); }, [fetchPlan]);
 
   async function savePlan() {
     const price = parseFloat(planInput.replace(/\s/g, ''));
@@ -111,7 +121,7 @@ export default function SuperadminDebtsPage() {
       });
       toast.success("To'lov qabul qilindi");
       setPayTarget(null);
-      fetchDebts();
+      fetchDebts(searchQuery);
     } catch (err: unknown) {
       const msg = (err as { response?: { data?: { error?: string } } })?.response?.data?.error;
       toast.error(msg || "Xatolik");
@@ -181,6 +191,26 @@ export default function SuperadminDebtsPage() {
             </>
           )}
         </div>
+      </div>
+
+      {/* Search */}
+      <div className="relative w-full max-w-sm">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
+        <input
+          type="text"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder={t('searchByCompany' as Parameters<typeof t>[0])}
+          className="w-full pl-9 pr-8 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+        />
+        {search && (
+          <button
+            onClick={() => setSearch('')}
+            className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+          >
+            <X className="w-3.5 h-3.5" />
+          </button>
+        )}
       </div>
 
       {/* Debts table */}

@@ -994,6 +994,7 @@
     "active": "Faol",
     "archiveSuccess": "Kompaniya arxivlandi",
     "unarchiveSuccess": "Kompaniya qayta tiklandi",
-    "details": "Batafsil"
+    "details": "Batafsil",
+    "searchByCompany": "Kompaniya nomini kiriting..."
   }
 }

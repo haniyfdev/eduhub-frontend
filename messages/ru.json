@@ -974,6 +974,7 @@
     "active": "Активные",
     "archiveSuccess": "Компания архивирована",
     "unarchiveSuccess": "Компания восстановлена",
-    "details": "Подробнее"
+    "details": "Подробнее",
+    "searchByCompany": "Поиск по названию компании..."
   }
 }

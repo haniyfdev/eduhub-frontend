@@ -109,14 +109,28 @@ function buildHierarchicalList(companies: CompanyCard[]): CompanyWithBadge[] {
     .sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
 
   const result: CompanyWithBadge[] = [];
+  const includedIds = new Set<string>();
+
   parents.forEach((parent, pIdx) => {
     const pNum = pIdx + 1;
     result.push({ ...parent, badge: String(pNum) });
+    includedIds.add(parent.id);
     companies
       .filter(c => c.branch_of === parent.id)
       .sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime())
-      .forEach((branch, bIdx) => result.push({ ...branch, badge: `${pNum}.${bIdx + 1}` }));
+      .forEach((branch, bIdx) => {
+        result.push({ ...branch, badge: `${pNum}.${bIdx + 1}` });
+        includedIds.add(branch.id);
+      });
   });
+
+  // Orphan branches: parent is not in the current result set (e.g. partial search results).
+  // Still render them so the grid is never empty when companies state has items.
+  companies
+    .filter(c => c.branch_of && !includedIds.has(c.id))
+    .sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime())
+    .forEach(branch => result.push({ ...branch, badge: '↳' }));
+
   return result;
 }
 

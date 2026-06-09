@@ -1015,5 +1015,21 @@
     "currentMonth": "Joriy oy",
     "dateFrom": "Dan",
     "dateTo": "Gacha"
+  },
+  "auth": {
+    "forgotPassword": "Parolni unutdim?",
+    "resetPassword": "Parolni tiklash",
+    "sendCode": "Kod yuborish",
+    "enterCode": "Kodni kiriting",
+    "codeSentTelegram": "Telegram botingizga 6 xonali kod yuborildi",
+    "resendCode": "Qayta yuborish",
+    "newPassword": "Yangi parol",
+    "confirmPassword": "Parolni tasdiqlang",
+    "passwordUpdated": "Parol muvaffaqiyatli yangilandi",
+    "telegramNotLinked": "Avval Telegram botimizga /start yuboring",
+    "tooManyAttempts": "Juda ko'p urinish.",
+    "tryAfter": "dan so'ng urinib ko'ring",
+    "back": "Orqaga",
+    "seconds": "soniya"
   }
 }

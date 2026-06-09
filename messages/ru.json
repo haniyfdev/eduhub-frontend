@@ -995,5 +995,21 @@
     "currentMonth": "Текущий месяц",
     "dateFrom": "От",
     "dateTo": "До"
+  },
+  "auth": {
+    "forgotPassword": "Забыл пароль?",
+    "resetPassword": "Сбросить пароль",
+    "sendCode": "Отправить код",
+    "enterCode": "Введите код",
+    "codeSentTelegram": "6-значный код отправлен в ваш Telegram-бот",
+    "resendCode": "Отправить повторно",
+    "newPassword": "Новый пароль",
+    "confirmPassword": "Подтвердите пароль",
+    "passwordUpdated": "Пароль успешно обновлён",
+    "telegramNotLinked": "Сначала отправьте /start нашему Telegram-боту",
+    "tooManyAttempts": "Слишком много попыток.",
+    "tryAfter": "повторите через",
+    "back": "Назад",
+    "seconds": "секунд"
   }
 }

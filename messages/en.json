@@ -995,5 +995,21 @@
     "currentMonth": "This month",
     "dateFrom": "From",
     "dateTo": "To"
+  },
+  "auth": {
+    "forgotPassword": "Forgot password?",
+    "resetPassword": "Reset password",
+    "sendCode": "Send code",
+    "enterCode": "Enter code",
+    "codeSentTelegram": "A 6-digit code was sent to your Telegram bot",
+    "resendCode": "Resend",
+    "newPassword": "New password",
+    "confirmPassword": "Confirm password",
+    "passwordUpdated": "Password updated successfully",
+    "telegramNotLinked": "First send /start to our Telegram bot",
+    "tooManyAttempts": "Too many attempts.",
+    "tryAfter": "try after",
+    "back": "Back",
+    "seconds": "seconds"
   }
 }

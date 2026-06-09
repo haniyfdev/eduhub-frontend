@@ -7,7 +7,10 @@ import { useLocale } from 'next-intl';
 import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
 } from 'recharts';
-import { Building2, AlertCircle, Users, TrendingUp, BadgeDollarSign, AlertTriangle } from 'lucide-react';
+import {
+  Building2, Archive, AlertCircle, Users,
+  TrendingUp, BadgeDollarSign, AlertTriangle,
+} from 'lucide-react';
 import api from '@/lib/axios';
 import { cn, formatCurrency } from '@/lib/utils';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -15,12 +18,13 @@ import { Skeleton } from '@/components/ui/skeleton';
 /* ══════════ Types ══════════ */
 
 interface DashboardStats {
-  total_companies: number;
+  active_companies: number;
+  archived_companies: number;
   debt_companies: number;
   total_active_students: number;
   total_revenue: number;
-  current_month_revenue: number;
-  overdue_debt_total: number;
+  period_revenue: number;
+  period_overdue_total: number;
 }
 
 interface RevenuePoint {
@@ -60,7 +64,20 @@ const STATUS_UZ: Record<string, string> = {
 
 const thCls = 'text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide bg-gray-50 whitespace-nowrap';
 
+type DatePreset = 'month' | 'year' | 'custom';
+
 /* ══════════ Helpers ══════════ */
+
+function todayISO(): string {
+  return new Date().toISOString().slice(0, 10);
+}
+function monthStartISO(): string {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-01`;
+}
+function yearStartISO(): string {
+  return `${new Date().getFullYear()}-01-01`;
+}
 
 function fmtYAxis(v: number): string {
   if (v >= 1_000_000) return `${(v / 1_000_000).toFixed(1)}M`;
@@ -116,10 +133,16 @@ export default function SuperadminDashboardPage() {
   const [data, setData] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(true);
 
-  const fetchDashboard = useCallback(async () => {
+  // Date filter state — default: current month
+  const [dateFrom, setDateFrom] = useState(monthStartISO);
+  const [dateTo, setDateTo] = useState(todayISO);
+  const [preset, setPreset] = useState<DatePreset>('month');
+
+  const fetchDashboard = useCallback(async (from: string, to: string) => {
     setLoading(true);
     try {
-      const { data: resp } = await api.get<DashboardData>('/api/superadmin/dashboard/');
+      const params = new URLSearchParams({ date_from: from, date_to: to });
+      const { data: resp } = await api.get<DashboardData>(`/api/superadmin/dashboard/?${params}`);
       setData(resp);
     } catch {
       //
@@ -128,7 +151,18 @@ export default function SuperadminDashboardPage() {
     }
   }, []);
 
-  useEffect(() => { fetchDashboard(); }, [fetchDashboard]);
+  useEffect(() => { fetchDashboard(dateFrom, dateTo); }, [fetchDashboard, dateFrom, dateTo]);
+
+  function applyPreset(p: DatePreset) {
+    setPreset(p);
+    if (p === 'year') {
+      setDateFrom(yearStartISO());
+      setDateTo(todayISO());
+    } else {
+      setDateFrom(monthStartISO());
+      setDateTo(todayISO());
+    }
+  }
 
   const stats = data?.stats;
   const trend = data?.revenue_trend ?? [];
@@ -136,9 +170,14 @@ export default function SuperadminDashboardPage() {
 
   const statCards1 = [
     {
-      title: t('totalCompanies' as Parameters<typeof t>[0]),
-      value: stats ? String(stats.total_companies) : '—',
+      title: t('activePartners' as Parameters<typeof t>[0]),
+      value: stats ? String(stats.active_companies) : '—',
       icon: Building2, iconBg: 'bg-blue-50', iconColor: 'text-blue-600',
+    },
+    {
+      title: t('archivedPartners' as Parameters<typeof t>[0]),
+      value: stats ? String(stats.archived_companies) : '—',
+      icon: Archive, iconBg: 'bg-gray-100', iconColor: 'text-gray-500',
     },
     {
       title: t('debtCompanies' as Parameters<typeof t>[0]),
@@ -159,16 +198,21 @@ export default function SuperadminDashboardPage() {
       icon: TrendingUp, iconBg: 'bg-blue-50', iconColor: 'text-blue-600',
     },
     {
-      title: t('monthRevenue' as Parameters<typeof t>[0]),
-      value: stats ? formatCurrency(stats.current_month_revenue) : '—',
+      title: t('periodRevenue' as Parameters<typeof t>[0]),
+      value: stats ? formatCurrency(stats.period_revenue) : '—',
       icon: BadgeDollarSign, iconBg: 'bg-green-50', iconColor: 'text-green-600',
     },
     {
       title: t('overdueTotal' as Parameters<typeof t>[0]),
-      value: stats ? formatCurrency(stats.overdue_debt_total) : '—',
+      value: stats ? formatCurrency(stats.period_overdue_total) : '—',
       icon: AlertTriangle, iconBg: 'bg-red-50', iconColor: 'text-red-600',
     },
   ];
+
+  const btnBase = 'px-3 py-1.5 text-xs font-medium rounded-lg border transition-colors';
+  const btnActive = 'bg-blue-600 text-white border-blue-600';
+  const btnIdle = 'bg-white text-gray-600 border-gray-200 hover:border-blue-300 hover:text-blue-600';
+  const inputCls = 'px-2.5 py-1.5 text-xs border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white w-32';
 
   return (
     <div className="space-y-6">
@@ -176,18 +220,54 @@ export default function SuperadminDashboardPage() {
         {t('dashboard' as Parameters<typeof t>[0])}
       </h1>
 
-      {/* Row 1: center + student stats */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+      {/* Row 1: 4 stat cards */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {statCards1.map((card) => (
           <StatCard key={card.title} {...card} loading={loading} />
         ))}
       </div>
 
-      {/* Row 2: revenue stats */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        {statCards2.map((card) => (
-          <StatCard key={card.title} {...card} loading={loading} />
-        ))}
+      {/* Row 2: date filter + 3 revenue/overdue stat cards */}
+      <div className="space-y-3">
+        {/* Date filter bar — right-aligned */}
+        <div className="flex items-center justify-end gap-2 flex-wrap">
+          <button
+            onClick={() => applyPreset('year')}
+            className={cn(btnBase, preset === 'year' ? btnActive : btnIdle)}
+          >
+            {t('currentYear' as Parameters<typeof t>[0])}
+          </button>
+          <button
+            onClick={() => applyPreset('month')}
+            className={cn(btnBase, preset === 'month' ? btnActive : btnIdle)}
+          >
+            {t('currentMonth' as Parameters<typeof t>[0])}
+          </button>
+          <div className="flex items-center gap-1.5">
+            <span className="text-xs text-gray-500">{t('dateFrom' as Parameters<typeof t>[0])}</span>
+            <input
+              type="date"
+              value={dateFrom}
+              onChange={(e) => { setDateFrom(e.target.value); setPreset('custom'); }}
+              className={inputCls}
+            />
+            <span className="text-xs text-gray-400">→</span>
+            <span className="text-xs text-gray-500">{t('dateTo' as Parameters<typeof t>[0])}</span>
+            <input
+              type="date"
+              value={dateTo}
+              onChange={(e) => { setDateTo(e.target.value); setPreset('custom'); }}
+              className={inputCls}
+            />
+          </div>
+        </div>
+
+        {/* 3 revenue stat cards */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          {statCards2.map((card) => (
+            <StatCard key={card.title} {...card} loading={loading} />
+          ))}
+        </div>
       </div>
 
       {/* Revenue trend chart */}

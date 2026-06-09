@@ -986,6 +986,13 @@
     "overdueTotal": "Overdue debts",
     "revenueTrend": "Revenue trend",
     "companiesStatus": "Centers status",
-    "remainingDebt": "Remaining debt"
+    "remainingDebt": "Remaining debt",
+    "activePartners": "Active partners",
+    "archivedPartners": "Archived partners",
+    "periodRevenue": "Period revenue",
+    "currentYear": "This year",
+    "currentMonth": "This month",
+    "dateFrom": "From",
+    "dateTo": "To"
   }
 }

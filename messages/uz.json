@@ -1006,6 +1006,13 @@
     "overdueTotal": "Muddati o'tgan qarzlar",
     "revenueTrend": "Daromad trendi",
     "companiesStatus": "Markazlar holati",
-    "remainingDebt": "Qoldiq qarz"
+    "remainingDebt": "Qoldiq qarz",
+    "activePartners": "Faol hamkorlar",
+    "archivedPartners": "Arxivlangan hamkorlar",
+    "periodRevenue": "Davr daromadi",
+    "currentYear": "Joriy yil",
+    "currentMonth": "Joriy oy",
+    "dateFrom": "Dan",
+    "dateTo": "Gacha"
   }
 }

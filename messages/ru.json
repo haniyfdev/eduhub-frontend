@@ -986,6 +986,13 @@
     "overdueTotal": "Просроченные долги",
     "revenueTrend": "Динамика дохода",
     "companiesStatus": "Статус центров",
-    "remainingDebt": "Остаток долга"
+    "remainingDebt": "Остаток долга",
+    "activePartners": "Активные партнёры",
+    "archivedPartners": "Архивированные партнёры",
+    "periodRevenue": "Доход за период",
+    "currentYear": "Текущий год",
+    "currentMonth": "Текущий месяц",
+    "dateFrom": "От",
+    "dateTo": "До"
   }
 }

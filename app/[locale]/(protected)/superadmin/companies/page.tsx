@@ -295,7 +295,7 @@ export default function SuperadminCompaniesPage() {
     }
     const phoneLen = t('phoneLength' as Parameters<typeof t>[0]);
     if (form.phone.length < 9) clientErrors.phone = phoneLen;
-    if (form.bossPhone.length < 9) clientErrors.boss_phone = phoneLen;
+    if (!form.isBranch && form.bossPhone.length < 9) clientErrors.boss_phone = phoneLen;
     if (Object.keys(clientErrors).length > 0) { setCreateErrors(clientErrors); return; }
 
     const fd = new FormData();
@@ -304,10 +304,12 @@ export default function SuperadminCompaniesPage() {
     fd.append('address', form.address);
     if (logoFile) fd.append('logo', logoFile);
     if (form.isBranch && form.parentId) fd.append('parent', form.parentId);
-    fd.append('boss_first_name', form.bossFirstName);
-    fd.append('boss_last_name', form.bossLastName);
-    fd.append('boss_phone', '+998' + form.bossPhone);
-    fd.append('boss_password', form.bossPassword);
+    if (!form.isBranch) {
+      fd.append('boss_first_name', form.bossFirstName);
+      fd.append('boss_last_name', form.bossLastName);
+      fd.append('boss_phone', '+998' + form.bossPhone);
+      fd.append('boss_password', form.bossPassword);
+    }
 
     setCreating(true);
     try {
@@ -620,55 +622,59 @@ export default function SuperadminCompaniesPage() {
               </div>
             )}
 
-            <div className="pt-2 pb-1">
-              <p className="text-xs font-semibold text-blue-700 uppercase tracking-wide bg-blue-50 px-3 py-1.5 rounded-md">
-                {t('bossInfo' as Parameters<typeof t>[0])}
-              </p>
-            </div>
+            {!form.isBranch && (
+              <>
+                <div className="pt-2 pb-1">
+                  <p className="text-xs font-semibold text-blue-700 uppercase tracking-wide bg-blue-50 px-3 py-1.5 rounded-md">
+                    {t('bossInfo' as Parameters<typeof t>[0])}
+                  </p>
+                </div>
 
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className={labelCls}>{t('bossFirstName' as Parameters<typeof t>[0])} <span className="text-red-500">*</span></label>
-                <input className={inputCls} value={form.bossFirstName} onChange={e => set('bossFirstName', e.target.value)}
-                  placeholder={t('firstNamePlaceholder' as Parameters<typeof t>[0])} required />
-                {createErrors.boss_first_name && <p className={errorCls}>{createErrors.boss_first_name}</p>}
-              </div>
-              <div>
-                <label className={labelCls}>{t('bossLastName' as Parameters<typeof t>[0])} <span className="text-red-500">*</span></label>
-                <input className={inputCls} value={form.bossLastName} onChange={e => set('bossLastName', e.target.value)}
-                  placeholder={t('lastNamePlaceholder' as Parameters<typeof t>[0])} required />
-                {createErrors.boss_last_name && <p className={errorCls}>{createErrors.boss_last_name}</p>}
-              </div>
-            </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className={labelCls}>{t('bossFirstName' as Parameters<typeof t>[0])} <span className="text-red-500">*</span></label>
+                    <input className={inputCls} value={form.bossFirstName} onChange={e => set('bossFirstName', e.target.value)}
+                      placeholder={t('firstNamePlaceholder' as Parameters<typeof t>[0])} required />
+                    {createErrors.boss_first_name && <p className={errorCls}>{createErrors.boss_first_name}</p>}
+                  </div>
+                  <div>
+                    <label className={labelCls}>{t('bossLastName' as Parameters<typeof t>[0])} <span className="text-red-500">*</span></label>
+                    <input className={inputCls} value={form.bossLastName} onChange={e => set('bossLastName', e.target.value)}
+                      placeholder={t('lastNamePlaceholder' as Parameters<typeof t>[0])} required />
+                    {createErrors.boss_last_name && <p className={errorCls}>{createErrors.boss_last_name}</p>}
+                  </div>
+                </div>
 
-            <div>
-              <label className={labelCls}>{t('bossPhone' as Parameters<typeof t>[0])} <span className="text-red-500">*</span></label>
-              <div className="flex">
-                <span className={cn('inline-flex items-center px-3 border border-r-0 rounded-l-lg bg-gray-50 text-gray-600 text-sm',
-                  createErrors.boss_phone ? 'border-red-400' : 'border-gray-300')}>+998</span>
-                <input
-                  className={cn('flex-1 px-3 py-2 border rounded-r-lg text-sm focus:outline-none focus:ring-2',
-                    createErrors.boss_phone ? 'border-red-400 focus:ring-red-400' : 'border-gray-300 focus:ring-blue-500')}
-                  value={form.bossPhone} onChange={e => handlePhoneInput('bossPhone', e.target.value)}
-                  placeholder="901234567" inputMode="numeric" maxLength={9} required />
-              </div>
-              {createErrors.boss_phone && <p className={errorCls}>{createErrors.boss_phone}</p>}
-            </div>
+                <div>
+                  <label className={labelCls}>{t('bossPhone' as Parameters<typeof t>[0])} <span className="text-red-500">*</span></label>
+                  <div className="flex">
+                    <span className={cn('inline-flex items-center px-3 border border-r-0 rounded-l-lg bg-gray-50 text-gray-600 text-sm',
+                      createErrors.boss_phone ? 'border-red-400' : 'border-gray-300')}>+998</span>
+                    <input
+                      className={cn('flex-1 px-3 py-2 border rounded-r-lg text-sm focus:outline-none focus:ring-2',
+                        createErrors.boss_phone ? 'border-red-400 focus:ring-red-400' : 'border-gray-300 focus:ring-blue-500')}
+                      value={form.bossPhone} onChange={e => handlePhoneInput('bossPhone', e.target.value)}
+                      placeholder="901234567" inputMode="numeric" maxLength={9} required />
+                  </div>
+                  {createErrors.boss_phone && <p className={errorCls}>{createErrors.boss_phone}</p>}
+                </div>
 
-            <div>
-              <label className={labelCls}>{t('bossPassword' as Parameters<typeof t>[0])} <span className="text-red-500">*</span></label>
-              <div className="relative">
-                <input type={showPassword ? 'text' : 'password'}
-                  className={cn(inputCls, 'pr-10')}
-                  value={form.bossPassword} onChange={e => set('bossPassword', e.target.value)}
-                  placeholder={t('passwordPlaceholder' as Parameters<typeof t>[0])} required minLength={4} />
-                <button type="button" onClick={() => setShowPassword(p => !p)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
-                  {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                </button>
-              </div>
-              {createErrors.boss_password && <p className={errorCls}>{createErrors.boss_password}</p>}
-            </div>
+                <div>
+                  <label className={labelCls}>{t('bossPassword' as Parameters<typeof t>[0])} <span className="text-red-500">*</span></label>
+                  <div className="relative">
+                    <input type={showPassword ? 'text' : 'password'}
+                      className={cn(inputCls, 'pr-10')}
+                      value={form.bossPassword} onChange={e => set('bossPassword', e.target.value)}
+                      placeholder={t('passwordPlaceholder' as Parameters<typeof t>[0])} required minLength={4} />
+                    <button type="button" onClick={() => setShowPassword(p => !p)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
+                      {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    </button>
+                  </div>
+                  {createErrors.boss_password && <p className={errorCls}>{createErrors.boss_password}</p>}
+                </div>
+              </>
+            )}
 
             {createErrors.detail && (
               <p className="text-sm text-red-600 bg-red-50 px-3 py-2 rounded-lg">{createErrors.detail}</p>

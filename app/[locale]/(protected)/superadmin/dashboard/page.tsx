@@ -226,7 +226,8 @@ export default function SuperadminDashboardPage() {
                 contentStyle={{ fontSize: 12, borderRadius: 8, border: '1px solid #e5e7eb' }}
                 // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 formatter={(v: any) => [formatCurrency(Number(v)), 'Daromad']}
-                labelFormatter={fmtDate}
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                labelFormatter={(label: any) => fmtDate(String(label))}
               />
               <Area
                 type="monotone"

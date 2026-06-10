@@ -17,6 +17,7 @@
     "rooms": "Кабинеты",
     "salaries": "Зарплаты",
     "discounts": "Скидки",
+    "notifications": "Сообщения",
     "community": "Сообщество"
   },
   "nav": {
@@ -30,6 +31,7 @@
     "reports": "Отчёты",
     "settings": "Настройки",
     "companies": "Компании",
+    "notifications": "Сообщения",
     "logout": "Выход"
   },
   "login": {
@@ -803,6 +805,39 @@
     "confirmTitle": "Подтвердить скидку",
     "noDiscounts": "Нет скидок",
     "parentPhone": "Тел. родителя"
+  },
+  "notifications": {
+    "subtitle": "Отправка сообщений ученикам через Telegram",
+    "toStudent": "Отдельному ученику",
+    "toGroup": "Группе",
+    "toAll": "Всем ученикам",
+    "template": "Шаблон",
+    "language": "Язык",
+    "preview": "Предпросмотр",
+    "send": "Отправить",
+    "title": "Заголовок",
+    "body": "Текст сообщения",
+    "linked": "Подключено",
+    "notLinked": "Не подключено",
+    "sentResult": "Отправлено: {sent}, не подключено: {skipped}",
+    "confirmSend": "Сообщение будет отправлено {count} ученикам. Продолжить?",
+    "paymentReminder": "Напоминание об оплате",
+    "paymentConfirmed": "Оплата подтверждена",
+    "customMessage": "Произвольное сообщение",
+    "groupAnnouncement": "Объявление для группы",
+    "selectStudent": "Выберите ученика",
+    "selectGroup": "Выберите группу",
+    "searchPlaceholder": "Поиск по имени или номеру телефона...",
+    "noResults": "Ничего не найдено",
+    "groupStats": "{total} учеников, подключено {linked}",
+    "totalStats": "Всего {total} учеников, подключено к Telegram {linked}",
+    "sendToAll": "Отправить всем",
+    "titlePlaceholder": "Заголовок сообщения",
+    "bodyPlaceholder": "Введите текст сообщения...",
+    "sentSuccess": "Сообщение отправлено",
+    "sentFailed": "Не удалось отправить сообщение",
+    "selectStudentFirst": "Сначала выберите ученика",
+    "selectGroupFirst": "Сначала выберите группу"
   },
   "smsModal": {
     "title": "Отправить SMS",

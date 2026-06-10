@@ -7,7 +7,7 @@ import {
   LayoutDashboard, Users, Users2, GraduationCap, BookOpen,
   CreditCard, AlertCircle, BarChart3, Settings, Building2, Archive,
   Lightbulb, CalendarCheck, DoorOpen, Banknote, Send, Tag,
-  BadgeDollarSign,
+  BadgeDollarSign, Bell,
 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { cn } from '@/lib/utils';
@@ -29,6 +29,7 @@ const sections = [
       { key: 'teachers', icon: GraduationCap, href: '/teachers', roles: null },
       { key: 'courses', icon: BookOpen, href: '/courses', roles: null },
       { key: 'attendance', icon: CalendarCheck, href: '/attendance', roles: ['boss', 'manager', 'admin', 'teacher'] },
+      { key: 'notifications', icon: Bell, href: '/notifications', roles: ['boss', 'manager'] },
     ],
   },
   {

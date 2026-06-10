@@ -44,6 +44,7 @@ type PhoneSelection = Record<string, { phone1: boolean; phone2: boolean }>;
 export default function LeadsPage() {
   const t  = useTranslations('leads');
   const tc = useTranslations('common');
+  const tSms = useTranslations('sms');
 
   const [leads, setLeads]               = useState<Lead[]>([]);
   const [courses, setCourses]           = useState<Course[]>([]);
@@ -144,7 +145,7 @@ export default function LeadsPage() {
 
   async function handleSendSms(templateId: string | null, customMessage: string | null, recipients: SmsRecipient[]) {
     try {
-      await api.post('/api/v1/notifications/send-sms/', {
+      const res = await api.post('/api/v1/notifications/send-sms/', {
         template_id: templateId,
         message: customMessage,
         recipients: recipients.map(r => ({
@@ -155,7 +156,8 @@ export default function LeadsPage() {
           due_date: r.due_date || '',
         })),
       });
-      toast.success(`${recipients.length} ta SMS yuborildi`);
+      const { telegram_sent = 0, skipped = 0 } = res.data || {};
+      toast.success(`${tSms('telegramSent', { count: telegram_sent })}, ${tSms('skipped', { count: skipped })}`);
     } catch {
       toast.error(tc('error'));
     }

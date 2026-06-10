@@ -40,6 +40,7 @@ function isActiveDiscount(endMonth: string) {
 export default function DiscountsPage() {
   const t  = useTranslations('discounts');
   const tc = useTranslations('common');
+  const tSms = useTranslations('sms');
   const isAdmin = getUser()?.role === 'admin';
 
   const [discounts, setDiscounts]   = useState<Discount[]>([]);
@@ -101,7 +102,7 @@ export default function DiscountsPage() {
 
   async function handleSendSms(templateId: string | null, customMessage: string | null, recipients: SmsRecipient[]) {
     try {
-      await api.post('/api/v1/notifications/send-sms/', {
+      const res = await api.post('/api/v1/notifications/send-sms/', {
         template_id: templateId,
         message: customMessage,
         recipients: recipients.map(r => ({
@@ -118,7 +119,8 @@ export default function DiscountsPage() {
           room_number: r.room_number || '',
         })),
       });
-      toast.success(`${recipients.length} ta SMS yuborildi`);
+      const { telegram_sent = 0, skipped = 0 } = res.data || {};
+      toast.success(`${tSms('telegramSent', { count: telegram_sent })}, ${tSms('skipped', { count: skipped })}`);
     } catch {
       toast.error(tc('error'));
     }

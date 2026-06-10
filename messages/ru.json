@@ -1012,5 +1012,9 @@
     "goToBot": "📱 Перейти в @EduHub_Message_Bot",
     "afterBotInstruction": "После отправки номера боту введите свой номер телефона",
     "enterVerifyCode": "Введите код подтверждения EduHub"
+  },
+  "sms": {
+    "telegramSent": "{count} сообщений в Telegram отправлено",
+    "skipped": "{count} не подключены"
   }
 }

@@ -64,6 +64,7 @@ type PhoneSelection = Record<string, { phone1: boolean; phone2: boolean }>;
 export default function StudentsPage() {
   const t  = useTranslations('students');
   const tc = useTranslations('common');
+  const tSms = useTranslations('sms');
 
   const [students, setStudents]         = useState<Student[]>([]);
   const [courses, setCourses]           = useState<Course[]>([]);
@@ -178,7 +179,7 @@ const studentRows: StudentRow[] = students.flatMap(s => {
 
   async function handleSendSms(templateId: string | null, customMessage: string | null, recipients: SmsRecipient[]) {
     try {
-      await api.post('/api/v1/notifications/send-sms/', {
+      const res = await api.post('/api/v1/notifications/send-sms/', {
         template_id: templateId,
         message: customMessage,
         recipients: recipients.map(r => ({
@@ -196,7 +197,8 @@ const studentRows: StudentRow[] = students.flatMap(s => {
           room_number: r.room_number || '',
         })),
       });
-      toast.success(`${recipients.length} ta SMS yuborildi`);
+      const { telegram_sent = 0, skipped = 0 } = res.data || {};
+      toast.success(`${tSms('telegramSent', { count: telegram_sent })}, ${tSms('skipped', { count: skipped })}`);
     } catch {
       toast.error(tc('error'));
     }

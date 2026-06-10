@@ -1012,5 +1012,9 @@
     "goToBot": "📱 Go to @EduHub_Message_Bot",
     "afterBotInstruction": "After sending your number to the bot, enter your phone number below",
     "enterVerifyCode": "Enter EduHub verification code"
+  },
+  "sms": {
+    "telegramSent": "{count} Telegram messages sent",
+    "skipped": "{count} not linked"
   }
 }

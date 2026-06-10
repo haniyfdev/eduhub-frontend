@@ -1032,5 +1032,9 @@
     "goToBot": "📱 @EduHub_Message_Bot ga o'tish",
     "afterBotInstruction": "Botga raqam yuborgandan so'ng telefon raqamingizni kiriting",
     "enterVerifyCode": "EduHub tasdiqlash kodini kiriting"
+  },
+  "sms": {
+    "telegramSent": "{count} ta Telegram xabar yuborildi",
+    "skipped": "{count} ta ulangan emas"
   }
 }

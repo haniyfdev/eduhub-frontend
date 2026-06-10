@@ -1015,10 +1015,6 @@
   },
   "sms": {
     "telegramSent": "{count} сообщений в Telegram отправлено",
-    "skipped": "{count} не подключены",
-    "type": "Тип сообщения",
-    "typeStudent": "Ученик",
-    "typeParent": "Родитель",
-    "typeBoth": "Оба"
+    "skipped": "{count} не подключены"
   }
 }

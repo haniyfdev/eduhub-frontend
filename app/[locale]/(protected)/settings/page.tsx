@@ -47,12 +47,6 @@ const triggerBadge: Record<string, string> = {
   custom: 'bg-gray-100 text-gray-600',
 };
 
-const typeBadge: Record<string, string> = {
-  student: 'bg-blue-100 text-blue-700',
-  parent: 'bg-green-100 text-green-700',
-  both: 'bg-orange-100 text-orange-700',
-};
-
 const VARIABLES = [
   '{student_name}',
   '{amount}',
@@ -101,7 +95,6 @@ const labelCls = 'block text-sm font-medium text-gray-700 mb-1';
 export default function SettingsPage() {
   const t = useTranslations('settings');
   const common = useTranslations('common');
-  const tSms = useTranslations('sms');
 
   const [user, setUser] = useState<User | null>(null);
   const [tab, setTab] = useState<Tab>('company');
@@ -145,7 +138,7 @@ export default function SettingsPage() {
   const [varsOpen, setVarsOpen] = useState(false);
   const [showModal, setShowModal] = useState(false);
   const [editingTemplate, setEditingTemplate] = useState<SmsTemplate | null>(null);
-  const [modalData, setModalData] = useState({ name: '', body: '', trigger: 'custom', type: 'student', is_active: true });
+  const [modalData, setModalData] = useState({ name: '', body: '', trigger: 'custom', is_active: true });
   const [savingModal, setSavingModal] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<SmsTemplate | null>(null);
   const bodyRef            = useRef<HTMLTextAreaElement>(null);
@@ -163,13 +156,6 @@ export default function SettingsPage() {
     ['course_started', t('triggerChoices.course_started')],
     ['overdue_debt', t('triggerChoices.overdue_debt')],
     ['custom', t('triggerChoices.custom')],
-  ];
-
-  // Message type choices (student / parent / both)
-  const TYPE_CHOICES: [string, string][] = [
-    ['student', tSms('typeStudent')],
-    ['parent', tSms('typeParent')],
-    ['both', tSms('typeBoth')],
   ];
 
   useEffect(() => {
@@ -281,13 +267,13 @@ export default function SettingsPage() {
 
   function openCreate() {
     setEditingTemplate(null);
-    setModalData({ name: '', body: '', trigger: 'custom', type: 'student', is_active: true });
+    setModalData({ name: '', body: '', trigger: 'custom', is_active: true });
     setShowModal(true);
   }
 
   function openEdit(tmpl: SmsTemplate) {
     setEditingTemplate(tmpl);
-    setModalData({ name: tmpl.name, body: tmpl.body, trigger: tmpl.trigger, type: tmpl.type, is_active: tmpl.is_active });
+    setModalData({ name: tmpl.name, body: tmpl.body, trigger: tmpl.trigger, is_active: tmpl.is_active });
     setShowModal(true);
   }
 
@@ -615,14 +601,9 @@ export default function SettingsPage() {
                 </div>
                   <p className="text-sm text-gray-600 whitespace-pre-wrap leading-relaxed mb-3">{tmpl.body}</p>
                   <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-1.5">
-                      <span className={cn('inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium', triggerBadge[tmpl.trigger] ?? 'bg-gray-100 text-gray-600')}>
-                        {t(`triggerChoices.${tmpl.trigger}` as Parameters<typeof t>[0]) ?? tmpl.trigger}
-                      </span>
-                      <span className={cn('inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium', typeBadge[tmpl.type] ?? 'bg-gray-100 text-gray-600')}>
-                        {tSms(`type${tmpl.type.charAt(0).toUpperCase()}${tmpl.type.slice(1)}` as Parameters<typeof tSms>[0]) ?? tmpl.type}
-                      </span>
-                    </div>
+                    <span className={cn('inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium', triggerBadge[tmpl.trigger] ?? 'bg-gray-100 text-gray-600')}>
+                      {t(`triggerChoices.${tmpl.trigger}` as Parameters<typeof t>[0]) ?? tmpl.trigger}
+                    </span>
                     {tmpl.is_default && (
                       <span className="text-xs text-gray-400">{t('defaultTemplate')}</span>
                     )}
@@ -664,18 +645,6 @@ export default function SettingsPage() {
                 className={inputCls}
               >
                 {TRIGGER_CHOICES.map(([value, label]) => (
-                  <option key={value} value={value}>{label}</option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <label className={labelCls}>{tSms('type')}</label>
-              <select
-                value={modalData.type}
-                onChange={(e) => setModalData((d) => ({ ...d, type: e.target.value }))}
-                className={inputCls}
-              >
-                {TYPE_CHOICES.map(([value, label]) => (
                   <option key={value} value={value}>{label}</option>
                 ))}
               </select>

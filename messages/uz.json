@@ -1035,6 +1035,10 @@
   },
   "sms": {
     "telegramSent": "{count} ta Telegram xabar yuborildi",
-    "skipped": "{count} ta ulangan emas"
+    "skipped": "{count} ta ulangan emas",
+    "type": "Xabar turi",
+    "typeStudent": "O'quvchi",
+    "typeParent": "Ota-ona",
+    "typeBoth": "Ikkalasi"
   }
 }

@@ -1015,6 +1015,10 @@
   },
   "sms": {
     "telegramSent": "{count} Telegram messages sent",
-    "skipped": "{count} not linked"
+    "skipped": "{count} not linked",
+    "type": "Message type",
+    "typeStudent": "Student",
+    "typeParent": "Parent",
+    "typeBoth": "Both"
   }
 }

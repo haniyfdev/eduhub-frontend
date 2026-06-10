@@ -17,7 +17,6 @@
     "rooms": "Rooms",
     "salaries": "Salaries",
     "discounts": "Discounts",
-    "notifications": "Messages",
     "community": "Community"
   },
   "nav": {
@@ -31,7 +30,6 @@
     "reports": "Reports",
     "settings": "Settings",
     "companies": "Companies",
-    "notifications": "Messages",
     "logout": "Logout"
   },
   "login": {
@@ -805,39 +803,6 @@
     "confirmTitle": "Confirm discount",
     "noDiscounts": "No discounts",
     "parentPhone": "Parent phone"
-  },
-  "notifications": {
-    "subtitle": "Send messages to students via Telegram",
-    "toStudent": "To individual student",
-    "toGroup": "To group",
-    "toAll": "To all students",
-    "template": "Template",
-    "language": "Language",
-    "preview": "Preview",
-    "send": "Send",
-    "title": "Title",
-    "body": "Message text",
-    "linked": "Linked",
-    "notLinked": "Not linked",
-    "sentResult": "{sent} sent, {skipped} not linked",
-    "confirmSend": "The message will be sent to {count} students. Continue?",
-    "paymentReminder": "Payment reminder",
-    "paymentConfirmed": "Payment confirmed",
-    "customMessage": "Custom message",
-    "groupAnnouncement": "Group announcement",
-    "selectStudent": "Select a student",
-    "selectGroup": "Select a group",
-    "searchPlaceholder": "Search by name or phone number...",
-    "noResults": "No results found",
-    "groupStats": "{total} students, {linked} linked",
-    "totalStats": "Total {total} students, {linked} linked to Telegram",
-    "sendToAll": "Send to all",
-    "titlePlaceholder": "Message title",
-    "bodyPlaceholder": "Enter message text...",
-    "sentSuccess": "Message sent",
-    "sentFailed": "Failed to send message",
-    "selectStudentFirst": "Select a student first",
-    "selectGroupFirst": "Select a group first"
   },
   "smsModal": {
     "title": "Send SMS",

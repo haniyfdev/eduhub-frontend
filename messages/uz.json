@@ -17,7 +17,6 @@
     "rooms": "Xonalar",
     "salaries": "Maoshlar",
     "discounts": "Chegirmalar",
-    "notifications": "Xabarlar",
     "community": "Hamjamiyat"
   },
   "nav": {
@@ -31,7 +30,6 @@
     "reports": "Hisobotlar",
     "settings": "Sozlamalar",
     "companies": "Kompaniyalar",
-    "notifications": "Xabarlar",
     "logout": "Chiqish"
   },
   "login": {
@@ -878,39 +876,6 @@
     "confirmTitle": "Chegirmani tasdiqlash",
     "noDiscounts": "Chegirmalar yo'q",
     "parentPhone": "Ota-ona tel"
-  },
-  "notifications": {
-    "subtitle": "O'quvchilarga Telegram orqali xabar yuborish",
-    "toStudent": "Alohida o'quvchiga",
-    "toGroup": "Guruhga",
-    "toAll": "Barcha o'quvchilarga",
-    "template": "Shablon",
-    "language": "Til",
-    "preview": "Ko'rinish",
-    "send": "Yuborish",
-    "title": "Sarlavha",
-    "body": "Xabar matni",
-    "linked": "Ulangan",
-    "notLinked": "Ulanmagan",
-    "sentResult": "{sent} ta yuborildi, {skipped} ta ulanmagan",
-    "confirmSend": "{count} ta o'quvchiga xabar yuboriladi. Davom etasizmi?",
-    "paymentReminder": "To'lov eslatmasi",
-    "paymentConfirmed": "To'lov tasdiqlandi",
-    "customMessage": "Maxsus xabar",
-    "groupAnnouncement": "Guruh e'loni",
-    "selectStudent": "O'quvchini tanlang",
-    "selectGroup": "Guruhni tanlang",
-    "searchPlaceholder": "Ism yoki telefon raqami bo'yicha qidirish...",
-    "noResults": "Hech narsa topilmadi",
-    "groupStats": "{total} ta o'quvchi, {linked} ta ulangan",
-    "totalStats": "Jami {total} o'quvchi, {linked} ta Telegram ulangan",
-    "sendToAll": "Hammaga yuborish",
-    "titlePlaceholder": "Xabar sarlavhasi",
-    "bodyPlaceholder": "Xabar matnini kiriting...",
-    "sentSuccess": "Xabar yuborildi",
-    "sentFailed": "Xabar yuborilmadi",
-    "selectStudentFirst": "Avval o'quvchini tanlang",
-    "selectGroupFirst": "Avval guruhni tanlang"
   },
   "smsModal": {
     "title": "SMS yuborish",

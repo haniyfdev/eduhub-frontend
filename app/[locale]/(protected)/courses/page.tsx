@@ -65,6 +65,7 @@ export default function CoursesPage() {
   const [form, setForm]                 = useState(EMPTY_FORM);
   const [archiveTarget, setArchiveTarget] = useState<{ id: string; name: string } | null>(null);
   const [touched, setTouched]           = useState<Record<string, boolean>>({});
+  const [teacherNames, setTeacherNames] = useState<Record<string, string>>({});
 
   // Refs
   const nameRef    = useRef<HTMLInputElement>(null);
@@ -100,6 +101,7 @@ export default function CoursesPage() {
     setEditTarget(null);
     setForm(EMPTY_FORM);
     setTouched({});
+    setTeacherNames({});
     setShowModal(true);
     setTimeout(() => nameRef.current?.focus(), 100);
   }
@@ -117,6 +119,14 @@ export default function CoursesPage() {
       status:           c.status,
     });
     setTouched({});
+    // c.teachers / c.teacher_names are parallel arrays — keep names for
+    // teachers (e.g. archived ones) that won't be in the active `teachers`
+    // list, so their badges can still be displayed and removed.
+    const names: Record<string, string> = {};
+    (c.teachers ?? []).forEach((id, i) => {
+      names[id] = c.teacher_names?.[i] ?? '';
+    });
+    setTeacherNames(names);
     setShowModal(true);
     setTimeout(() => nameRef.current?.focus(), 100);
   }
@@ -429,12 +439,13 @@ export default function CoursesPage() {
                 <div className="flex flex-wrap gap-1 mb-2">
                   {form.teacher_ids.map((tid) => {
                     const tc = teachers.find((tc) => tc.id === tid);
-                    return tc ? (
+                    const label = tc ? `${tc.first_name} ${tc.last_name}` : teacherNames[tid];
+                    return (
                       <span key={tid} className="inline-flex items-center gap-1 px-2 py-0.5 text-xs bg-blue-100 text-blue-700 rounded">
-                        {tc.first_name} {tc.last_name}
+                        {label || '—'}
                         <button type="button" onClick={() => toggleTeacher(tid)}><X className="w-3 h-3" /></button>
                       </span>
-                    ) : null;
+                    );
                   })}
                 </div>
               )}

@@ -456,6 +456,7 @@
     "days": "дней",
     "lessons": "уроков",
     "manualDebtSaved": "Сохранённый долг (администратором)",
+    "manualDebtAmountLabel": "Введите сумму долга (сум)",
     "manualDebtLocked": "Редактирование недоступно — метод расчёта изменён",
     "billingTypeLabel": "Метод расчёта долга",
     "billingManual": "Администратором",

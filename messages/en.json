@@ -456,6 +456,7 @@
     "days": "days",
     "lessons": "lessons",
     "manualDebtSaved": "Saved debt (by admin)",
+    "manualDebtAmountLabel": "Enter debt amount (UZS)",
     "manualDebtLocked": "Cannot edit — billing method has been changed",
     "billingTypeLabel": "Debt calculation method",
     "billingManual": "By admin",

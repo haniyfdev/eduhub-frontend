@@ -115,11 +115,14 @@ export default function DebtsPage() {
   const [sobiqDebt,       setSobiqDebt]       = useState<Debt | null>(null);
   const [sobiqAttendance, setSobiqAttendance] = useState<SobiqAttendance | null>(null);
   const [sobiqLoading,    setSobiqLoading]    = useState(false);
+  const [manualAmount,        setManualAmount]        = useState('');
+  const [manualAmountSaving,  setManualAmountSaving]  = useState(false);
 
   async function openSobiqModal(debt: Debt) {
     setSobiqDebt(debt);
     setShowSobiqModal(true);
     setSobiqLoading(true);
+    setManualAmount(debt.amount > 0 ? formatAmount(String(Math.round(debt.amount))) : '');
     try {
       const { data } = await api.get<SobiqAttendance>(`/api/v1/debts/${debt.id}/last-month-attendance/`);
       setSobiqAttendance(data);
@@ -127,6 +130,22 @@ export default function DebtsPage() {
       setSobiqAttendance(null);
     } finally {
       setSobiqLoading(false);
+    }
+  }
+
+  async function handleSaveManualDebt() {
+    if (!sobiqDebt) return;
+    const amount = parseAmount(manualAmount);
+    setManualAmountSaving(true);
+    try {
+      const { data } = await api.patch<Debt>(`/api/v1/debts/${sobiqDebt.id}/`, { amount });
+      setSobiqDebt((d) => d ? { ...d, amount: Number(data.amount) } : d);
+      toast.success(t('debtUpdated'));
+    } catch (err: unknown) {
+      const e2 = err as { response?: { data?: { detail?: string } } };
+      toast.error(e2?.response?.data?.detail || common('error'));
+    } finally {
+      setManualAmountSaving(false);
     }
   }
 
@@ -545,13 +564,37 @@ export default function DebtsPage() {
               </div>
 
               <div className="border-t border-gray-100 pt-4 space-y-3">
-                {/* MANUAL — read-only saved amount */}
+                {/* MANUAL — editable until saved once, then read-only */}
                 {sobiqAttendance.billing_type === 'manual' && (
                   <div className="bg-gray-50 rounded-lg p-4">
-                    <div className="flex justify-between text-sm">
-                      <span className="text-gray-500">{t('manualDebtSaved')}</span>
-                      <span className="font-bold text-blue-600">{formatCurrency(sobiqDebt?.amount ?? 0)}</span>
-                    </div>
+                    {sobiqDebt && sobiqDebt.amount > 0 ? (
+                      <div className="flex justify-between text-sm">
+                        <span className="text-gray-500">{t('manualDebtSaved')}</span>
+                        <span className="font-bold text-blue-600">{formatCurrency(sobiqDebt.amount)}</span>
+                      </div>
+                    ) : (
+                      <div className="space-y-2">
+                        <label className="block text-sm font-medium text-gray-700">{t('manualDebtAmountLabel')}</label>
+                        <div className="flex gap-2">
+                          <input
+                            type="text"
+                            inputMode="numeric"
+                            value={manualAmount}
+                            onChange={(e) => setManualAmount(formatAmount(e.target.value))}
+                            className="flex-1 px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            placeholder="0"
+                          />
+                          <button
+                            type="button"
+                            onClick={handleSaveManualDebt}
+                            disabled={manualAmountSaving || parseAmount(manualAmount) <= 0}
+                            className="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded hover:bg-blue-700 disabled:opacity-60"
+                          >
+                            {manualAmountSaving ? common('loading') : common('save')}
+                          </button>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 )}
 

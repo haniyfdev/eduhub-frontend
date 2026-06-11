@@ -941,6 +941,11 @@
     "card": "Karta",
     "transfer": "O'tkazma",
     "paymentDate": "To'lov vaqti",
+    "broadcast": "Broadcast xabar",
+    "broadcastPlaceholder": "Xabar yozing...",
+    "broadcastSend": "Yuborish",
+    "broadcastSuccess": "{count} ta foydalanuvchiga xabar yuborildi",
+    "broadcastError": "Xabar yuborishda xatolik",
     "conversion": {
       "title": "O'quvchi konversiyasi",
       "total": "Jami",

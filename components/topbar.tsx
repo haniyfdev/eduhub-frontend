@@ -2,7 +2,7 @@
 
 import { usePathname, useRouter } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
-import { Bell, ChevronDown, Eye, EyeOff, Globe, LogOut, Paperclip, Plus, Send, Trash2, X } from 'lucide-react';
+import { Bell, Bot, ChevronDown, Eye, EyeOff, Globe, LogOut, Paperclip, Plus, Send, Trash2, X } from 'lucide-react';
 import { useLocale, useTranslations } from 'next-intl';
 import { getUser, logout } from '@/lib/auth';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -41,11 +41,17 @@ export default function Topbar() {
   const t = useTranslations('topbar');
   const tn = useTranslations('navigation');
   const tNav = useTranslations('nav');
+  const tSuper = useTranslations('superadmin');
   const [user, setUser] = useState<User | null>(null);
   const [avatarSrc, setAvatarSrc] = useState<string | null>(null);
   const [companyName, setCompanyName] = useState<string | null>(null);
   const [showLang, setShowLang] = useState(false);
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
+
+  // Broadcast (superadmin only)
+  const [broadcastOpen, setBroadcastOpen] = useState(false);
+  const [broadcastMessage, setBroadcastMessage] = useState('');
+  const [broadcastSending, setBroadcastSending] = useState(false);
 
   // Announcements
   const [unreadCount, setUnreadCount] = useState(0);
@@ -76,6 +82,7 @@ export default function Topbar() {
 
   const langRef = useRef<HTMLDivElement>(null);
   const bodyRef = useRef<HTMLTextAreaElement>(null);
+  const broadcastRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const u = getUser();
@@ -143,6 +150,23 @@ export default function Topbar() {
     return () => document.removeEventListener('mousedown', handle);
   }, [showLang]);
 
+  // Broadcast popover: ESC + click outside to close
+  useEffect(() => {
+    if (!broadcastOpen) return;
+    function handleClick(e: MouseEvent) {
+      if (broadcastRef.current && !broadcastRef.current.contains(e.target as Node)) setBroadcastOpen(false);
+    }
+    function handleKey(e: KeyboardEvent) {
+      if (e.key === 'Escape') setBroadcastOpen(false);
+    }
+    document.addEventListener('mousedown', handleClick);
+    document.addEventListener('keydown', handleKey);
+    return () => {
+      document.removeEventListener('mousedown', handleClick);
+      document.removeEventListener('keydown', handleKey);
+    };
+  }, [broadcastOpen]);
+
   function handleLogout() {
     logout();
     try {
@@ -150,6 +174,21 @@ export default function Topbar() {
       localStorage.removeItem('company_name');
     } catch {}
     router.push(`/${locale}/login`);
+  }
+
+  async function handleBroadcastSend() {
+    if (!broadcastMessage.trim() || broadcastSending) return;
+    setBroadcastSending(true);
+    try {
+      const { data } = await api.post('/api/superadmin/broadcast/', { message: broadcastMessage.trim() });
+      toast.success(tSuper('broadcastSuccess', { count: data.queued ?? 0 }));
+      setBroadcastOpen(false);
+      setBroadcastMessage('');
+    } catch {
+      toast.error(tSuper('broadcastError'));
+    } finally {
+      setBroadcastSending(false);
+    }
   }
 
   async function openBell() {
@@ -347,6 +386,38 @@ export default function Topbar() {
               </div>
             )}
           </div>
+
+          {/* Broadcast — superadmin only */}
+          {user?.role === 'superadmin' && (
+            <div ref={broadcastRef} className="relative">
+              <button
+                onClick={() => setBroadcastOpen((v) => !v)}
+                className="p-2 rounded-lg hover:bg-gray-100 transition-colors"
+                title={tSuper('broadcast')}
+              >
+                <Bot className="w-5 h-5 text-gray-500" />
+              </button>
+              {broadcastOpen && (
+                <div className="absolute right-0 mt-1 w-80 bg-white border border-gray-200 rounded-lg shadow-lg z-50 p-3">
+                  <p className="text-sm font-semibold text-gray-900 mb-2">📢 {tSuper('broadcast')}</p>
+                  <textarea
+                    value={broadcastMessage}
+                    onChange={(e) => setBroadcastMessage(e.target.value)}
+                    placeholder={tSuper('broadcastPlaceholder')}
+                    rows={3}
+                    className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+                  />
+                  <button
+                    onClick={handleBroadcastSend}
+                    disabled={broadcastSending || !broadcastMessage.trim()}
+                    className="mt-2 w-full px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded hover:bg-blue-700 disabled:opacity-60"
+                  >
+                    {tSuper('broadcastSend')}
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
 
           {/* Announcement bell — hidden for teachers */}
           {user?.role !== 'teacher' && (

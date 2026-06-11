@@ -921,6 +921,11 @@
     "card": "Card",
     "transfer": "Transfer",
     "paymentDate": "Payment date",
+    "broadcast": "Broadcast message",
+    "broadcastPlaceholder": "Write a message...",
+    "broadcastSend": "Send",
+    "broadcastSuccess": "Message sent to {count} users",
+    "broadcastError": "Failed to send message",
     "conversion": {
       "title": "Student conversion",
       "total": "Total",

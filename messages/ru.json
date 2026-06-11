@@ -921,6 +921,11 @@
     "card": "Карта",
     "transfer": "Перевод",
     "paymentDate": "Дата оплаты",
+    "broadcast": "Broadcast-сообщение",
+    "broadcastPlaceholder": "Напишите сообщение...",
+    "broadcastSend": "Отправить",
+    "broadcastSuccess": "Сообщение отправлено {count} пользователям",
+    "broadcastError": "Ошибка при отправке сообщения",
     "conversion": {
       "title": "Конверсия учеников",
       "total": "Всего",

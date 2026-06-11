@@ -30,7 +30,9 @@
     "reports": "Reports",
     "settings": "Settings",
     "companies": "Companies",
-    "logout": "Logout"
+    "logout": "Logout",
+    "joinCommunity": "Join our community",
+    "communitySubtitle": "For questions and discussions"
   },
   "login": {
     "title": "EduHub",

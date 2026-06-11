@@ -30,7 +30,9 @@
     "reports": "Отчёты",
     "settings": "Настройки",
     "companies": "Компании",
-    "logout": "Выход"
+    "logout": "Выход",
+    "joinCommunity": "Присоединиться к сообществу",
+    "communitySubtitle": "Для вопросов и обсуждений"
   },
   "login": {
     "title": "EduHub",

@@ -1,11 +1,14 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { Bell } from 'lucide-react';
-import { useLocale } from 'next-intl';
+import { Bell, Send } from 'lucide-react';
+import { useLocale, useTranslations } from 'next-intl';
 import Link from 'next/link';
 import api from '@/lib/axios';
 import { formatCurrency } from '@/lib/utils';
+import { useAuthStore } from '@/store/auth-store';
+
+const TELEGRAM_COMMUNITY_URL = 'https://t.me/+q6IQ8Ae82pQzZWRi';
 
 interface OverdueDebt {
   id: string;
@@ -16,6 +19,9 @@ interface OverdueDebt {
 
 export default function NotificationBell() {
   const locale = useLocale();
+  const t = useTranslations('nav');
+  const role = useAuthStore((state) => state.user?.role);
+  const showCommunityBanner = role === 'boss' || role === 'manager';
   const [count, setCount] = useState(0);
   const [debts, setDebts] = useState<OverdueDebt[]>([]);
   const [open, setOpen] = useState(false);
@@ -118,6 +124,23 @@ export default function NotificationBell() {
               Barchasini ko&apos;rish →
             </Link>
           </div>
+
+          {showCommunityBanner && (
+            <a
+              href={TELEGRAM_COMMUNITY_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-3 px-4 py-3 border-t border-gray-100 bg-blue-50 hover:bg-blue-100 transition-colors"
+            >
+              <div className="flex items-center justify-center w-9 h-9 rounded-full bg-blue-600 text-white shrink-0">
+                <Send className="w-4 h-4" />
+              </div>
+              <div>
+                <p className="text-sm font-medium text-blue-700">{t('joinCommunity')}</p>
+                <p className="text-xs text-blue-500 mt-0.5">{t('communitySubtitle')}</p>
+              </div>
+            </a>
+          )}
         </div>
       )}
     </div>

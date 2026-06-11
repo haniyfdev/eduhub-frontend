@@ -30,7 +30,9 @@
     "reports": "Hisobotlar",
     "settings": "Sozlamalar",
     "companies": "Kompaniyalar",
-    "logout": "Chiqish"
+    "logout": "Chiqish",
+    "joinCommunity": "Hamjamiyatga qo'shiling",
+    "communitySubtitle": "Savollar va muhokamalar uchun"
   },
   "login": {
     "title": "EduHub",

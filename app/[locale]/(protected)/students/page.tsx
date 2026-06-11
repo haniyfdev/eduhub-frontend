@@ -263,7 +263,7 @@ const studentRows: StudentRow[] = students.flatMap(s => {
   const selectedRows = studentRows.filter(s => selectedIds.has(s.group_student_id || s.id));
 
   const allSameCourse = selectedRows.length > 0 &&
-    selectedRows.every(s => s.gs_status === 'active') &&
+    selectedRows.every(s => s.gs_status === 'active' && s.status !== 'archived') &&
     !!selectedRows[0].course_id &&
     selectedRows.every(s => s.course_id === selectedRows[0].course_id);
 
@@ -433,7 +433,7 @@ const studentRows: StudentRow[] = students.flatMap(s => {
                     <tr key={`${s.id}-${s.group_student_id ?? idx}`} className={cn('transition-colors hover:brightness-95', rowBg(s))}>
                       <td className="px-4 py-3 text-gray-400 text-xs">{idx + 1}</td>
 
-                      {canDiscount && s.gs_status === 'active' ? (
+                      {canDiscount && s.gs_status === 'active' && s.status !== 'archived' ? (
                         <td className="px-3 py-3">
                           <input type="checkbox"
                             checked={selectedIds.has(s.group_student_id || s.id)}

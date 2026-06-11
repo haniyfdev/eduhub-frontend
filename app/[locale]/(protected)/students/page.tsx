@@ -106,32 +106,15 @@ export default function StudentsPage() {
     setError(false);
     try {
       const params: Record<string, string | number> = { page, page_size: pageSize };
-      // The backend matches `search` as a whole string against first_name OR
-      // last_name separately, so a full name like "Sevara Soliyeva" matches
-      // neither field. Send only the first word to the backend (it'll match
-      // via either field) and refine to the full name on the client.
-      const searchWords = search.trim().split(/\s+/).filter(Boolean);
-      if (searchWords.length > 1) {
-        params.search = searchWords[0];
-      } else if (search) {
-        params.search = search;
-      }
+      if (search)       params.search = search;
       if (statusFilter) params.status = statusFilter;
       if (courseFilter) params.course = courseFilter;
       const { data } = await api.get<PaginatedResponse<Student>>('/api/v1/students/', { params });
 
-      let results = data.results ?? [];
-      if (searchWords.length > 1) {
-        results = results.filter(s => {
-          const fullName = `${s.first_name} ${s.last_name}`.toLowerCase();
-          return searchWords.every(w => fullName.includes(w.toLowerCase()));
-        });
-      }
-
-      setStudents(results);
+      setStudents(data.results ?? []);
       setCount(data.count);
       const init: PhoneSelection = {};
-      results.forEach((s: Student) => { init[s.id] = { phone1: false, phone2: false }; });
+      (data.results ?? []).forEach((s: Student) => { init[s.id] = { phone1: false, phone2: false }; });
       setPhoneSelection(init);
     } catch {
       setError(true);

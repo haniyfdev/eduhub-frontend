@@ -461,7 +461,12 @@
     "billingTypeLabel": "Метод расчёта долга",
     "billingManual": "Администратором",
     "billingPerDay": "Подённо",
-    "billingPerLesson": "Поурочно"
+    "billingPerLesson": "Поурочно",
+    "confirmAmount": "Подтвердить сумму долга?",
+    "changeAmountTo": "Изменить сумму долга на {amount}?",
+    "confirm": "Подтвердить",
+    "amountUpdated": "Сумма долга успешно обновлена",
+    "alreadyConfirmed": "Сумма долга подтверждена"
   },
   "attendance": {
     "title": "Посещаемость",

@@ -31,6 +31,7 @@ interface Debt {
   group_student_status?: string;
   group_student_left_at?: string | null;
   archive_billing_type?: string | null;
+  confirmed_at?: string | null;
 }
 
 interface SobiqAttendance {
@@ -115,8 +116,8 @@ export default function DebtsPage() {
   const [sobiqDebt,       setSobiqDebt]       = useState<Debt | null>(null);
   const [sobiqAttendance, setSobiqAttendance] = useState<SobiqAttendance | null>(null);
   const [sobiqLoading,    setSobiqLoading]    = useState(false);
-  const [manualAmount,        setManualAmount]        = useState('');
-  const [manualAmountSaving,  setManualAmountSaving]  = useState(false);
+  const [manualAmount,  setManualAmount]  = useState('');
+  const [confirmSaving, setConfirmSaving] = useState(false);
 
   async function openSobiqModal(debt: Debt) {
     setSobiqDebt(debt);
@@ -133,19 +134,25 @@ export default function DebtsPage() {
     }
   }
 
-  async function handleSaveManualDebt() {
+  function closeSobiqModal() {
+    setShowSobiqModal(false);
+    setSobiqDebt(null);
+    setSobiqAttendance(null);
+  }
+
+  async function handleConfirmDebt(amount: number) {
     if (!sobiqDebt) return;
-    const amount = parseAmount(manualAmount);
-    setManualAmountSaving(true);
+    setConfirmSaving(true);
     try {
-      const { data } = await api.patch<Debt>(`/api/v1/debts/${sobiqDebt.id}/`, { amount });
-      setSobiqDebt((d) => d ? { ...d, amount: Number(data.amount) } : d);
-      toast.success(t('debtUpdated'));
+      await api.patch<Debt>(`/api/v1/debts/${sobiqDebt.id}/`, { amount });
+      closeSobiqModal();
+      fetchDebts();
+      toast.success(t('amountUpdated'));
     } catch (err: unknown) {
       const e2 = err as { response?: { data?: { detail?: string } } };
       toast.error(e2?.response?.data?.detail || common('error'));
     } finally {
-      setManualAmountSaving(false);
+      setConfirmSaving(false);
     }
   }
 
@@ -495,12 +502,7 @@ export default function DebtsPage() {
       />
 
       {/* ══ Sobiq Modal ══ */}
-      <Dialog open={showSobiqModal} onOpenChange={(v) => {
-        setShowSobiqModal(v);
-        if (!v) {
-          setSobiqAttendance(null);
-        }
-      }}>
+      <Dialog open={showSobiqModal} onOpenChange={(v) => { if (!v) closeSobiqModal(); }}>
         <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>{sobiqAttendance?.student_name} — {sobiqAttendance?.group_name}</DialogTitle>
@@ -564,33 +566,46 @@ export default function DebtsPage() {
               </div>
 
               <div className="border-t border-gray-100 pt-4 space-y-3">
-                {/* MANUAL — editable until saved once, then read-only */}
+                {/* MANUAL (admin) */}
                 {sobiqAttendance.billing_type === 'manual' && (
-                  <div className="bg-gray-50 rounded-lg p-4">
-                    {sobiqDebt && sobiqDebt.amount > 0 ? (
-                      <div className="flex justify-between text-sm">
-                        <span className="text-gray-500">{t('manualDebtSaved')}</span>
-                        <span className="font-bold text-blue-600">{formatCurrency(sobiqDebt.amount)}</span>
-                      </div>
+                  <div className="bg-gray-50 rounded-lg p-4 space-y-3">
+                    {sobiqDebt?.confirmed_at ? (
+                      <>
+                        <div className="flex justify-between text-sm">
+                          <span className="text-gray-500">{t('roundedDebt')}</span>
+                          <span className="font-bold text-blue-600">{formatCurrency(sobiqDebt.amount)}</span>
+                        </div>
+                        <p className="text-xs text-emerald-600 font-medium">✓ {t('alreadyConfirmed')}</p>
+                      </>
                     ) : (
-                      <div className="space-y-2">
-                        <label className="block text-sm font-medium text-gray-700">{t('manualDebtAmountLabel')}</label>
-                        <div className="flex gap-2">
+                      <div className="space-y-3">
+                        <div className="space-y-2">
+                          <label className="block text-sm font-medium text-gray-700">{t('manualDebtAmountLabel')}</label>
                           <input
                             type="text"
                             inputMode="numeric"
                             value={manualAmount}
                             onChange={(e) => setManualAmount(formatAmount(e.target.value))}
-                            className="flex-1 px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                             placeholder="0"
                           />
+                        </div>
+                        <p className="text-sm text-gray-700">{t('confirmAmount')}</p>
+                        <div className="flex gap-3">
                           <button
                             type="button"
-                            onClick={handleSaveManualDebt}
-                            disabled={manualAmountSaving || parseAmount(manualAmount) <= 0}
-                            className="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded hover:bg-blue-700 disabled:opacity-60"
+                            onClick={closeSobiqModal}
+                            className="flex-1 px-4 py-2 border border-gray-300 text-sm font-medium rounded hover:bg-gray-50"
                           >
-                            {manualAmountSaving ? common('loading') : common('save')}
+                            {common('cancel')}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleConfirmDebt(parseAmount(manualAmount))}
+                            disabled={confirmSaving || parseAmount(manualAmount) <= 0}
+                            className="flex-1 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded hover:bg-blue-700 disabled:opacity-60"
+                          >
+                            {confirmSaving ? common('loading') : `${common('save')} ✓`}
                           </button>
                         </div>
                       </div>
@@ -598,7 +613,7 @@ export default function DebtsPage() {
                   </div>
                 )}
 
-                {/* PER_DAY — read-only */}
+                {/* PER_DAY (kunbay) */}
                 {sobiqAttendance.billing_type === 'per_day' && sobiqAttendance.per_unit !== null && (
                   <div className="bg-gray-50 rounded-lg p-4 space-y-2">
                     <div className="flex justify-between text-sm">
@@ -614,17 +629,40 @@ export default function DebtsPage() {
                       <span className="font-semibold">{sobiqAttendance.units_count} {t('days')}</span>
                     </div>
                     <div className="border-t border-gray-200 pt-2 flex justify-between text-sm">
-                      <span className="text-gray-700">{t('calculatedDebt')}</span>
-                      <span className="font-medium text-gray-700">{formatCurrency(sobiqAttendance.raw_amount ?? 0)}</span>
-                    </div>
-                    <div className="flex justify-between text-sm">
-                      <span className="text-gray-700 font-medium">{t('roundedDebt')}</span>
+                      <span className="text-gray-700 font-medium">{t('calculatedDebt')}</span>
                       <span className="font-bold text-blue-600">{formatCurrency(sobiqAttendance.calculated_amount ?? 0)}</span>
                     </div>
+
+                    {sobiqDebt?.confirmed_at ? (
+                      <p className="text-xs text-emerald-600 font-medium pt-1">✓ {t('alreadyConfirmed')}</p>
+                    ) : (
+                      <div className="pt-2 space-y-3">
+                        <p className="text-sm text-gray-700">
+                          {t('changeAmountTo', { amount: formatCurrency(sobiqAttendance.calculated_amount ?? 0) })}
+                        </p>
+                        <div className="flex gap-3">
+                          <button
+                            type="button"
+                            onClick={closeSobiqModal}
+                            className="flex-1 px-4 py-2 border border-gray-300 text-sm font-medium rounded hover:bg-gray-50"
+                          >
+                            {common('cancel')}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleConfirmDebt(sobiqAttendance.calculated_amount ?? 0)}
+                            disabled={confirmSaving}
+                            className="flex-1 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded hover:bg-blue-700 disabled:opacity-60"
+                          >
+                            {confirmSaving ? common('loading') : `${t('confirm')} ✓`}
+                          </button>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 )}
 
-                {/* PER_LESSON — read-only */}
+                {/* PER_LESSON (darsbay) */}
                 {sobiqAttendance.billing_type === 'per_lesson' && sobiqAttendance.per_unit !== null && (
                   <div className="bg-gray-50 rounded-lg p-4 space-y-2">
                     <div className="flex justify-between text-sm">
@@ -640,13 +678,36 @@ export default function DebtsPage() {
                       <span className="font-semibold">{sobiqAttendance.units_count} / {sobiqAttendance.total_units} {t('lessons')}</span>
                     </div>
                     <div className="border-t border-gray-200 pt-2 flex justify-between text-sm">
-                      <span className="text-gray-700">{t('calculatedDebt')}</span>
-                      <span className="font-medium text-gray-700">{formatCurrency(sobiqAttendance.raw_amount ?? 0)}</span>
-                    </div>
-                    <div className="flex justify-between text-sm">
-                      <span className="text-gray-700 font-medium">{t('roundedDebt')}</span>
+                      <span className="text-gray-700 font-medium">{t('calculatedDebt')}</span>
                       <span className="font-bold text-blue-600">{formatCurrency(sobiqAttendance.calculated_amount ?? 0)}</span>
                     </div>
+
+                    {sobiqDebt?.confirmed_at ? (
+                      <p className="text-xs text-emerald-600 font-medium pt-1">✓ {t('alreadyConfirmed')}</p>
+                    ) : (
+                      <div className="pt-2 space-y-3">
+                        <p className="text-sm text-gray-700">
+                          {t('changeAmountTo', { amount: formatCurrency(sobiqAttendance.calculated_amount ?? 0) })}
+                        </p>
+                        <div className="flex gap-3">
+                          <button
+                            type="button"
+                            onClick={closeSobiqModal}
+                            className="flex-1 px-4 py-2 border border-gray-300 text-sm font-medium rounded hover:bg-gray-50"
+                          >
+                            {common('cancel')}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleConfirmDebt(sobiqAttendance.calculated_amount ?? 0)}
+                            disabled={confirmSaving}
+                            className="flex-1 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded hover:bg-blue-700 disabled:opacity-60"
+                          >
+                            {confirmSaving ? common('loading') : `${t('confirm')} ✓`}
+                          </button>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 )}
 

@@ -481,7 +481,12 @@
     "billingTypeLabel": "Qarz hisoblash uslubi",
     "billingManual": "Admin tomonidan",
     "billingPerDay": "Kunbay",
-    "billingPerLesson": "Darsbay"
+    "billingPerLesson": "Darsbay",
+    "confirmAmount": "Qarz miqdorini tasdiqlaysizmi?",
+    "changeAmountTo": "Qarz miqdorini {amount}ga o'zgartirilsinmi?",
+    "confirm": "Tasdiqlash",
+    "amountUpdated": "Qarz miqdori muvaffaqiyatli yangilandi",
+    "alreadyConfirmed": "Qarz miqdori tasdiqlangan"
   },
   "attendance": {
     "title": "Davomat",

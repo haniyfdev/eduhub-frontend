@@ -461,7 +461,12 @@
     "billingTypeLabel": "Debt calculation method",
     "billingManual": "By admin",
     "billingPerDay": "Per day",
-    "billingPerLesson": "Per lesson"
+    "billingPerLesson": "Per lesson",
+    "confirmAmount": "Confirm the debt amount?",
+    "changeAmountTo": "Change debt amount to {amount}?",
+    "confirm": "Confirm",
+    "amountUpdated": "Debt amount successfully updated",
+    "alreadyConfirmed": "Debt amount confirmed"
   },
   "attendance": {
     "title": "Attendance",

@@ -2,7 +2,7 @@
 
 import { usePathname, useRouter } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
-import { Bell, ChevronDown, Eye, EyeOff, Globe, LogOut, Paperclip, Plus, Trash2, Users, X } from 'lucide-react';
+import { Bell, ChevronDown, Eye, EyeOff, Globe, LogOut, Paperclip, Plus, Send, Trash2, X } from 'lucide-react';
 import { useLocale, useTranslations } from 'next-intl';
 import { getUser, logout } from '@/lib/auth';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -40,6 +40,7 @@ export default function Topbar() {
   const locale = useLocale();
   const t = useTranslations('topbar');
   const tn = useTranslations('navigation');
+  const tNav = useTranslations('nav');
   const [user, setUser] = useState<User | null>(null);
   const [avatarSrc, setAvatarSrc] = useState<string | null>(null);
   const [companyName, setCompanyName] = useState<string | null>(null);
@@ -347,19 +348,6 @@ export default function Topbar() {
             )}
           </div>
 
-          {/* Community link — boss/manager only */}
-          {(user?.role === 'boss' || user?.role === 'manager') && (
-            <a
-              href="https://t.me/+q6IQ8Ae82pQzZWRi"
-              target="_blank"
-              rel="noopener noreferrer"
-              title={tn('community' as Parameters<typeof tn>[0])}
-              className="p-2 rounded-lg hover:bg-gray-100 transition-colors text-gray-400 hover:text-gray-600"
-            >
-              <Users className="w-5 h-5" />
-            </a>
-          )}
-
           {/* Announcement bell — hidden for teachers */}
           {user?.role !== 'teacher' && (
             <button
@@ -519,6 +507,23 @@ export default function Topbar() {
               </div>
             )}
           </div>
+
+          {(user?.role === 'boss' || user?.role === 'manager') && (
+            <a
+              href="https://t.me/+q6IQ8Ae82pQzZWRi"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-3 px-4 py-3 border-t border-gray-100 bg-blue-50 hover:bg-blue-100 transition-colors"
+            >
+              <div className="flex items-center justify-center w-9 h-9 rounded-full bg-blue-600 text-white shrink-0">
+                <Send className="w-4 h-4" />
+              </div>
+              <div>
+                <p className="text-sm font-medium text-blue-700">{tNav('joinCommunity')}</p>
+                <p className="text-xs text-blue-500 mt-0.5">{tNav('communitySubtitle')}</p>
+              </div>
+            </a>
+          )}
         </DialogContent>
       </Dialog>
 

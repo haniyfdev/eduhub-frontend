@@ -11,6 +11,12 @@ import { cn, formatCurrency } from '@/lib/utils';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
+interface ArchivedStudentContribution {
+  student_name: string;
+  original_amount: number;
+  calculated_amount: number;
+}
+
 interface GroupSalaryData {
   salary_id: string;
   group_id: string | null;
@@ -26,6 +32,9 @@ interface GroupSalaryData {
   student_count: number;
   course_price: number;
   kpi_amount: number;
+  // TODO: backend (/api/v1/teacher-salaries/) does not return this field yet.
+  // Once it does, remove MOCK_ARCHIVED_STUDENTS below — this will be used directly.
+  archived_students?: ArchivedStudentContribution[];
 }
 
 interface TeacherSalaryGrouped {
@@ -129,6 +138,13 @@ const ROLE_BADGE: Record<string, string> = {
   supply: 'bg-yellow-50 text-yellow-700',
   other: 'bg-gray-50 text-gray-500',
 };
+
+// TODO: remove once /api/v1/teacher-salaries/ returns `archived_students` per group.
+const MOCK_ARCHIVED_STUDENTS: ArchivedStudentContribution[] = [
+  { student_name: 'Aziza Kamalova', original_amount: 100000, calculated_amount: 45000 },
+  { student_name: 'Ruhshona Hamidova', original_amount: 80000, calculated_amount: 36000 },
+  { student_name: 'Malika Yusupova', original_amount: 75000, calculated_amount: 33750 },
+];
 
 const formatAmount = (val: string) =>
   val.replace(/\D/g, '').replace(/\B(?=(\d{3})+(?!\d))/g, ',');
@@ -799,6 +815,39 @@ export default function SalariesPage() {
                 <span className={cn('text-sm font-medium text-gray-900', valueClass)}>{value}</span>
               </div>
             );
+            const GroupExtras = ({ group, activeCalculated }: { group: GroupSalaryData; activeCalculated: number }) => {
+              const archivedStudents = group.archived_students ?? MOCK_ARCHIVED_STUDENTS;
+              const archivedOriginalTotal = archivedStudents.reduce((sum, s) => sum + s.original_amount, 0);
+              const archivedCalculatedTotal = archivedStudents.reduce((sum, s) => sum + s.calculated_amount, 0);
+              const groupTotal = activeCalculated + archivedCalculatedTotal;
+              return (
+                <>
+                  {archivedStudents.length > 0 && (
+                    <div className="mt-2 space-y-1.5">
+                      <p className="text-xs font-medium text-gray-500">{t('archivedStudents')}</p>
+                      <div className="bg-yellow-50 rounded-lg p-2 space-y-1">
+                        {archivedStudents.map((s, idx) => (
+                          <div key={idx} className="flex justify-between items-center gap-2 text-xs">
+                            <span className="text-gray-700 truncate">{s.student_name}</span>
+                            <span className="text-gray-600 font-medium whitespace-nowrap">
+                              {formatCurrency(s.original_amount)} → {formatCurrency(s.calculated_amount)}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                      <Row
+                        label={t('archivedTotal')}
+                        value={`${formatCurrency(archivedOriginalTotal)} → ${formatCurrency(archivedCalculatedTotal)}`}
+                      />
+                    </div>
+                  )}
+                  <div className="flex justify-between items-center pt-1.5 mt-1.5 border-t border-gray-100">
+                    <span className="text-sm font-bold text-gray-900">{t('groupTotal')}</span>
+                    <span className="text-sm font-bold text-gray-900">{formatCurrency(groupTotal)}</span>
+                  </div>
+                </>
+              );
+            };
             return (
               <div className="mt-1 space-y-3">
                 <div className="space-y-0.5">
@@ -842,25 +891,29 @@ export default function SalariesPage() {
                       </p>
                       {td.salary_type === 'percent' && (() => {
                         const perStudent = g.course_price * (td.salary_percent ?? 0) / 100;
+                        const activeCalculated = g.student_count * perStudent;
                         return (<>
                           <Row label={t('studentsCount')} value={`${g.student_count} ta`} />
                           <Row label={t('coursePrice')} value={formatCurrency(g.course_price)} />
                           <Row label={t('perStudentAmount')} value={formatCurrency(perStudent)} />
                           <Row
                             label={t('calculated2')}
-                            value={`${g.student_count} × ${formatCurrency(perStudent)} = ${formatCurrency(g.student_count * perStudent)}`}
+                            value={`${g.student_count} × ${formatCurrency(perStudent)} = ${formatCurrency(activeCalculated)}`}
                           />
+                          <GroupExtras group={g} activeCalculated={activeCalculated} />
                         </>);
                       })()}
                       {td.salary_type === 'per_student' && (() => {
                         const perAmt = td.per_student_amt ?? 0;
+                        const activeCalculated = g.student_count * perAmt;
                         return (<>
                           <Row label={t('studentsCount')} value={`${g.student_count} ta`} />
                           <Row label={t('perStudentAmount')} value={formatCurrency(perAmt)} />
                           <Row
                             label={t('calculated2')}
-                            value={`${g.student_count} × ${formatCurrency(perAmt)} = ${formatCurrency(g.student_count * perAmt)}`}
+                            value={`${g.student_count} × ${formatCurrency(perAmt)} = ${formatCurrency(activeCalculated)}`}
                           />
+                          <GroupExtras group={g} activeCalculated={activeCalculated} />
                         </>);
                       })()}
                       {g.kpi_amount > 0 && i === 0 && (

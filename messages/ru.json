@@ -926,6 +926,9 @@
     "broadcastSend": "Отправить",
     "broadcastSuccess": "Сообщение отправлено {count} пользователям",
     "broadcastError": "Ошибка при отправке сообщения",
+    "debtUpdated": "Сумма долга обновлена",
+    "debtUpdateError": "Произошла ошибка",
+    "editAmount": "Изменить сумму",
     "conversion": {
       "title": "Конверсия учеников",
       "total": "Всего",

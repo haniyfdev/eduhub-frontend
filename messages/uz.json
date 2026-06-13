@@ -946,6 +946,9 @@
     "broadcastSend": "Yuborish",
     "broadcastSuccess": "{count} ta foydalanuvchiga xabar yuborildi",
     "broadcastError": "Xabar yuborishda xatolik",
+    "debtUpdated": "Qarz miqdori yangilandi",
+    "debtUpdateError": "Xatolik yuz berdi",
+    "editAmount": "Miqdorni tahrirlash",
     "conversion": {
       "title": "O'quvchi konversiyasi",
       "total": "Jami",

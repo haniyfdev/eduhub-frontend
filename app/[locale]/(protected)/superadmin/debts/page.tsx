@@ -35,6 +35,12 @@ const BADGE: Record<string, string> = {
 
 const thCls = 'text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide bg-gray-50 whitespace-nowrap';
 
+function formatAmountInput(raw: string): string {
+  const digits = raw.replace(/\D/g, '');
+  if (!digits) return '';
+  return Number(digits).toLocaleString('en-US');
+}
+
 export default function SuperadminDebtsPage() {
   const t = useTranslations('superadmin');
   const [debts, setDebts] = useState<SubscriptionDebt[]>([]);
@@ -52,6 +58,10 @@ export default function SuperadminDebtsPage() {
   const [payAmount, setPayAmount] = useState('');
   const [payMethod, setPayMethod] = useState<'cash' | 'card' | 'transfer'>('cash');
   const [paying, setPaying] = useState(false);
+
+  const [editingAmountId, setEditingAmountId] = useState<number | null>(null);
+  const [amountInput, setAmountInput] = useState('');
+  const [savingAmount, setSavingAmount] = useState(false);
 
   const fetchDebts = useCallback(async (q: string) => {
     setLoading(true);
@@ -127,6 +137,42 @@ export default function SuperadminDebtsPage() {
       toast.error(msg || "Xatolik");
     } finally {
       setPaying(false);
+    }
+  }
+
+  function startEditAmount(debt: SubscriptionDebt) {
+    setEditingAmountId(debt.id);
+    setAmountInput(formatAmountInput(String(debt.amount)));
+  }
+
+  function cancelEditAmount() {
+    setEditingAmountId(null);
+    setAmountInput('');
+  }
+
+  async function saveAmount(debt: SubscriptionDebt) {
+    const newAmount = Number(amountInput.replace(/,/g, ''));
+    if (!amountInput || isNaN(newAmount) || newAmount === debt.amount) {
+      cancelEditAmount();
+      return;
+    }
+    const max = plan.price ?? debt.amount;
+    if (newAmount < 10000 || newAmount > max) {
+      toast.error(t('debtUpdateError' as Parameters<typeof t>[0]));
+      cancelEditAmount();
+      return;
+    }
+    setSavingAmount(true);
+    try {
+      const { data } = await api.patch<SubscriptionDebt>(`/api/superadmin/debts/${debt.id}/`, { amount: newAmount });
+      setDebts((prev) => prev.map((d) => (d.id === debt.id ? { ...d, ...data } : d)));
+      toast.success(t('debtUpdated' as Parameters<typeof t>[0]));
+      cancelEditAmount();
+    } catch {
+      toast.error(t('debtUpdateError' as Parameters<typeof t>[0]));
+      cancelEditAmount();
+    } finally {
+      setSavingAmount(false);
     }
   }
 
@@ -231,11 +277,43 @@ export default function SuperadminDebtsPage() {
               : debts.length === 0
                 ? <tr><td colSpan={COLS.length} className="px-4 py-16 text-center text-gray-400">Qarzlar yo&apos;q</td></tr>
                 : debts.map((debt, idx) => (
-                  <tr key={debt.id} className="hover:bg-gray-50 transition-colors">
+                  <tr key={debt.id} className="group hover:bg-gray-50 transition-colors">
                     <td className="px-4 py-3 text-gray-400 text-xs">{idx + 1}</td>
                     <td className="px-4 py-3 font-medium text-gray-900 whitespace-nowrap">{debt.company_name}</td>
                     <td className="px-4 py-3 text-gray-500 whitespace-nowrap text-xs">{formatDMY(debt.created_at)}</td>
-                    <td className="px-4 py-3 font-medium text-gray-900 whitespace-nowrap">{formatCurrency(debt.amount)}</td>
+                    <td className="px-4 py-3 font-medium text-gray-900 whitespace-nowrap">
+                      {editingAmountId === debt.id ? (
+                        <div className="flex items-center gap-1.5">
+                          <input
+                            type="text"
+                            inputMode="numeric"
+                            value={amountInput}
+                            autoFocus
+                            disabled={savingAmount}
+                            onChange={(e) => setAmountInput(formatAmountInput(e.target.value))}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') saveAmount(debt);
+                              if (e.key === 'Escape') cancelEditAmount();
+                            }}
+                            min={10000}
+                            max={plan.price ?? undefined}
+                            className="w-28 px-2 py-1 border border-blue-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
+                          />
+                          <span className="text-xs text-gray-500">so&apos;m</span>
+                        </div>
+                      ) : (
+                        <div className="flex items-center gap-1.5">
+                          <span>{formatCurrency(debt.amount)}</span>
+                          <button
+                            onClick={() => startEditAmount(debt)}
+                            className="p-1 text-gray-400 hover:text-blue-600 opacity-0 group-hover:opacity-100 transition-opacity"
+                            title={t('editAmount' as Parameters<typeof t>[0])}
+                          >
+                            <Pencil className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      )}
+                    </td>
                     <td className="px-4 py-3 text-green-700 whitespace-nowrap">{formatCurrency(debt.paid_amount)}</td>
                     <td className={cn(
                       'px-4 py-3 font-semibold whitespace-nowrap',

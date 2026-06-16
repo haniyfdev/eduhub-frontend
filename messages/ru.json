@@ -553,6 +553,8 @@
       "fine": "Штраф",
       "discount": "Скидка",
       "maoshlar": "Зарплаты",
+      "teacher_salary": "Зарплата учителей",
+      "staff_salary": "Зарплата сотрудников",
       "other": "Прочее"
     },
     "kpiLabels": {

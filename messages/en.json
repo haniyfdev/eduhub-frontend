@@ -553,6 +553,8 @@
       "fine": "Fine",
       "discount": "Discount",
       "maoshlar": "Salaries",
+      "teacher_salary": "Teacher salaries",
+      "staff_salary": "Staff salaries",
       "other": "Other"
     },
     "kpiLabels": {

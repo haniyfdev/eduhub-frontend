@@ -78,7 +78,7 @@ const EXPENSE_PIE_COLORS: Record<string, string> = {
   discount: '#EC4899',
   other:    '#6B7280',
 };
-const EXPENSE_LABEL_KEYS = ['rent', 'utility', 'tax', 'fine', 'discount', 'maoshlar', 'other'] as const;
+const EXPENSE_LABEL_KEYS = ['rent', 'utility', 'tax', 'fine', 'discount', 'maoshlar', 'teacher_salary', 'staff_salary', 'other'] as const;
 type ExpenseLabelKey = typeof EXPENSE_LABEL_KEYS[number];
 const MANUAL_CATS = ['rent', 'utility', 'tax', 'fine', 'discount', 'other'];
 const MONTH_LABELS = ['Yan','Fev','Mar','Apr','May','Iyn','Iyl','Avg','Sen','Okt','Noy','Dek'];

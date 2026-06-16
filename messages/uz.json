@@ -573,6 +573,8 @@
       "fine": "Jarima",
       "discount": "Chegirma",
       "maoshlar": "Maoshlar",
+      "teacher_salary": "O'qituvchi maoshi",
+      "staff_salary": "Xodim maoshi",
       "other": "Boshqa"
     },
     "kpiLabels": {

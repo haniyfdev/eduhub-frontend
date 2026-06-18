@@ -392,13 +392,13 @@ export default function DebtsPage() {
                         key={d.id}
                         className={cn(
                           'transition-colors',
-                          d.group_student_status === 'left'
+                          d.group_student_left_at != null
                             ? 'bg-green-100 hover:bg-green-200 cursor-pointer'
                             : cn('hover:brightness-95', rowBg(d.status, d.student_status, d.due_date),
                                  d.student_status === 'frozen' && 'cursor-pointer')
                         )}
                         onClick={() => {
-                          if (d.group_student_status === 'left' || d.student_status === 'frozen')
+                          if (d.group_student_left_at != null || d.student_status === 'frozen')
                             openSobiqModal(d);
                         }}
                       >

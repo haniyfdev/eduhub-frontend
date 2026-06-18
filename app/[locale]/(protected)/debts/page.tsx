@@ -28,6 +28,7 @@ interface Debt {
   paid_amount: number;
   due_date: string;
   status: 'unpaid' | 'partial' | 'overdue' | 'paid';
+  billing_type?: string | null;
   group_student_status?: string;
   group_student_left_at?: string | null;
   archive_billing_type?: string | null;
@@ -57,12 +58,15 @@ interface PaymentForm {
   note: string;
 }
 
-function rowBg(debtStatus: Debt['status'], studentStatus: string, dueDate: string): string {
-  const isOverdue = debtStatus === 'overdue' ||
-    (debtStatus !== 'paid' && dueDate && new Date(dueDate) < new Date());
+function rowBg(d: Debt): string {
+  const isOverdue = d.status === 'overdue' ||
+    (d.status !== 'paid' && d.due_date && new Date(d.due_date) < new Date());
   if (isOverdue) return 'bg-red-100';
-  if (studentStatus === 'frozen') return 'bg-[#F0F9FF]';
-  switch (debtStatus) {
+  // Light blue: debt was produced by a proration calculation and hasn't been
+  // confirmed yet — regardless of whether the student is still frozen.
+  const needsConfirmation = d.billing_type != null && d.confirmed_at == null;
+  if (needsConfirmation || d.student_status === 'frozen') return 'bg-[#F0F9FF]';
+  switch (d.status) {
     case 'unpaid':   return 'bg-yellow-100';
     case 'partial':  return 'bg-yellow-50';
     default:         return '';
@@ -387,6 +391,7 @@ export default function DebtsPage() {
                   : debts.map((d, idx) => {
                     const sel = phoneSelection[d.id] ?? { phone1: false, phone2: false };
                     const canSms = d.status !== 'paid';
+                    const needsConfirmation = d.billing_type != null && d.confirmed_at == null;
                     return (
                       <tr
                         key={d.id}
@@ -394,11 +399,11 @@ export default function DebtsPage() {
                           'transition-colors',
                           d.group_student_left_at != null
                             ? 'bg-green-100 hover:bg-green-200 cursor-pointer'
-                            : cn('hover:brightness-95', rowBg(d.status, d.student_status, d.due_date),
-                                 d.student_status === 'frozen' && 'cursor-pointer')
+                            : cn('hover:brightness-95', rowBg(d),
+                                 (needsConfirmation || d.student_status === 'frozen') && 'cursor-pointer')
                         )}
                         onClick={() => {
-                          if (d.group_student_left_at != null || d.student_status === 'frozen')
+                          if (d.group_student_left_at != null || needsConfirmation || d.student_status === 'frozen')
                             openSobiqModal(d);
                         }}
                       >

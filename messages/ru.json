@@ -766,6 +766,8 @@
     "archiveBillingPerLesson": "По урокам (посещённые уроки)",
     "archiveBillingPerDay": "Подённо (дни в группе)",
     "archiveBillingHelp": "Как рассчитывается долг при уходе ученика в середине месяца",
+    "freezeBillingType": "Метод расчёта долга при заморозке",
+    "freezeBillingHelp": "Как рассчитывается долг при заморозке ученика",
     "billingType": "Тип расчёта",
     "billingMonthly": "Ежемесячно (полная цена)",
     "billingPerLesson": "По урокам",

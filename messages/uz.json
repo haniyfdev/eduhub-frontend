@@ -786,6 +786,8 @@
     "archiveBillingPerLesson": "Dars bo'yicha (qatnashgan darslar)",
     "archiveBillingPerDay": "Kunbay (guruhda turgan kunlar)",
     "archiveBillingHelp": "O'quvchi o'rtada tashlab ketganda qarz qanday hisoblanadi",
+    "freezeBillingType": "Muzlatilgan o'quvchi qarz hisob usuli",
+    "freezeBillingHelp": "O'quvchi muzlatilganda qarz qanday hisoblanadi",
     "billingType": "Hisoblash turi",
     "billingMonthly": "Oylik (to'liq narx)",
     "billingPerLesson": "Dars bo'yicha",

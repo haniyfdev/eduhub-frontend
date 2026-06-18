@@ -23,6 +23,7 @@ interface CompanySettings {
   absent_policy: string;
   teacher_contract_break_policy: string;
   archive_billing_type: string;
+  freeze_billing_type: string;
 }
 
 interface SmsTemplate {
@@ -103,6 +104,7 @@ export default function SettingsPage() {
     absent_policy: 'ignore',
     teacher_contract_break_policy: 'full',
     archive_billing_type: 'manual',
+    freeze_billing_type: 'manual',
   });
   const [smsTemplates, setSmsTemplates] = useState<SmsTemplate[]>([]);
   const [savingSettings, setSavingSettings] = useState(false);
@@ -503,6 +505,19 @@ export default function SettingsPage() {
                     <option value="per_day">{t('archiveBillingPerDay')}</option>
                   </select>
                   <p className="text-xs text-gray-400 mt-1">{t('archiveBillingHelp')}</p>
+                </div>
+                <div>
+                  <label className={labelCls}>{t('freezeBillingType')}</label>
+                  <select
+                    value={settings.freeze_billing_type || 'manual'}
+                    onChange={(e) => setSettings((s) => ({ ...s, freeze_billing_type: e.target.value }))}
+                    className={inputCls}
+                  >
+                    <option value="manual">{t('archiveBillingManual')}</option>
+                    <option value="per_lesson">{t('archiveBillingPerLesson')}</option>
+                    <option value="per_day">{t('archiveBillingPerDay')}</option>
+                  </select>
+                  <p className="text-xs text-gray-400 mt-1">{t('freezeBillingHelp')}</p>
                 </div>
                 <button
                   type="submit"

@@ -766,6 +766,8 @@
     "archiveBillingPerLesson": "Per lesson (attended lessons)",
     "archiveBillingPerDay": "Per day (days in group)",
     "archiveBillingHelp": "How debt is calculated when student leaves mid-month",
+    "freezeBillingType": "Frozen student debt calculation method",
+    "freezeBillingHelp": "How debt is calculated when a student is frozen",
     "billingType": "Billing type",
     "billingMonthly": "Monthly (full price)",
     "billingPerLesson": "Per lesson",

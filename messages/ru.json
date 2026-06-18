@@ -461,7 +461,7 @@
     "manualDebtAmountLabel": "Введите сумму долга (сум)",
     "manualDebtLocked": "Редактирование недоступно — метод расчёта изменён",
     "billingTypeLabel": "Метод расчёта долга",
-    "billingManual": "Администратором",
+    "billingManual": "Вручную",
     "billingPerDay": "Подённо",
     "billingPerLesson": "Поурочно",
     "confirmAmount": "Подтвердить сумму долга?",

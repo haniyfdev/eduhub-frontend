@@ -481,7 +481,7 @@
     "manualDebtAmountLabel": "Qarz miqdorini kiriting (so'm)",
     "manualDebtLocked": "Hozirgi hisoblash usuli o'zgartirilgani uchun tahrirlash mumkin emas",
     "billingTypeLabel": "Qarz hisoblash uslubi",
-    "billingManual": "Admin tomonidan",
+    "billingManual": "Qo'lda",
     "billingPerDay": "Kunbay",
     "billingPerLesson": "Darsbay",
     "confirmAmount": "Qarz miqdorini tasdiqlaysizmi?",

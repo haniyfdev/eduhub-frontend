@@ -394,9 +394,13 @@ export default function DebtsPage() {
                           'transition-colors',
                           d.group_student_status === 'left'
                             ? 'bg-green-100 hover:bg-green-200 cursor-pointer'
-                            : cn('hover:brightness-95', rowBg(d.status, d.student_status, d.due_date))
+                            : cn('hover:brightness-95', rowBg(d.status, d.student_status, d.due_date),
+                                 d.student_status === 'frozen' && 'cursor-pointer')
                         )}
-                        onClick={() => { if (d.group_student_status === 'left') openSobiqModal(d); }}
+                        onClick={() => {
+                          if (d.group_student_status === 'left' || d.student_status === 'frozen')
+                            openSobiqModal(d);
+                        }}
                       >
                         <td className="px-3 py-3 text-gray-400 text-xs w-10">{(page - 1) * pageSize + idx + 1}</td>
 
@@ -528,42 +532,44 @@ export default function DebtsPage() {
                 }
               </div>
 
-              <div className="border border-gray-100 rounded-lg overflow-hidden">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="bg-gray-50 border-b border-gray-100">
-                      <th className="text-left px-3 py-2 text-xs font-semibold text-gray-500">{t('date')}</th>
-                      <th className="text-left px-3 py-2 text-xs font-semibold text-gray-500">{t('attendanceStatus')}</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-gray-50">
-                    {sobiqAttendance.lessons.map((lesson) => (
-                      <tr key={lesson.lesson_id} className={cn(
-                        lesson.status === 'present' ? 'bg-green-50' :
-                        lesson.status === 'late'    ? 'bg-yellow-50' : 'bg-red-50'
-                      )}>
-                        <td className="px-3 py-2 text-xs font-medium text-gray-700">{lesson.date}</td>
-                        <td className="px-3 py-2">
-                          <span className={cn(
-                            'text-xs font-medium px-2 py-0.5 rounded-full',
-                            lesson.status === 'present' ? 'bg-green-100 text-green-700' :
-                            lesson.status === 'late'    ? 'bg-yellow-100 text-yellow-700' :
-                                                          'bg-red-100 text-red-700'
-                          )}>
-                            {lesson.status === 'present' ? t('present') :
-                             lesson.status === 'late'    ? t('late') : t('absent')}
-                          </span>
-                        </td>
+              {sobiqAttendance.billing_type === 'per_lesson' && (
+                <div className="border border-gray-100 rounded-lg overflow-hidden">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="bg-gray-50 border-b border-gray-100">
+                        <th className="text-left px-3 py-2 text-xs font-semibold text-gray-500">{t('date')}</th>
+                        <th className="text-left px-3 py-2 text-xs font-semibold text-gray-500">{t('attendanceStatus')}</th>
                       </tr>
-                    ))}
-                    {sobiqAttendance.lessons.length === 0 && (
-                      <tr>
-                        <td colSpan={2} className="px-3 py-4 text-center text-xs text-gray-400">{t('noDebts')}</td>
-                      </tr>
-                    )}
-                  </tbody>
-                </table>
-              </div>
+                    </thead>
+                    <tbody className="divide-y divide-gray-50">
+                      {sobiqAttendance.lessons.map((lesson) => (
+                        <tr key={lesson.lesson_id} className={cn(
+                          lesson.status === 'present' ? 'bg-green-50' :
+                          lesson.status === 'late'    ? 'bg-yellow-50' : 'bg-red-50'
+                        )}>
+                          <td className="px-3 py-2 text-xs font-medium text-gray-700">{lesson.date}</td>
+                          <td className="px-3 py-2">
+                            <span className={cn(
+                              'text-xs font-medium px-2 py-0.5 rounded-full',
+                              lesson.status === 'present' ? 'bg-green-100 text-green-700' :
+                              lesson.status === 'late'    ? 'bg-yellow-100 text-yellow-700' :
+                                                            'bg-red-100 text-red-700'
+                            )}>
+                              {lesson.status === 'present' ? t('present') :
+                               lesson.status === 'late'    ? t('late') : t('absent')}
+                            </span>
+                          </td>
+                        </tr>
+                      ))}
+                      {sobiqAttendance.lessons.length === 0 && (
+                        <tr>
+                          <td colSpan={2} className="px-3 py-4 text-center text-xs text-gray-400">{t('noDebts')}</td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              )}
 
               <div className="border-t border-gray-100 pt-4 space-y-3">
                 {/* MANUAL (admin) */}

@@ -226,6 +226,15 @@ export default function LessonAttendancePage() {
   }
 
   async function handleStart() {
+    if (!loadingStudents) {
+      const activeStudents = students.filter(
+        (gs) => !gs.status || gs.status === 'active' || gs.status === 'trial',
+      );
+      if (activeStudents.length === 0) {
+        toast.error("Darsni boshlash mumkin emas, guruhda talaba yo'q");
+        return;
+      }
+    }
     setStarting(true);
     try {
       const { data } = await api.post<LessonDetail>(`/api/v1/lessons/${id}/start/`);
@@ -404,7 +413,7 @@ export default function LessonAttendancePage() {
           {isPending && !isLocked && (
             <button
               onClick={handleStart}
-              disabled={starting}
+              disabled={starting || loadingStudents}
               className="flex items-center gap-1.5 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded hover:bg-blue-700 disabled:opacity-60 transition-colors"
             >
               {starting ? 'Boshlanmoqda...' : t('startLesson')}

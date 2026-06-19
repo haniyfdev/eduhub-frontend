@@ -7,7 +7,7 @@ import {
   LayoutDashboard, Users, Users2, GraduationCap, BookOpen,
   CreditCard, AlertCircle, BarChart3, Settings, Building2, Archive,
   Lightbulb, CalendarCheck, DoorOpen, Banknote, Send, Tag,
-  BadgeDollarSign,
+  BadgeDollarSign, MessageSquare,
 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { cn } from '@/lib/utils';
@@ -51,10 +51,11 @@ const sections = [
 ];
 
 const superadminItems = [
-  { key: 'dashboard', icon: LayoutDashboard, href: '/superadmin/dashboard', label: 'Dashboard' },
-  { key: 'companies', icon: Building2, href: '/superadmin/companies', label: 'Kompaniyalar' },
-  { key: 'debts',     icon: AlertCircle, href: '/superadmin/debts',   label: 'Qarzdorlar' },
-  { key: 'payments',  icon: BadgeDollarSign, href: '/superadmin/payments', label: "To'lovlar" },
+  { key: 'dashboard',      icon: LayoutDashboard,  href: '/superadmin/dashboard',      label: 'Dashboard' },
+  { key: 'companies',      icon: Building2,         href: '/superadmin/companies',      label: 'Kompaniyalar' },
+  { key: 'debts',          icon: AlertCircle,       href: '/superadmin/debts',          label: 'Qarzdorlar' },
+  { key: 'payments',       icon: BadgeDollarSign,   href: '/superadmin/payments',       label: "To'lovlar" },
+  { key: 'sms-templates',  icon: MessageSquare,     href: '/superadmin/sms-templates',  label: 'SMS shablonlar' },
 ];
 
 export default function Sidebar() {

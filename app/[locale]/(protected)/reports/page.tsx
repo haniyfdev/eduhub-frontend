@@ -165,7 +165,7 @@ export default function ReportsPage() {
   const [showExpModal, setShowExpModal] = useState(false);
   const [editingExp,   setEditingExp]   = useState<ExpenseRow | null>(null);
   const [expForm,      setExpForm]      = useState({
-    category: 'rent', amount: '', description: '', expense_date: todayStr(),
+    category: 'rent', amount: '', amount_display: '', description: '', expense_date: todayStr(),
   });
   const [savingExp, setSavingExp] = useState(false);
 
@@ -207,7 +207,7 @@ export default function ReportsPage() {
 
   function openAddExp() {
     setEditingExp(null);
-    setExpForm({ category: 'rent', amount: '', description: '', expense_date: todayStr() });
+    setExpForm({ category: 'rent', amount: '', amount_display: '', description: '', expense_date: todayStr() });
     setShowExpModal(true);
   }
   function openEditExp(e: ExpenseRow) {
@@ -215,6 +215,7 @@ export default function ReportsPage() {
     setExpForm({
       category: e.category,
       amount: String(e.amount),
+      amount_display: e.amount ? Number(e.amount).toLocaleString('en-US') : '',
       description: e.note ?? '',
       expense_date: e.date ?? todayStr(),
     });
@@ -695,7 +696,15 @@ export default function ReportsPage() {
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">{t('amountLabel')}</label>
-              <input type="number" value={expForm.amount} onChange={e => setExpForm({ ...expForm, amount: e.target.value })}
+              <input
+                type="text"
+                inputMode="numeric"
+                value={expForm.amount_display}
+                onChange={e => {
+                  const raw = e.target.value.replace(/\D/g, '');
+                  const formatted = raw ? Number(raw).toLocaleString('en-US') : '';
+                  setExpForm({ ...expForm, amount: raw, amount_display: formatted });
+                }}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none"
                 placeholder="0" required />
             </div>

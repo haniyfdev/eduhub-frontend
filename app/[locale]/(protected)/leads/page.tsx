@@ -62,6 +62,7 @@ export default function LeadsPage() {
   const [ignoreTarget, setIgnoreTarget] = useState<{ id: string; name: string } | null>(null);
   const [ignoreDescription, setIgnoreDescription] = useState('');
   const [ignoring, setIgnoring]         = useState(false);
+  const [viewIgnored, setViewIgnored]   = useState<{ name: string; notes: string | null } | null>(null);
   const [touched, setTouched]           = useState<Record<string, boolean>>({});
   const [phoneSelection, setPhoneSelection] = useState<PhoneSelection>({});
   const [showSms, setShowSms]           = useState(false);
@@ -314,10 +315,11 @@ export default function LeadsPage() {
                   ? <tr><td colSpan={9} className="px-4 py-16 text-center text-gray-400">{t('noLeads')}</td></tr>
                   : leads.map((l, idx) => (
                     <tr key={l.id} className={cn('group transition-colors hover:brightness-95',
-                      l.status === 'ignored' ? 'bg-[#FEF2F2]' : '')}>
+                      l.status === 'ignored' ? 'bg-[#FEF2F2] cursor-pointer' : '')}
+                      onClick={() => { if (l.status === 'ignored') setViewIgnored({ name: `${l.first_name} ${l.last_name}`, notes: l.notes }); }}>
                       <td className="px-4 py-3 text-gray-400 text-xs">{(page - 1) * pageSize + idx + 1}</td>
                       <td className="px-4 py-3 font-medium text-gray-900">{l.first_name} {l.last_name}</td>
-                      <td className="px-4 py-3">
+                      <td className="px-4 py-3" onClick={e => e.stopPropagation()}>
                         <label className="flex items-center gap-2 cursor-pointer select-none">
                           <input type="checkbox" checked={phoneSelection[l.id]?.phone1 ?? false}
                             onChange={() => togglePhone(l.id, 'phone1')}
@@ -325,7 +327,7 @@ export default function LeadsPage() {
                           <span className="text-gray-500 whitespace-nowrap">{formatPhone(l.phone)}</span>
                         </label>
                       </td>
-                      <td className="px-4 py-3">
+                      <td className="px-4 py-3" onClick={e => e.stopPropagation()}>
                         {l.second_phone ? (
                           <label className="flex items-center gap-2 cursor-pointer select-none">
                             <input type="checkbox" checked={phoneSelection[l.id]?.phone2 ?? false}
@@ -504,6 +506,19 @@ export default function LeadsPage() {
               {ignoring ? '...' : tc('confirm')}
             </button>
           </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* View Ignored Comment Dialog */}
+      <Dialog open={!!viewIgnored} onOpenChange={open => { if (!open) setViewIgnored(null); }}>
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader><DialogTitle>{t('ignored')}</DialogTitle></DialogHeader>
+          <p className="text-sm text-gray-600 mt-1">
+            <span className="font-medium">{viewIgnored?.name}</span>
+          </p>
+          <p className="w-full mt-3 px-3 py-2 border border-gray-200 rounded text-sm text-gray-700 bg-gray-50 whitespace-pre-wrap min-h-[4.5rem]">
+            {viewIgnored?.notes || '—'}
+          </p>
         </DialogContent>
       </Dialog>
 

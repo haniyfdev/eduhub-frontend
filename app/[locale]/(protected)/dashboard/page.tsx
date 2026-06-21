@@ -42,6 +42,7 @@ interface DashboardData {
   active_groups?: number; groups_count?: number;
   debtors_count?: number; total_debtors?: number;
   teachers_count?: number;
+  pending_leads?: number;
 }
 interface AttendanceNote {
   id: string;
@@ -73,6 +74,7 @@ function resolve(data: DashboardData) {
     groups: data.active_groups || data.groups_count || (data as any).groups || 0,
     debtors: data.debtors_count || data.total_debtors || (data as any).debtors || 0,
     teachers: data.teachers_count || (data as any).teachers || 0,
+    leads: data.pending_leads || 0,
   };
 }
 
@@ -172,8 +174,6 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
 
-  const [leadsCount, setLeadsCount] = useState(0);
-
   const [notes, setNotes] = useState<AttendanceNote[]>([]);
   const [notesLoading, setNotesLoading] = useState(true);
   const [groups, setGroups] = useState<GroupItem[]>([]);
@@ -202,12 +202,8 @@ export default function DashboardPage() {
   async function fetchData() {
     setLoading(true); setError(false);
     try {
-      const [summaryRes, leadsRes] = await Promise.all([
-        api.get('/api/v1/dashboard/summary/').catch(() => null),
-        api.get('/api/v1/leads/', { params: { page_size: 1 } }).catch(() => null),
-      ]);
+      const summaryRes = await api.get('/api/v1/dashboard/summary/').catch(() => null);
       setData(summaryRes?.data ?? {});
-      setLeadsCount(leadsRes?.data?.count ?? 0);
     } catch {
       setError(true);
       toast.error(t('loadError'));
@@ -307,7 +303,7 @@ export default function DashboardPage() {
   const d = data ? resolve(data) : null;
 
   const stats = d ? [
-    { label: t('totalLeads'), value: leadsCount, icon: UserPlus },
+    { label: t('totalLeads'), value: d.leads, icon: UserPlus },
     { label: t('totalStudents'), value: d.students, icon: Users },
     { label: t('activeGroups'), value: d.groups, icon: Users2 },
     { label: t('debtors'), value: d.debtors, icon: AlertCircle, variant: 'danger' as const },

@@ -621,7 +621,7 @@ export default function GroupDetailPage() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="bg-gray-50 border-b border-gray-200">
-                  {['№', common('date'), t('weekDay'), t('topic'), t('lessonTime')].map((h) => (
+                  {['№', t('topic'), t('lessonTime'), t('weekDay'), common('date')].map((h) => (
                     <th key={h} className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">{h}</th>
                   ))}
                 </tr>
@@ -651,12 +651,12 @@ export default function GroupDetailPage() {
                           )}
                         >
                           <td className="px-4 py-3 text-gray-500">{idx + 1}</td>
-                          <td className="px-4 py-3 text-gray-700">{formatDMY(lesson.date)}</td>
-                          <td className="px-4 py-3 text-gray-600">{weekDay}</td>
                           <td className="px-4 py-3 font-medium text-gray-900">{lesson.topic || '—'}</td>
                           <td className="px-4 py-3 text-gray-600">
                             {startTime ? `${startTime}${endTime ? ` — ${endTime}` : ''}` : '—'}
                           </td>
+                          <td className="px-4 py-3 text-gray-600">{weekDay}</td>
+                          <td className="px-4 py-3 text-gray-700">{formatDMY(lesson.date)}</td>
                         </tr>
                       );
                     })}

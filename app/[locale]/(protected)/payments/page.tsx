@@ -57,6 +57,10 @@ interface RefundCandidate {
   debt_id: string | null;
   billing_type: 'manual' | 'per_day' | 'per_lesson';
   breakdown: RefundBreakdown | null;
+  course_price: number | null;
+  total_lessons: number | null;
+  attended_lessons: number | null;
+  per_lesson_price: number | null;
 }
 
 interface RefundRecord {
@@ -485,26 +489,33 @@ export default function PaymentsPage() {
               <div className="bg-gray-50 rounded-lg p-4 space-y-2">
                 <div className="flex justify-between text-sm">
                   <span className="text-gray-700">{td('coursePriceLabel')}</span>
-                  <span className="font-semibold">{formatCurrency(candidateData.breakdown?.course_price ?? 0)}</span>
+                  <span className="font-semibold">{formatCurrency(candidateData.course_price ?? 0)}</span>
                 </div>
 
-                {candidateData.billing_type !== 'manual' && candidateData.breakdown && (
+                {candidateData.billing_type === 'per_lesson' && (
                   <>
                     <div className="flex justify-between text-sm">
-                      <span className="text-gray-700">
-                        {candidateData.billing_type === 'per_day' ? td('perDayPrice') : td('perLessonPrice')}
+                      <span className="text-gray-700">{td('perLessonPrice')}</span>
+                      <span className="font-semibold">{formatCurrency(candidateData.per_lesson_price ?? 0)}</span>
+                    </div>
+                    <div className="flex justify-between text-sm">
+                      <span className="text-gray-700">{td('attendedLessons')}</span>
+                      <span className="font-semibold">
+                        {candidateData.attended_lessons} / {candidateData.total_lessons} {td('lessons')}
                       </span>
+                    </div>
+                  </>
+                )}
+
+                {candidateData.billing_type === 'per_day' && candidateData.breakdown && (
+                  <>
+                    <div className="flex justify-between text-sm">
+                      <span className="text-gray-700">{td('perDayPrice')}</span>
                       <span className="font-semibold">{formatCurrency(candidateData.breakdown.per_unit ?? 0)}</span>
                     </div>
                     <div className="flex justify-between text-sm">
-                      <span className="text-gray-700">
-                        {candidateData.billing_type === 'per_day' ? td('daysInGroup') : td('attendedLessons')}
-                      </span>
-                      <span className="font-semibold">
-                        {candidateData.breakdown.units_count}
-                        {candidateData.billing_type === 'per_lesson' ? ` / ${candidateData.breakdown.total_units}` : ''}{' '}
-                        {candidateData.billing_type === 'per_day' ? td('days') : td('lessons')}
-                      </span>
+                      <span className="text-gray-700">{td('daysInGroup')}</span>
+                      <span className="font-semibold">{candidateData.breakdown.units_count} {td('days')}</span>
                     </div>
                   </>
                 )}

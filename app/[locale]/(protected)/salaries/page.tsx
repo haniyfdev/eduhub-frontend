@@ -319,6 +319,7 @@ export default function SalariesPage() {
       void tRes; void sRes;
       toast.success(common('success'));
       loadSalaries();
+      loadSummary();
     } catch {
       toast.error(common('error'));
     } finally {

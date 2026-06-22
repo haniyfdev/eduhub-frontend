@@ -428,7 +428,16 @@
     "transfer": "O'tkazma",
     "noPayments": "To'lovlar yo'q",
     "allTypes": "Barcha turlar",
-    "selectGroupStudent": "Guruhni tanlang"
+    "selectGroupStudent": "Guruhni tanlang",
+    "refundTitle": "Qaytim",
+    "totalPaidLabel": "Jami to'langan",
+    "refundAmountLabel": "O'quvchiga qaytim puli",
+    "manualEarnedLabel": "Hisoblangan qarzni kiriting (so'm)",
+    "refundConfirmPrompt": "Qaytim puli tasdiqlansinmi?",
+    "refundConfirmed": "Qaytim tasdiqlandi",
+    "refundReturnedPrompt": "O'quvchiga qaytim qaytarildimi?",
+    "refundReturnedButton": "Ha, qaytarildi",
+    "refundReturnedOn": "Qaytim puli qaytarildi ({date})"
   },
   "debts": {
     "title": "Qarzdorlar",
